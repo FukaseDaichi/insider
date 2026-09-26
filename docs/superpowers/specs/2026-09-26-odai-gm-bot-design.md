@@ -252,6 +252,8 @@ Discord 側の必要設定: Developer Portal で Message Content Intent を有�
 ## 8. 実装順
 
 1. Jev の日本語検証（実 API に日本語で問い合わせ、精度と instructions 文言を確認。否定・比較の質問も含める。実用にならなければ相談）
+   - 結果（2026-09-26, jev-latest）: 英語案・日本語案とも is_yes 15/15、is_correct 15/15。
+     採用: is_yes は英語（否定・比較の質問で確率がより低く出る）、is_correct は日本語（正解ケースの最小値 0.86 と、しきい値 0.8 に対する余裕が大きい）。
 2. プロジェクト雛形（uv init、依存追加、.gitignore、.env.example）
 3. game.py / format.py / normalize・extract_guess（TDD）
 4. judge.py（JevJudge）

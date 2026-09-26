@@ -71,17 +71,14 @@ IS_YES = Noul(
     ),
 )
 
+# 正解判定は日本語の指示文の方が、しきい値 0.8 に対する余裕が大きかった（scripts/jev_probe.py の検証結果）
 IS_CORRECT = Noul(
-    instructions="Is `question` a direct guess that the secret answer is exactly `topic` itself?",
+    instructions="`question` は、秘密のお題が `topic` そのものだと直接言い当てようとしていますか？",
     criteria=NoulCriteria(
-        true=(
-            "The player names `topic` (or a synonym or another spelling of it, "
-            "such as kanji instead of kana) as their single guess"
-        ),
+        true="プレイヤーが `topic`（または同義語や漢字・かな違いの表記）を 1 つの答えとして挙げている",
         false=(
-            "The question asks about a property or category, is negated "
-            "('isn't it X?'), compares something with `topic`, offers several "
-            "options, or names something that merely contains or relates to `topic`"
+            "性質やカテゴリを尋ねている、否定形（〜ではない？）、`topic` との比較、"
+            "複数の選択肢、`topic` を含む・関係する別のものを挙げている"
         ),
     ),
 )
