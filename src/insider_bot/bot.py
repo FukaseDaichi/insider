@@ -12,15 +12,35 @@ from insider_bot.service import GameService, Outcome
 log = logging.getLogger(__name__)
 
 
+_PLAYER_MESSAGE_TYPES = (discord.MessageType.default, discord.MessageType.reply)
+
+
 def _name(user: discord.abc.User) -> str:
     return escape_markdown(user.display_name)
 
 
+def is_player_message(message: discord.Message) -> bool:
+    """人が書いた通常の発言か。ボットの発言やスレッド作成などのシステムメッセージは除く。"""
+    return not message.author.bot and message.type in _PLAYER_MESSAGE_TYPES
+
+
 async def _respond(interaction: discord.Interaction, outcome: Outcome) -> None:
-    """defer 済みのスラッシュコマンドに結果を返す。公開通知はチャンネルへ別途投稿する。"""
-    if outcome.public and interaction.channel is not None:
-        await interaction.channel.send(outcome.public)
-    await interaction.followup.send(outcome.private or "完了しました", ephemeral=True)
+    """defer 済みのスラッシュコマンドに結果を返す。公開通知はチャンネルへ別途投稿する。
+
+    チャンネルに投稿できなかった場合も、公開通知の本文を本人向けの返事に含めて必ず応答する。
+    """
+    parts = [outcome.private] if outcome.private else []
+    if outcome.public:
+        posted = False
+        if interaction.channel is not None:
+            try:
+                await interaction.channel.send(outcome.public)
+                posted = True
+            except discord.HTTPException:
+                log.exception("チャンネルへの投稿に失敗しました（channel=%s）", interaction.channel_id)
+        if not posted:
+            parts.append(f"⚠️ チャンネルに投稿できませんでした（ボットの権限を確認してください）\n{outcome.public}")
+    await interaction.followup.send("\n".join(parts) or "完了しました", ephemeral=True)
 
 
 def build_odai_group(service: GameService) -> app_commands.Group:
@@ -78,7 +98,7 @@ class OdaiBot(discord.Client):
         log.info("ログインしました: %s", self.user)
 
     async def on_message(self, message: discord.Message) -> None:
-        if message.author.bot:
+        if not is_player_message(message):
             return
         outcome = await self.service.handle_question(
             message.channel.id, message.author.id, _name(message.author), message.content
