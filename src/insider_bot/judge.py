@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import unicodedata
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
+
+from typesafe_sdk import Noul, NoulCriteria, TypeSafeError
 
 # NFKC 後は全角の ？！．， が半角になるため、両方を列挙しておく
 _TRAILING_MARKS = "？?！!。．.、，,"
@@ -53,3 +56,64 @@ class JudgeError(Exception):
 
 class Judge(Protocol):
     async def judge(self, topic: str, hint: str, question: str) -> Verdict: ...
+
+
+IS_YES = Noul(
+    instructions=(
+        "In a guessing game, the secret answer is `topic` "
+        "(`hint` describes it further when not empty). "
+        "A player asked `question` about the secret answer. "
+        "Is the correct answer to the player's question 'yes'?"
+    ),
+    criteria=NoulCriteria(
+        true="What `question` asks is true of `topic`",
+        false="What `question` asks is false of `topic`",
+    ),
+)
+
+IS_CORRECT = Noul(
+    instructions="Is `question` a direct guess that the secret answer is exactly `topic` itself?",
+    criteria=NoulCriteria(
+        true=(
+            "The player names `topic` (or a synonym or another spelling of it, "
+            "such as kanji instead of kana) as their single guess"
+        ),
+        false=(
+            "The question asks about a property or category, is negated "
+            "('isn't it X?'), compares something with `topic`, offers several "
+            "options, or names something that merely contains or relates to `topic`"
+        ),
+    ),
+)
+
+_QUESTIONS = {"is_yes": IS_YES, "is_correct": IS_CORRECT}
+
+
+class JevJudge:
+    """完全一致なら即決、それ以外は Jev に 2 つの Noul を 1 リクエストで問い合わせる。"""
+
+    def __init__(self, client: Any, correct_threshold: float, timeout: float) -> None:
+        self._client = client
+        self._correct_threshold = correct_threshold
+        self._timeout = timeout
+
+    async def judge(self, topic: str, hint: str, question: str) -> Verdict:
+        if is_exact_guess(topic, question):
+            return Verdict(yes_prob=1.0, is_correct=True, source="exact")
+        try:
+            result = await asyncio.wait_for(
+                self._client.system_one(
+                    state={"topic": topic, "hint": hint, "question": question},
+                    questions=_QUESTIONS,
+                ),
+                timeout=self._timeout,
+            )
+            yes_prob = result.nouls["is_yes"].noul
+            correct_prob = result.nouls["is_correct"].noul
+        except (TypeSafeError, TimeoutError, KeyError) as error:
+            raise JudgeError(str(error) or type(error).__name__) from error
+        return Verdict(
+            yes_prob=yes_prob,
+            is_correct=correct_prob >= self._correct_threshold,
+            source="jev",
+        )
