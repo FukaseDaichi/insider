@@ -8,7 +8,7 @@
 | 項目 | 内容 |
 |---|---|
 | サーバー | Compute Engine e2-micro（常時無料枠）／ us-central1 ／ Ubuntu 24.04 LTS ／ 標準永続ディスク 30GB |
-| コード配置 | GitHub のプライベートリポジトリから `git clone` |
+| コード配置 | GitHub の公開リポジトリから `git clone`（秘密情報はコミットしない） |
 | 実行 | uv + systemd（落ちても自動再起動、サーバー再起動時に自動起動） |
 | 秘密情報 | `.env` はサーバー上に手で置く（Git には入れない） |
 
@@ -17,11 +17,13 @@
 | # | 作業 | 担当 | 完了の目安 |
 |---|---|---|---|
 | 1 | Google Cloud アカウント作成、請求先登録、予算アラート（例: 月 $1）設定 | あなた | コンソールに入れる |
-| 2 | GitHub にプライベートリポジトリを作って push | Claude | GitHub で見える |
+| 2 | GitHub にリポジトリを作って push | Claude | GitHub で見える |
 | 3 | サーバー用ファイルを追加（`deploy/setup.sh`、`deploy/insider-bot.service`） | Claude | リポジトリに入っている |
 | 4 | VM を作成（上記の構成） | あなた | ブラウザの SSH でログインできる |
 | 5 | サーバーで `setup.sh` を実行し、`.env` を作成 | あなた（手順は Claude が用意） | `systemctl status` が active |
 | 6 | 手元のボットを止めたうえで、Discord で動作確認 | 一緒に | 質問に回答が返る |
+
+サーバーでの具体的な手順は [deploy/README.md](../deploy/README.md)。
 
 ## 運用
 

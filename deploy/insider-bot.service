@@ -1,0 +1,22 @@
+# deploy/setup.sh がユーザー名とパスを埋め込んで /etc/systemd/system/ に配置する
+[Unit]
+Description=お題当てゲーム GM ボット
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__APP_DIR__
+EnvironmentFile=__APP_DIR__/.env
+Environment=PYTHONUNBUFFERED=1
+# git pull で依存が変わっていても restart だけで反映されるようにする
+ExecStartPre=__UV__ sync --frozen --no-dev
+ExecStart=__APP_DIR__/.venv/bin/python -m insider_bot
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
