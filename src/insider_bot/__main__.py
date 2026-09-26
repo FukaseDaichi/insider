@@ -6,20 +6,16 @@ import asyncio
 import sys
 
 import discord
-from typesafe_sdk import AsyncTypeSafeClient, RetryPolicy
 
 from insider_bot.bot import OdaiBot
 from insider_bot.config import Config, ConfigError, load_config
 from insider_bot.game import GameManager
-from insider_bot.judge import JevJudge
+from insider_bot.judge import JevJudge, create_jev_client
 from insider_bot.service import GameService
 
 
 async def run(config: Config) -> None:
-    client = AsyncTypeSafeClient(
-        api_key=config.typesafe_api_key,
-        retry=RetryPolicy(max_retries=1, timeout=config.jev_timeout_seconds),
-    )
+    client = create_jev_client(config.typesafe_api_key, config.jev_timeout_seconds)
     try:
         judge = JevJudge(client, config.correct_threshold, config.jev_timeout_seconds)
         service = GameService(GameManager(), judge)

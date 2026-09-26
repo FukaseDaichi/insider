@@ -74,8 +74,8 @@ class GameService:
                 return IGNORED
             try:
                 verdict = await self._judge.judge(game.topic, game.hint, text)
-            except JudgeError:
-                log.exception("判定に失敗しました（channel=%s）", channel_id)
+            except JudgeError as error:
+                log.warning("判定に失敗しました（channel=%s）: %s", channel_id, error)
                 return Outcome(public=fmt.format_error())
             game.question_count += 1
             if verdict.is_correct:

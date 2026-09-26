@@ -8,6 +8,7 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "discord-py>=2.6",
+    "httpx2>=2.13.1",
     "typesafe-sdk>=0.7.1",
 ]
 

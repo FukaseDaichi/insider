@@ -7,7 +7,8 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
-from typesafe_sdk import Noul, NoulCriteria, TypeSafeError
+import httpx2
+from typesafe_sdk import AsyncTypeSafeClient, Noul, NoulCriteria, RetryPolicy, TypeSafeError
 
 # NFKC 後は全角の ？！．， が半角になるため、両方を列挙しておく
 _TRAILING_MARKS = "？?！!。．.、，,"
@@ -85,6 +86,22 @@ IS_CORRECT = Noul(
 
 _QUESTIONS = {"is_yes": IS_YES, "is_correct": IS_CORRECT}
 
+# 接続が固まったときは早めに見切って張り直す（SDK 既定の 10 秒だと再試行の余地がない）
+CONNECT_TIMEOUT_SECONDS = 2.0
+MAX_RETRIES = 3
+
+
+def create_jev_client(
+    api_key: str, timeout: float, transport: httpx2.AsyncBaseTransport | None = None
+) -> AsyncTypeSafeClient:
+    """Jev 用クライアント。再試行を含めた全体の上限は timeout 秒。"""
+    return AsyncTypeSafeClient(
+        api_key=api_key,
+        timeout=httpx2.Timeout(timeout, connect=CONNECT_TIMEOUT_SECONDS),
+        retry=RetryPolicy(max_retries=MAX_RETRIES, backoff_initial=0.2, backoff_max=1.0, timeout=timeout),
+        transport=transport,
+    )
+
 
 class JevJudge:
     """完全一致なら即決、それ以外は Jev に 2 つの Noul を 1 リクエストで問い合わせる。"""
@@ -108,7 +125,7 @@ class JevJudge:
             yes_prob = result.nouls["is_yes"].noul
             correct_prob = result.nouls["is_correct"].noul
         except (TypeSafeError, TimeoutError, KeyError) as error:
-            raise JudgeError(str(error) or type(error).__name__) from error
+            raise JudgeError(f"{type(error).__name__}: {error}") from error
         return Verdict(
             yes_prob=yes_prob,
             is_correct=correct_prob >= self._correct_threshold,

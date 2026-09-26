@@ -194,3 +194,13 @@ async def test_stale_question_is_not_judged_in_next_game():
     assert len(judge.calls) == 1
     game = manager.get(CH)
     assert (game.topic, game.question_count) == ("みかん", 0)
+
+
+async def test_judge_error_is_logged_as_one_line_warning(caplog):
+    service, _, _, _ = await started(FakeJudge(error=JudgeError("TypeSafeAPITimeoutError: Request timed out")))
+    with caplog.at_level("WARNING", logger="insider_bot.service"):
+        await service.handle_question(CH, PLAYER, "p", "果物？")
+    [record] = caplog.records
+    assert record.levelname == "WARNING"
+    assert record.exc_info is None
+    assert "TypeSafeAPITimeoutError: Request timed out" in record.getMessage()
