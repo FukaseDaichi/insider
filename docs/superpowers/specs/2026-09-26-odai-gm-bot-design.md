@@ -56,7 +56,7 @@ Discord 上で「お題当てゲーム」の GM（はい／いいえで答える
   ✅ はい　　はい 82% ██████████░░ いいえ 18%
   ```
 
-  - `yes_prob >= 0.5` なら「✅ はい」、それ未満なら「❌ いいえ」。
+  - 四捨五入後の「はい」の割合が 50% 以上なら「✅ はい」、それ未満なら「❌ いいえ」（割合表示とラベルを一致させる）。
   - 割合は `yes_prob` を 0〜100 の整数に四捨五入し、いいえ = 100 − はい。
   - バーは 12 マス。はい側のマス数 = `round(はい% / 100 × 12)`。
   - 表示する質問文は 200 文字を超えたら先頭 200 文字＋「…」に省略する（判定には全文を渡す）。
@@ -145,8 +145,8 @@ insider/
 ### 5.1 各ユニット
 
 - **game.py**
-  - `Game`: `game_id`（ゲームごとに一意な連番）, `channel_id, topic, hint, setter_id, started_at, question_count`
-  - `GameManager`: `start(channel_id, topic, hint, setter_id) -> Game`（進行中なら `GameAlreadyRunning`）、
+  - `Game`: `game_id`（ゲームごとに一意な連番）, `channel_id, topic, hint, setter_id, setter_name, started_at, question_count`
+  - `GameManager`: `start(channel_id, topic, hint, setter_id, setter_name) -> Game`（進行中なら `GameAlreadyRunning`）、
     `get(channel_id) -> Game | None`、`end(channel_id) -> Game | None`
   - 時刻は注入可能な `clock` 関数で取得（テスト用）。
 - **judge.py**

@@ -1,0 +1,32 @@
+[project]
+name = "insider-bot"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "fukase", email = "pecoteach@yahoo.co.jp" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "discord-py>=2.6",
+    "typesafe-sdk>=0.7.1",
+]
+
+[project.scripts]
+insider-bot = "insider_bot.__main__:main"
+
+[build-system]
+requires = ["uv_build>=0.10.7,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = ["integration: 実際の TypeSafe API を呼ぶテスト（TYPESAFE_API_KEY が必要）"]
+addopts = "-m 'not integration'"
