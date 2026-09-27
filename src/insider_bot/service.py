@@ -13,6 +13,13 @@ from insider_bot.judge import Judge, JudgeError
 
 log = logging.getLogger(__name__)
 
+# 末尾がこれで終わる発言だけを質問として扱い、それ以外は雑談として無視する
+_QUESTION_MARKS = ("？", "?")
+
+
+def is_question(text: str) -> bool:
+    return text.rstrip().endswith(_QUESTION_MARKS)
+
 
 @dataclass(frozen=True)
 class Outcome:
@@ -70,7 +77,7 @@ class GameService:
             game = self._manager.get(channel_id)
             if game is None or game.game_id != received.game_id:
                 return IGNORED
-            if author_id == game.setter_id or not text.strip():
+            if author_id == game.setter_id or not is_question(text):
                 return IGNORED
             try:
                 verdict = await self._judge.judge(game.topic, game.hint, text)

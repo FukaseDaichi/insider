@@ -63,7 +63,7 @@ def format_status(game: Game, elapsed: float) -> str:
 
 
 def format_started(setter_name: str) -> str:
-    return f"🎮 ゲーム開始！{setter_name}さんがお題を出しました。質問をどうぞ"
+    return f"🎮 ゲーム開始！{setter_name}さんがお題を出しました。質問をどうぞ\n質問は最後に「？」をつけてね（例: 果物ですか？）"
 
 
 def format_registered(topic: str) -> str:

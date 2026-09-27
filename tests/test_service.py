@@ -37,7 +37,7 @@ async def test_start_returns_private_confirmation_and_public_announcement():
     outcome = await service.start(CH, SETTER, "出題者", "りんご", "赤い果物")
     assert outcome == Outcome(
         private="お題『りんご』を登録しました",
-        public="🎮 ゲーム開始！出題者さんがお題を出しました。質問をどうぞ",
+        public="🎮 ゲーム開始！出題者さんがお題を出しました。質問をどうぞ\n質問は最後に「？」をつけてね（例: 果物ですか？）",
     )
     assert manager.get(CH).hint == "赤い果物"
 
@@ -114,6 +114,22 @@ async def test_setter_and_blank_messages_are_ignored():
     assert manager.get(CH).question_count == 0
 
 
+async def test_only_messages_ending_with_question_mark_are_judged():
+    service, manager, judge, _ = await started()
+    for chat in ("果物ですか", "りんご！", "わからない?!", "？ヒント欲しい"):
+        assert await service.handle_question(CH, PLAYER, "p", chat) == Outcome()
+    assert judge.calls == []
+    assert manager.get(CH).question_count == 0
+
+
+async def test_fullwidth_and_halfwidth_question_marks_with_trailing_space_are_judged():
+    service, manager, judge, _ = await started()
+    for question in ("果物ですか？", "赤い?", "丸い？ \n"):
+        assert (await service.handle_question(CH, PLAYER, "p", question)).public is not None
+    assert [call[2] for call in judge.calls] == ["果物ですか？", "赤い?", "丸い？ \n"]
+    assert manager.get(CH).question_count == 3
+
+
 async def test_correct_answer_ends_game_and_counts_winning_question():
     judge = FakeJudge(answers={"りんご？": CORRECT})
     service, manager, _, clock = await started(judge)
@@ -140,7 +156,7 @@ async def test_two_simultaneous_correct_guesses_announce_once():
     service, _, judge, _ = await started(FakeJudge(default=CORRECT, gate=gate))
     first = asyncio.create_task(service.handle_question(CH, PLAYER, "a", "りんご？"))
     await wait_until(lambda: judge.calls)
-    second = asyncio.create_task(service.handle_question(CH, 21, "b", "りんご！"))
+    second = asyncio.create_task(service.handle_question(CH, 21, "b", "林檎？"))
     await asyncio.sleep(0)
     gate.set()
     outcomes = [await first, await second]

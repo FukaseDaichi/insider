@@ -81,7 +81,9 @@ def test_format_status_does_not_reveal_topic():
 
 
 def test_fixed_messages():
-    assert format_started("出題者") == "🎮 ゲーム開始！出題者さんがお題を出しました。質問をどうぞ"
+    assert format_started("出題者") == (
+        "🎮 ゲーム開始！出題者さんがお題を出しました。質問をどうぞ\n質問は最後に「？」をつけてね（例: 果物ですか？）"
+    )
     assert format_registered("りんご") == "お題『りんご』を登録しました"
     assert format_already_running() == "このチャンネルではゲームが進行中です"
     assert format_no_game() == "進行中のゲームはありません"
