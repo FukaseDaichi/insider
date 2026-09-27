@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import time
 import unicodedata
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
 import httpx2
-from typesafe_sdk import AsyncTypeSafeClient, Noul, NoulCriteria, RetryPolicy, TypeSafeError
+from typesafe_sdk import AsyncTypeSafeClient, Noul, NoulCriteria, RetryPolicy, TypeSafeAPIError, TypeSafeError
 
 # NFKC 後は全角の ？！．， が半角になるため、両方を列挙しておく
 _TRAILING_MARKS = "？?！!。．.、，,"
@@ -86,21 +87,37 @@ IS_CORRECT = Noul(
 
 _QUESTIONS = {"is_yes": IS_YES, "is_correct": IS_CORRECT}
 
-# 接続が固まったときは早めに見切って張り直す（SDK 既定の 10 秒だと再試行の余地がない）
+# 接続や応答が固まったときは早めに見切って張り直す（全体の上限と同じ長さだと再試行の余地がない）
 CONNECT_TIMEOUT_SECONDS = 2.0
-MAX_RETRIES = 3
+# 通常の応答は 1 秒未満。無通信がこれだけ続いたら固まったとみなす
+READ_TIMEOUT_SECONDS = 4.0
+# 回数ではなく全体の上限（timeout 秒）で打ち切られるよう、多めにしておく
+MAX_RETRIES = 6
+# 質問の間隔は 15〜60 秒あるため、httpx 既定の 5 秒では毎回接続し直しになる。
+# api.typesafe.ai は 60 秒空けても接続を保っていた
+KEEPALIVE_EXPIRY_SECONDS = 90.0
 
 
 def create_jev_client(
     api_key: str, timeout: float, transport: httpx2.AsyncBaseTransport | None = None
 ) -> AsyncTypeSafeClient:
     """Jev 用クライアント。再試行を含めた全体の上限は timeout 秒。"""
+    if transport is None:
+        transport = httpx2.AsyncHTTPTransport(limits=httpx2.Limits(keepalive_expiry=KEEPALIVE_EXPIRY_SECONDS))
     return AsyncTypeSafeClient(
         api_key=api_key,
-        timeout=httpx2.Timeout(timeout, connect=CONNECT_TIMEOUT_SECONDS),
+        timeout=httpx2.Timeout(timeout, connect=CONNECT_TIMEOUT_SECONDS, read=READ_TIMEOUT_SECONDS),
         retry=RetryPolicy(max_retries=MAX_RETRIES, backoff_initial=0.2, backoff_max=1.0, timeout=timeout),
         transport=transport,
     )
+
+
+def _describe_failure(error: Exception, elapsed: float) -> str:
+    """原因の切り分けに使う情報（経過時間、再試行指示、Cloudflare の識別子）を添える。"""
+    details = [f"経過 {elapsed:.1f}秒"]
+    if isinstance(error, TypeSafeAPIError):
+        details += [f"{name}={error.headers[name]}" for name in ("retry-after", "cf-ray") if name in error.headers]
+    return f"{type(error).__name__}: {error}（{', '.join(details)}）"
 
 
 class JevJudge:
@@ -114,6 +131,7 @@ class JevJudge:
     async def judge(self, topic: str, hint: str, question: str) -> Verdict:
         if is_exact_guess(topic, question):
             return Verdict(yes_prob=1.0, is_correct=True, source="exact")
+        started = time.monotonic()
         try:
             result = await asyncio.wait_for(
                 self._client.system_one(
@@ -125,7 +143,7 @@ class JevJudge:
             yes_prob = result.nouls["is_yes"].noul
             correct_prob = result.nouls["is_correct"].noul
         except (TypeSafeError, TimeoutError, KeyError) as error:
-            raise JudgeError(f"{type(error).__name__}: {error}") from error
+            raise JudgeError(_describe_failure(error, time.monotonic() - started)) from error
         return Verdict(
             yes_prob=yes_prob,
             is_correct=correct_prob >= self._correct_threshold,
