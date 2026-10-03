@@ -56,3 +56,35 @@ def test_web_missing_key():
 def test_web_invalid_values(extra):
     with pytest.raises(ConfigError):
         load_web_config({"TYPESAFE_API_KEY": "ts-key"} | extra)
+
+
+def test_web_village_urls_are_unset_by_default():
+    config = load_web_config({"TYPESAFE_API_KEY": "ts-key"})
+    assert (config.public_base_url, config.illustration_catalog_url) == ("", None)
+
+
+def test_web_village_urls():
+    config = load_web_config(
+        {
+            "TYPESAFE_API_KEY": "ts-key",
+            "PUBLIC_BASE_URL": "https://game.example.com/",
+            "ILLUSTRATION_CATALOG_URL": "https://script.google.com/macros/s/x/exec",
+        }
+    )
+    assert config.public_base_url == "https://game.example.com"
+    assert config.illustration_catalog_url == "https://script.google.com/macros/s/x/exec"
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["game.example.com", "ftp://game.example.com", "https://", "https://game.example.com/sub", "https://game.example.com/?x=1"],
+)
+def test_web_public_base_url_must_be_an_origin(value):
+    with pytest.raises(ConfigError, match="PUBLIC_BASE_URL"):
+        load_web_config({"TYPESAFE_API_KEY": "ts-key", "PUBLIC_BASE_URL": value})
+
+
+@pytest.mark.parametrize("value", ["http://script.google.com/macros/s/x/exec", "script.google.com/macros/s/x/exec"])
+def test_web_catalog_url_must_be_https(value):
+    with pytest.raises(ConfigError, match="ILLUSTRATION_CATALOG_URL"):
+        load_web_config({"TYPESAFE_API_KEY": "ts-key", "ILLUSTRATION_CATALOG_URL": value})

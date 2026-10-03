@@ -12,6 +12,7 @@ from insider_bot.service import GameService
 from insider_bot.web.hub import RoomHub
 from insider_bot.web.rooms import CODE_ALPHABET, RoomRegistry
 from insider_bot.web.server import WsConnection, create_app
+from insider_bot.web.village_setup import build_village
 from tests.fakes import FakeClock, FakeJudge
 
 
@@ -25,13 +26,13 @@ def static_dir(tmp_path):
 
 
 @contextlib.asynccontextmanager
-async def serve(static_dir, judge=None, **limits):
+async def serve(static_dir, judge=None, village=None, **limits):
     clock = FakeClock()
     manager = GameManager(clock=clock)
     service = GameService(manager, judge or FakeJudge(), clock=clock)
     registry = RoomRegistry(clock=clock, on_remove=lambda room: manager.end(room.room_id), **limits)
     hub = RoomHub(registry, service, manager, clock=clock)
-    async with TestClient(TestServer(create_app(hub, static_dir=static_dir))) as client:
+    async with TestClient(TestServer(create_app(hub, static_dir=static_dir, village=village))) as client:
         yield client
 
 
@@ -265,3 +266,33 @@ async def test_backlog_over_limit_closes_connection():
     assert conn.closed
     assert ws.close_code == WSCloseCode.TRY_AGAIN_LATER
     await conn.aclose()
+
+
+# --- 配役ツールと /healthz ---
+
+
+async def test_healthz_answers_ok(static_dir):
+    async with serve(static_dir) as client:
+        response = await client.get("/healthz")
+        assert (response.status, await response.text()) == (200, "ok")
+
+
+async def test_village_routes_exist_only_when_the_village_is_given(static_dir):
+    (static_dir / "village.html").write_text("<!doctype html><title>配役</title>", encoding="utf-8")
+    async with serve(static_dir) as client:
+        assert (await client.get("/village")).status == 404
+    async with serve(static_dir, village=build_village("", None)) as client:
+        response = await client.get("/v/1234")
+        assert response.status == 200
+        assert response.headers["Cache-Control"] == "no-cache"
+        response = await client.post("/api/village/create", json={"token": "a" * 22, "kind": "normal"})
+        assert response.status == 200
+
+
+async def test_the_largest_special_village_fits_the_request_size_limit(static_dir):
+    async with serve(static_dir, village=build_village("", None)) as client:
+        # 100 通×5,000 文字の日本語は UTF-8 で約 1.5MB。aiohttp の既定の上限（1MiB）では 413 になる。
+        # ブラウザの JSON.stringify と同じく、日本語を \uXXXX にエスケープせずに送る
+        body = json.dumps({"messages": ["あ" * 5000] * 100}, ensure_ascii=False).encode()
+        response = await client.post("/api/village/special", data=body, headers={"Content-Type": "application/json"})
+        assert response.status == 200

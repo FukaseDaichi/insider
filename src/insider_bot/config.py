@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 
 class ConfigError(Exception):
@@ -27,6 +28,10 @@ class WebConfig:
     jev_timeout_seconds: float
     host: str
     port: int
+    # 役職画像と特殊村フォームの URL を組み立てる公開 URL（末尾の / なし）。空ならサイト内の絶対パス
+    public_base_url: str = ""
+    # 役職画像の外部カタログ（Google Apps Script のデプロイ URL）。None なら取りに行かない
+    illustration_catalog_url: str | None = None
 
 
 def _get(env: Mapping[str, str], name: str) -> str:
@@ -81,6 +86,27 @@ def load_config(env: Mapping[str, str] | None = None) -> Config:
     )
 
 
+def _public_base_url(env: Mapping[str, str]) -> str:
+    raw = _get(env, "PUBLIC_BASE_URL")
+    if not raw:
+        return ""
+    parsed = urlsplit(raw)
+    # 画面と画像はサイトの根から配るので、パスやクエリを持つ URL は受け付けない
+    if parsed.scheme not in ("https", "http") or not parsed.netloc or parsed.path not in ("", "/") or parsed.query or parsed.fragment:
+        raise ConfigError(f"PUBLIC_BASE_URL は https://example.com のようにパスなしの URL で指定してください（現在: {raw!r}）")
+    return raw.rstrip("/")
+
+
+def _catalog_url(env: Mapping[str, str]) -> str | None:
+    raw = _get(env, "ILLUSTRATION_CATALOG_URL")
+    if not raw:
+        return None
+    parsed = urlsplit(raw)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise ConfigError(f"ILLUSTRATION_CATALOG_URL は https:// で始まる URL で指定してください（現在: {raw!r}）")
+    return raw
+
+
 def load_web_config(env: Mapping[str, str] | None = None) -> WebConfig:
     env = os.environ if env is None else env
     _require(env, ("TYPESAFE_API_KEY",))
@@ -100,4 +126,6 @@ def load_web_config(env: Mapping[str, str] | None = None) -> WebConfig:
         jev_timeout_seconds=timeout,
         host=_get(env, "WEB_HOST") or "127.0.0.1",
         port=port,
+        public_base_url=_public_base_url(env),
+        illustration_catalog_url=_catalog_url(env),
     )

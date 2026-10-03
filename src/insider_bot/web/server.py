@@ -15,6 +15,7 @@ from aiohttp import WSCloseCode, WSMsgType, web
 
 from insider_bot.web.hub import RoomHub
 from insider_bot.web.rooms import InvalidName, Player, Room, RoomFull, RoomLimitReached, RoomNotFound
+from insider_bot.web.village_api import VillageApp, add_village_routes
 
 log = logging.getLogger(__name__)
 
@@ -25,6 +26,8 @@ JOIN_TIMEOUT_SECONDS = 10.0
 HEARTBEAT_SECONDS = 30.0
 MAX_MESSAGE_BYTES = 4096
 VENDOR_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
+# 特殊村は 100 通×5,000 文字まで受け取る（日本語の UTF-8 で約 1.5MB）。本番の Caddy の本文上限 2MB にそろえる
+MAX_REQUEST_BYTES = 2 * 1024 * 1024
 
 CLOSE_BAD_REQUEST = 4400
 CLOSE_NOT_FOUND = 4404
@@ -168,12 +171,17 @@ async def create_room(request: web.Request) -> web.Response:
     return web.json_response({"code": room.code}, status=201)
 
 
+async def healthz(request: web.Request) -> web.Response:
+    """HTTP を受け付けていることだけを示す。外形監視は本文の ok で判定する。"""
+    return web.Response(text="ok")
+
+
 async def _cache_headers(request: web.Request, response: web.StreamResponse) -> None:
     path = request.path
     if path.startswith("/static/vendor/"):
         # 版番号付きのファイル名なので、中身が変わることはない
         response.headers["Cache-Control"] = f"public, max-age={VENDOR_MAX_AGE_SECONDS}"
-    elif path == "/" or (path.startswith(("/static/", "/r/")) and not path.endswith("/ws")):
+    elif path == "/" or (path.startswith(("/static/", "/r/", "/village", "/v/")) and not path.endswith("/ws")):
         # 更新を git pull で配るので毎回確かめる（変わっていなければ 304）
         response.headers["Cache-Control"] = "no-cache"
 
@@ -188,8 +196,9 @@ def create_app(
     hub: RoomHub,
     static_dir: Path = STATIC_DIR,
     cleanup_interval: float = CLEANUP_INTERVAL_SECONDS,
+    village: VillageApp | None = None,
 ) -> web.Application:
-    app = web.Application()
+    app = web.Application(client_max_size=MAX_REQUEST_BYTES)
     app[HUB] = hub
     app[STATIC] = static_dir
     app[SOCKETS] = weakref.WeakSet()
@@ -200,6 +209,9 @@ def create_app(
     app.router.add_get("/r/{code}/", index)
     app.router.add_get("/r/{code}/ws", websocket)
     app.router.add_static("/static/", static_dir)
+    app.router.add_get("/healthz", healthz)
+    if village is not None:
+        add_village_routes(app, village, static_dir / "village.html")
     app.on_response_prepare.append(_cache_headers)
 
     async def run_cleanup(app: web.Application) -> AsyncIterator[None]:
