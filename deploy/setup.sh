@@ -15,7 +15,7 @@ if [ "$(id -u)" -eq 0 ]; then
 fi
 
 echo "== スワップ（1GB）"
-# e2-micro はメモリが 1GB しかないため
+# 無料枠の小型 VM はメモリが 1GB しかないため
 if [ ! -f /swapfile ]; then
   sudo fallocate -l 1G /swapfile
   sudo chmod 600 /swapfile

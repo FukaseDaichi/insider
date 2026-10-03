@@ -38,7 +38,17 @@ Discord の代わりにブラウザで遊べます。Discord 版とは別のゲ�
 uv run --env-file .env python -m insider_bot.web   # http://localhost:8080 を開く
 ```
 
-`localhost` 以外からマイクを使うには HTTPS が必要です。サーバーでの公開手順は [deploy/README.md](deploy/README.md) を参照してください。
+`localhost` 以外からマイクを使うには HTTPS が必要です。
+
+### 仲間と遊ぶとき（Mac で起動して公開する）
+
+Discord ボットと Web 版をまとめて起動し、Web 版を Tailscale Funnel で公開します（構成の考え方は [docs/infra.md](docs/infra.md)）。
+
+1. 初回だけ: [Tailscale](https://tailscale.com/download/mac) を入れてログインする
+2. `bash scripts/play.sh` を実行し、表示された `https://….ts.net` を仲間に共有する（初回は Funnel を有効にする案内が出るので従う）
+3. 遊び終わったら Ctrl+C（ボット・Web 版・公開がすべて止まる）
+
+動いている間は Mac がスリープしません。ノートの蓋を閉じると止まります。
 
 ## セットアップ
 
