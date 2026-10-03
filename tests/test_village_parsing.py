@@ -62,3 +62,5 @@ def test_java_length_counts_utf16_code_units():
     # 絵文字はサロゲートペアなので 2
     assert java_length("😀") == 2
     assert java_length("a😀b") == 4
+    # 孤立したサロゲートも Java と同じく 1 文字と数える
+    assert java_length("\ud800") == 1

@@ -62,5 +62,5 @@ def java_split(text: str, separator: str) -> list[str]:
 
 
 def java_length(text: str) -> int:
-    """Java の String.length() と同じく UTF-16 の符号単位で数える（絵文字は 2）。LINE の文字数の上限はこの数え方。"""
-    return len(text.encode("utf-16-le")) // 2
+    """Java の String.length() と同じく UTF-16 の符号単位で数える（絵文字は 2、孤立したサロゲートは 1）。LINE の文字数の上限はこの数え方。"""
+    return len(text.encode("utf-16-le", "surrogatepass")) // 2
