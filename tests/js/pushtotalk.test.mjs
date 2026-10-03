@@ -18,7 +18,11 @@ const { PushToTalk } = await import(
   "../../src/insider_bot/web/static/speech.js"
 );
 
-function setup() {
+// SpeechRecognitionResult の代わり: 候補の配列に isFinal を付けたもの
+const result = (transcript, isFinal) =>
+  Object.assign([{ transcript }], { isFinal });
+
+function setup(t) {
   const button = {
     dataset: {},
     textContent: "",
@@ -34,6 +38,8 @@ function setup() {
     onUnavailable: (message, reason) =>
       calls.unavailable.push({ message, reason }),
   });
+  // 押しっぱなしの打ち切り（20 秒）のタイマーを残さない
+  t?.after(() => ptt.cancel());
   return { ptt, calls };
 }
 
@@ -59,4 +65,36 @@ test("error の後に end も届くブラウザでも、案内は 1 回だけ", 
   recognition.onend?.();
   assert.equal(calls.unavailable.length, 1);
   assert.deepEqual(calls.status, []);
+});
+
+test("無音で終わったときは、聞き取った分を残して聞き直す", (t) => {
+  const { ptt } = setup(t);
+  ptt.press();
+  const first = FakeRecognition.last;
+  first.onstart();
+  first.onresult({ results: [result("赤い", false)], resultIndex: 0 });
+  first.onend();
+  const second = FakeRecognition.last;
+  assert.notEqual(second, first);
+  assert.equal(ptt.text(), "赤い");
+  // Chrome は無音が続くと no-speech の後に end を出す。これも聞き直す
+  second.onerror({ error: "no-speech" });
+  second.onend();
+  assert.notEqual(FakeRecognition.last, second);
+  assert.equal(ptt.state, "listening");
+});
+
+// 聞き直してもすぐ同じエラーで終わるので、押している間（最大 20 秒）開始と失敗を繰り返していた
+test("分類できないエラーで終わったら、聞き直さずに止めて知らせる", (t) => {
+  const { ptt, calls } = setup(t);
+  ptt.press();
+  const first = FakeRecognition.last;
+  first.onstart();
+  first.onerror({ error: "aborted" });
+  first.onend();
+  assert.equal(FakeRecognition.last, first);
+  assert.equal(ptt.state, "idle");
+  assert.equal(calls.status.length, 1);
+  assert.match(calls.status[0], /もう一度押して/);
+  assert.deepEqual(calls.text, []);
 });

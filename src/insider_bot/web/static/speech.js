@@ -151,6 +151,11 @@ export class PushToTalk {
       this.finish(null, "音声認識サーバーに接続できませんでした");
       return;
     }
+    // ほかのエラー（aborted や分類していないもの）は聞き直してもすぐ同じく終わり、押している間ずっと繰り返すので止める
+    if (error && error !== "no-speech") {
+      this.finish(null, "音声認識が止まりました。もう一度押して話してください");
+      return;
+    }
     // 押している間に勝手に終わった（Android などで無音が続くと起きる）。聞き取った分を残して聞き直す
     this.finals += this.interim;
     this.interim = "";
