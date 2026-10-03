@@ -83,7 +83,7 @@ def parse_dictionary(lines: Iterable[str]) -> Dictionary:
 def load_dictionary(path: Path | None = None) -> Dictionary:
     path = DEFAULT_PATH if path is None else path
     try:
-        text = path.read_text(encoding="utf-8")
+        text = path.read_text(encoding="utf-8", errors="replace")
     except OSError as error:
         log.error("お題辞書 %s を読めません: %s", path.name, error)
         return EMPTY_DICTIONARY

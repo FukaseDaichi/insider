@@ -129,3 +129,12 @@ def test_missing_file_gives_an_empty_dictionary(tmp_path, caplog):
         dictionary = load_dictionary(tmp_path / "nope.csv")
     assert dictionary.is_empty
     assert caplog.records
+
+
+def test_invalid_utf8_is_replaced_with_replacement_character(tmp_path):
+    # Java の InputStreamReader(..., UTF_8) は不正なバイトを U+FFFD に置換して読む
+    csv_path = tmp_path / "w.csv"
+    csv_path.write_bytes(b"a\xff,1\nb,2\nc,3\nd,4\ne,5\n")
+    dictionary = load_dictionary(csv_path)
+    assert not dictionary.is_empty
+    assert dictionary.words[0] == "a�"
