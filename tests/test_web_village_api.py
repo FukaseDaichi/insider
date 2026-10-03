@@ -156,8 +156,24 @@ async def test_reverse_and_werewords(page):
             {"type": "text", "text": f"{number}村 を『逆村』に設定しました。\nお題を知らない村人が1人となります。"}
         ]
         assert body["village"]["reverse"] is True
+        assert "special_number" not in body
         body = await call(client, "werewords")
         assert "ワーワーズ" in body["replies"][0]["text"]
+        # 作った特殊村の番号を、返事の本文とは別に返す。元の村の要約は変わらない
+        special = body["special_number"]
+        assert 10000 <= special <= 99998
+        assert f"『{special}』" in body["replies"][0]["text"]
+        assert body["village"]["number"] == number
+        # その番号の特殊村に入れる
+        assert (await call(client, "join", token=MEMBER, number=special))["found"] is True
+
+
+async def test_a_failed_werewords_has_no_special_number(page):
+    async with serve(page) as client:
+        await call(client, "create", kind="normal")
+        body = await call(client, "werewords")
+        assert (body["found"], body["replies"]) == (False, GUIDE)
+        assert "special_number" not in body
 
 
 # --- 村に入る ---

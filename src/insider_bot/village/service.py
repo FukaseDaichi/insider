@@ -107,14 +107,22 @@ class VillageService:
             return None
         return messages.reverse_set_reply(village)
 
-    def convert_to_werewords(self, user_id: str) -> list[Reply] | None:
-        """元の村は残し、配布メッセージだけを持つ特殊村を新しく作る。人数とお題が揃っていなければ None。"""
+    def create_werewords(self, user_id: str) -> tuple[list[Reply], int] | None:
+        """元の村は残し、配布メッセージだけを持つ特殊村を新しく作る。返事と、作った特殊村の番号を返す。
+
+        人数とお題が揃っていなければ None。
+        """
         village = self._villages.find_latest_owned(user_id, lambda v: not v.has_members())
         if village is None or village.size < MIN_WEREWORDS_SIZE or village.topic is None:
             return None
         god_mode = village.has_game_master()
         number = self.create_special_village(werewords_messages(god_mode, village.size, village.topic, self._rng))
-        return messages.werewords_created_reply(village.topic, number, god_mode)
+        return messages.werewords_created_reply(village.topic, number, god_mode), number
+
+    def convert_to_werewords(self, user_id: str) -> list[Reply] | None:
+        """create_werewords の返事だけを返す。特殊村の番号は返事の本文にある。"""
+        created = self.create_werewords(user_id)
+        return None if created is None else created[0]
 
     # --- 参加と状況 ---
 

@@ -60,6 +60,14 @@ class VillageApp:
 VILLAGE = web.AppKey("village", VillageApp)
 
 
+@dataclass(frozen=True)
+class CreatedSpecial:
+    """特殊村を作った操作の結果。応答に作った特殊村の番号を添える。"""
+
+    replies: list[Reply]
+    special_number: int
+
+
 class BadRequest(Exception):
     """本文の形が違う。400 で返す。"""
 
@@ -152,8 +160,9 @@ def _reverse(village: VillageApp, user_id: str, body: dict[str, Any]) -> list[Re
     return village.service.set_reverse(user_id)
 
 
-def _werewords(village: VillageApp, user_id: str, body: dict[str, Any]) -> list[Reply] | None:
-    return village.service.convert_to_werewords(user_id)
+def _werewords(village: VillageApp, user_id: str, body: dict[str, Any]) -> CreatedSpecial | None:
+    created = village.service.create_werewords(user_id)
+    return None if created is None else CreatedSpecial(*created)
 
 
 def _join(village: VillageApp, user_id: str, body: dict[str, Any]) -> list[Reply] | None:
@@ -179,7 +188,7 @@ def _postback(village: VillageApp, user_id: str, body: dict[str, Any]) -> list[R
     return village.commands.postback(user_id, data)
 
 
-Operation = Callable[[VillageApp, str, dict[str, Any]], "list[Reply] | None"]
+Operation = Callable[[VillageApp, str, dict[str, Any]], "list[Reply] | CreatedSpecial | None"]
 
 _OPERATIONS: dict[str, Operation] = {
     "create": _create,
@@ -202,9 +211,13 @@ def _api(operation: Operation) -> Callable[[web.Request], Any]:
         try:
             body = await _read_body(request)
             user_id = _user_of(body)
-            replies = operation(village, user_id, body)
+            result = operation(village, user_id, body)
         except BadRequest:
             return _bad_request()
+        special_number = None
+        replies = result
+        if isinstance(result, CreatedSpecial):
+            replies, special_number = result.replies, result.special_number
         # 対象の村がない（None）は Web の既定応答（案内文）にする。画面が次に何を聞くかを決められるよう、
         # 利用者が作った最新の村の要約を毎回添える
         payload = {
@@ -212,6 +225,8 @@ def _api(operation: Operation) -> Callable[[web.Request], Any]:
             "replies": replies_json(replies if replies is not None else messages.guide_reply()),
             "village": _owned_json(village.service.latest_owned(user_id)),
         }
+        if special_number is not None:
+            payload["special_number"] = special_number
         return web.json_response(payload, dumps=_dumps)
 
     return handler

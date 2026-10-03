@@ -296,6 +296,48 @@ def test_werewords_from_a_normal_village_adds_one_message_for_the_owner():
     assert specials.get(number).capacity() == 4
 
 
+def test_create_werewords_returns_the_new_special_village_with_its_number():
+    service, villages, specials, _ = make(0, 1)
+    service.create_village(OWNER, True)
+    service.set_topic(OWNER, "すいか")
+    service.set_size(OWNER, 3)
+    original = latest(villages)
+    result = service.create_werewords(OWNER)
+    assert result is not None
+    reply, number = result
+    assert 10000 <= number <= 99998
+    assert specials.get(number).capacity() == 3
+    # 返事は convert_to_werewords と同じ形で、本文に特殊村の番号が入る
+    assert reply == messages.werewords_created_reply("すいか", number, god_mode=True)
+    # 元の村は残る
+    assert villages.get(original.number) is original
+
+
+def test_convert_to_werewords_answers_with_the_reply_of_create_werewords():
+    answers = []
+    for convert in (VillageService.create_werewords, VillageService.convert_to_werewords):
+        service, _, _, _ = make(0)
+        service.create_village(OWNER, False)
+        service.set_topic(OWNER, "すいか")
+        service.set_size(OWNER, 3)
+        answers.append(convert(service, OWNER))
+    created, converted = answers
+    assert created is not None
+    assert converted == created[0]
+
+
+def test_create_werewords_is_none_under_the_same_conditions_as_convert_to_werewords():
+    service, _, _, _ = make(0, 0)
+    service.create_village(OWNER, False)
+    service.set_topic(OWNER, "すいか")
+    service.set_size(OWNER, 2)
+    assert service.create_werewords(OWNER) is None
+    service.create_village(OWNER, False)
+    service.set_size(OWNER, 3)
+    assert service.create_werewords(OWNER) is None  # お題がない
+    assert service.create_werewords("line:nobody") is None
+
+
 def test_werewords_needs_three_participants_and_a_topic_on_the_latest_empty_village():
     service, _, _, _ = make(0, 0)
     service.create_village(OWNER, False)
