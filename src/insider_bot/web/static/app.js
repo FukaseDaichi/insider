@@ -3,6 +3,7 @@ import { parseAnswer } from "./answer.js";
 import { AskWatch } from "./askwatch.js";
 import { HOST_NAME, hostLines } from "./host.js";
 import { placeChrome, watchCompact } from "./layout.js";
+import { isWeak, numberQuestions, questionNote, resultOf } from "./log.js";
 import { renderQr, Scanner } from "./qr.js";
 import { ROOM_CODE_PATTERN } from "./roomurl.js";
 import { SoundPlayer } from "./sound.js";
@@ -114,6 +115,75 @@ function renderHost(lines) {
   spark.textContent = "✦";
   bubble.append(frame, spark);
   return [deco, avatar, bubble];
+}
+
+// 推理ノートの 1 行: 番号（renumber が埋める）、質問文、質問者
+function renderQuestion(author, question) {
+  const num = document.createElement("span");
+  num.className = "num";
+  num.setAttribute("aria-hidden", "true");
+  const body = document.createElement("div");
+  body.className = "q-body";
+  const text = document.createElement("p");
+  text.className = "q-text";
+  text.textContent = question;
+  const by = document.createElement("span");
+  by.className = "author";
+  by.textContent = author ?? "";
+  body.append(text, by);
+  return [num, body];
+}
+
+// 右端の判定: はい／いいえのチップと、確信度の数字と短いバー
+function renderVerdict(answer) {
+  const box = document.createElement("div");
+  box.className = "verdict-box";
+  const chip = document.createElement("strong");
+  chip.className = answer.positive ? "verdict yes" : "verdict no";
+  if (isWeak(answer.yes)) chip.classList.add("weak");
+  chip.textContent = answer.positive ? "はい" : "いいえ";
+  const sure = answer.positive ? answer.yes : answer.no;
+  const pct = document.createElement("span");
+  pct.className = "pct";
+  pct.textContent = `${sure}%`;
+  const meter = document.createElement("meter");
+  meter.min = 0;
+  meter.max = 100;
+  meter.value = sure;
+  meter.setAttribute("aria-label", `${answer.positive ? "はい" : "いいえ"}の確信度`);
+  meter.textContent = `${sure}%`;
+  pct.append(meter);
+  box.append(chip, pct);
+  return box;
+}
+
+// 判定中・取り消しは、判定の場所に小さな札を置く
+function renderNote(note) {
+  const box = document.createElement("div");
+  box.className = "verdict-box";
+  const chip = document.createElement("span");
+  chip.className = "verdict note";
+  chip.textContent = note;
+  box.append(chip);
+  return box;
+}
+
+// 正解・ギブアップは、お題の公開が主役の大きなカード
+function renderResult(result) {
+  const label = document.createElement("span");
+  label.className = "result-label";
+  label.textContent = result.kind === "correct" ? "🎉 正解" : "🏳️ ギブアップ";
+  const title = document.createElement("strong");
+  title.className = "result-title";
+  title.textContent = result.title;
+  const parts = [label, title];
+  if (result.meta) {
+    const meta = document.createElement("span");
+    meta.className = "result-meta";
+    meta.textContent = result.meta;
+    parts.push(meta);
+  }
+  return parts;
 }
 
 function formatElapsed(totalSeconds) {
@@ -231,6 +301,7 @@ class RoomPage {
     document.title = `ルーム ${this.code} — INSIDER`;
     this.bindControls();
     this.bindMenu();
+    this.bindLog();
     if (!speechSupported) {
       $("speech-help").textContent = NO_SPEECH_HELP;
       $("speech-help").hidden = false;
@@ -412,13 +483,18 @@ class RoomPage {
     $("log").replaceChildren();
     $("empty-room").hidden = entries.length > 0;
     for (const entry of entries) this.upsertEntry(entry);
+    this.renumber();
+    this.seenAll();
   }
 
+  // 会話欄は「推理ノート」: 1 問 1 行で、左に番号、中央に質問文と質問者、右端に判定。
+  // 行の種類（question / host / result / system）は renumber で番号を振るときにも使う
   upsertEntry(entry) {
     const log = $("log");
     $("empty-room").hidden = true;
-    const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+    const atBottom = this.atBottom();
     let item = this.items.get(entry.id);
+    const fresh = !item;
     if (!item) {
       item = document.createElement("li");
       item.dataset.id = String(entry.id);
@@ -430,60 +506,100 @@ class RoomPage {
         oldest.remove();
       }
     }
-    item.className = entry.pending
-      ? "entry pending"
-      : entry.author
-        ? "entry"
-        : "entry system";
-    const parts = [];
-    if (entry.author) {
-      const author = document.createElement("span");
-      author.className = "author";
-      author.textContent = entry.author;
-      parts.push(author);
-    }
     const answer = !entry.pending && parseAnswer(entry.text);
-    if (answer) {
-      item.classList.add("answer-entry");
-      const question = document.createElement("p");
-      question.className = "answer-question";
-      question.textContent = answer.question;
-      const result = document.createElement("div");
-      result.className = "answer-result";
-      const verdict = document.createElement("strong");
-      verdict.className = answer.positive ? "verdict yes" : "verdict no";
-      verdict.textContent = answer.positive ? "はい" : "いいえ";
-      const scale = document.createElement("div");
-      scale.className = "answer-scale";
-      const labels = document.createElement("div");
-      labels.className = "answer-labels";
-      for (const label of [`はい ${answer.yes}%`, `いいえ ${answer.no}%`]) {
-        const part = document.createElement("span");
-        part.textContent = label;
-        labels.append(part);
-      }
-      const meter = document.createElement("meter");
-      meter.min = 0;
-      meter.max = 100;
-      meter.value = answer.yes;
-      meter.setAttribute("aria-label", "はいの割合");
-      meter.textContent = `${answer.yes}%`;
-      scale.append(labels, meter);
-      result.append(verdict, scale);
-      parts.push(question, result);
-    } else if (!entry.author && !entry.pending && hostLines(entry.text)) {
-      item.classList.add("host");
-      parts.push(...renderHost(hostLines(entry.text)));
+    const note = !answer && questionNote(entry.text);
+    // 正解・ギブアップは、言い当てた人やギブアップした人が質問者として付く
+    const result = !entry.pending && resultOf(entry.text);
+    const host = !entry.author && !entry.pending && hostLines(entry.text);
+    if (answer || note) {
+      item.className = "entry question";
+      item.dataset.kind = "question";
+      if (entry.author === this.name) item.classList.add("mine");
+      if (note?.cancelled) item.classList.add("cancelled");
+      if (entry.pending) item.classList.add("pending");
+      item.replaceChildren(
+        ...renderQuestion(entry.author, answer ? answer.question : note.question),
+        answer ? renderVerdict(answer) : renderNote(note.note),
+      );
+    } else if (host) {
+      item.className = "entry host";
+      item.dataset.kind = "host";
+      item.replaceChildren(...renderHost(host));
+    } else if (result) {
+      item.className = `entry result ${result.kind}`;
+      item.dataset.kind = "result";
+      item.replaceChildren(...renderResult(result));
     } else {
+      item.className = entry.author ? "entry plain" : "entry system";
+      item.dataset.kind = "system";
+      const parts = [];
+      if (entry.author) {
+        const author = document.createElement("span");
+        author.className = "author";
+        author.textContent = entry.author;
+        parts.push(author);
+      }
       const text = document.createElement("span");
       text.className = "text";
       text.textContent = entry.text;
       parts.push(text);
-      if (entry.text.startsWith("🎉 正解です！"))
-        item.classList.add("celebration");
+      item.replaceChildren(...parts);
     }
-    item.replaceChildren(...parts);
+    // 判定中→回答の更新でも番号の札を作り直しているので、毎回振り直す（300 件まで）
+    this.renumber();
     if (atBottom) log.scrollTop = log.scrollHeight;
+    // 上にスクロールして見返している間に届いた質問は、ピルで知らせる
+    else if (fresh && item.dataset.kind === "question") this.unseen(1);
+  }
+
+  // 質問番号はゲームごとに 1 から。開始の案内で数え直す
+  renumber() {
+    const items = [...$("log").children];
+    const numbers = numberQuestions(items.map((item) => item.dataset.kind));
+    items.forEach((item, index) => {
+      const n = numbers[index];
+      const slot = item.querySelector(".num");
+      if (slot) slot.textContent = n === null ? "" : String(n).padStart(2, "0");
+    });
+  }
+
+  atBottom() {
+    const log = $("log");
+    return log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+  }
+
+  unseen(delta) {
+    this.unseenCount = (this.unseenCount ?? 0) + delta;
+    const pill = $("log-new");
+    pill.hidden = this.unseenCount === 0;
+    pill.textContent = `↓ 新しい質問 ${this.unseenCount} 件`;
+  }
+
+  seenAll() {
+    this.unseenCount = 0;
+    $("log-new").hidden = true;
+  }
+
+  bindLog() {
+    const log = $("log");
+    // 最下部を見ている間は、お題の表示や入力欄の切り替えで会話欄が縮んでも最下部に追従する。
+    // 縮んだ直後は最下部にいなくても、上へスクロールしたときだけ追従をやめる
+    this.following = true;
+    this.lastScrollTop = 0;
+    log.addEventListener("scroll", () => {
+      const up = log.scrollTop < this.lastScrollTop - 1;
+      this.lastScrollTop = log.scrollTop;
+      if (up) this.following = false;
+      else if (this.atBottom()) this.following = true;
+      if (this.following) this.seenAll();
+    });
+    new ResizeObserver(() => {
+      if (this.following) log.scrollTop = log.scrollHeight;
+    }).observe(log);
+    $("log-new").addEventListener("click", () => {
+      log.scrollTop = log.scrollHeight;
+      this.seenAll();
+    });
   }
 
   // スマホでは招待ボタンと参加者一覧をハンバーガーメニューへ移し、広い画面では見出しに戻す

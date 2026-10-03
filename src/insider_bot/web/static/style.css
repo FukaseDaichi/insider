@@ -402,8 +402,8 @@ body:has(.room:not([hidden])) {
 .room {
   max-width: 860px;
   margin: auto;
-  height: calc(100vh - 96px);
-  height: calc(100dvh - 96px);
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   padding: 28px 32px 0;
@@ -537,8 +537,8 @@ body:has(.room:not([hidden])) {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 22px 0;
+  gap: 0;
+  padding: 12px 0;
   margin: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -592,56 +592,188 @@ body:has(.room:not([hidden])) {
   margin: 0;
 }
 
+/* 会話欄は「推理ノート」。1 問 1 行で、左に通し番号、中央に質問文と質問者、右端に判定。
+   スマホで 1 画面に 9〜10 問入る密度にし、判定を右端の 1 列にそろえて縦にざっと追えるようにする。
+   はい＝ライム、いいえ＝ラベンダーはトップページの YES / NO カードと同じ色。 */
 .entry {
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  padding: 18px 22px;
-  background: #faf9f380;
-  animation: entry-in 0.3s ease-out;
   flex-shrink: 0;
+  animation: entry-in 0.3s ease-out;
 }
 
-.entry.system {
-  background: transparent;
-  border-left: 2px solid var(--accent);
-  font-size: 12px;
+.entry.question {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: start;
+  padding: 9px 0;
+  border-bottom: 1px solid #2a2c35;
 }
 
-.entry .author {
-  display: block;
-  font-size: 10px;
+.entry .num {
+  font-size: 11px;
+  line-height: 1.5;
   color: var(--muted);
-  margin-bottom: 9px;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  padding-top: 3px;
 }
 
-.entry .text {
-  font-size: 14px;
-  line-height: 1.95;
+/* 自分の質問は番号をライム色にして、自分の流れを追いやすくする */
+.entry.mine .num {
+  color: var(--accent);
+}
+
+.q-body {
+  min-width: 0;
+}
+
+.q-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-.entry.system .text {
-  font-size: 12px;
-}
-
-.entry.pending {
-  border-style: dashed;
-}
-
-.entry.pending .text {
+.entry .author {
+  display: block;
+  font-size: 10.5px;
+  line-height: 1.4;
   color: var(--muted);
+  margin-top: 3px;
 }
 
-.entry.pending .author::after {
+.entry.cancelled .q-text {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.verdict-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 64px;
+  padding-top: 1px;
+}
+
+.verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  padding: 2px 8px 2px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* 色が見分けにくい人のために矢印も添える */
+.verdict::before {
+  content: "↗";
+  font-weight: 400;
+}
+
+.verdict.yes {
+  color: #0f1206;
+  background: var(--accent);
+}
+
+.verdict.no {
+  color: #15121f;
+  background: var(--no);
+}
+
+.verdict.no::before {
+  content: "↘";
+}
+
+/* はい・いいえのどちらも 65% 未満の「微妙な判定」は薄くする */
+.verdict.weak {
+  opacity: 0.72;
+}
+
+.verdict.note {
+  color: var(--muted);
+  background: #2b2d36;
+  font-weight: 500;
+}
+
+.verdict.note::before {
   content: "";
-  display: inline-block;
   width: 5px;
   height: 5px;
-  margin-left: 8px;
   background: var(--accent);
   border-radius: 50%;
   animation: pulse 1s infinite;
+}
+
+.entry.cancelled .verdict.note::before {
+  display: none;
+}
+
+.pct {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 進行の通知は、区切り線つきの 1 行 */
+.entry.system {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.entry.system::before,
+.entry.system::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+
+.entry.system .text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+/* 想定外の形式（質問者つきの通知など）は、名前と本文をそのまま */
+.entry.plain {
+  padding: 9px 0 9px 36px;
+  border-bottom: 1px solid #2a2c35;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.entry.plain .text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* 上にスクロールして見返している間に届いた質問を知らせるピル */
+.log-new {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #0f1206;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 6px 18px #0009;
+  cursor: pointer;
+  animation: entry-in 0.3s ease-out;
 }
 
 .controls {
@@ -925,94 +1057,81 @@ dialog h2 {
   margin: 0;
 }
 
-/* Result cards retain the service's percentages without text-art wrapping. */
-.answer-question {
-  font-size: 17px;
-  line-height: 1.8;
-  margin: 0 0 17px;
-  letter-spacing: 0.01em;
-}
-
-.answer-result {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding-top: 15px;
-  border-top: 1px solid var(--line);
-}
-
-.verdict {
-  font-size: 19px;
-  min-width: 65px;
-  white-space: nowrap;
-}
-
-.verdict::before {
-  content: "↗";
-  font-weight: 400;
-  margin-right: 10px;
-}
-
-.verdict.yes {
-  color: #47613a;
-}
-
-.verdict.no {
-  color: var(--accent);
-}
-
-.verdict.no::before {
-  content: "↘";
-}
-
-.answer-scale {
-  flex: 1;
-  max-width: 270px;
-}
-
-.answer-labels {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 10px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-
+/* 確信度の短いバー。判定した側の割合を塗る */
 meter {
   display: block;
-  width: 100%;
-  height: 5px;
-  margin-top: 9px;
+  width: 44px;
+  height: 3px;
   appearance: none;
   -webkit-appearance: none;
   border: 0;
-  background: #d9d9cd;
-  border-radius: 3px;
+  background: #3b3d48;
+  border-radius: 2px;
   overflow: hidden;
 }
 
 meter::-webkit-meter-bar {
-  background: #d9d9cd;
+  background: #3b3d48;
   border: 0;
-  border-radius: 3px;
-  height: 5px;
+  border-radius: 2px;
+  height: 3px;
 }
 
 meter::-webkit-meter-optimum-value {
-  background: #677c54;
-  border-radius: 3px;
+  background: var(--accent);
 }
 
 meter::-moz-meter-bar {
-  background: #677c54;
-  border-radius: 3px;
+  background: var(--accent);
 }
 
-.entry.celebration {
-  background: #e6e9d9;
-  border: 1px solid #aab496;
-  padding: 25px;
+.verdict-box:has(.no) meter::-webkit-meter-optimum-value {
+  background: var(--no);
+}
+
+.verdict-box:has(.no) meter::-moz-meter-bar {
+  background: var(--no);
+}
+
+/* 正解・ギブアップは、お題の公開が主役の大きなカード */
+.entry.result {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 0 4px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #697647;
+  background: linear-gradient(135deg, #30382a, var(--surface));
+}
+
+.entry.result.giveup {
+  border-color: #5c5572;
+  background: linear-gradient(135deg, #342f44, var(--surface));
+}
+
+.result-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+}
+
+.entry.result.giveup .result-label {
+  color: var(--no);
+}
+
+.result-title {
+  font-size: 19px;
+  line-height: 1.45;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.result-meta {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+  white-space: pre-wrap;
 }
 
 .room:has(#start-form:not([hidden])) .empty-room {
@@ -1020,20 +1139,6 @@ meter::-moz-meter-bar {
 }
 
 @media (max-width: 700px) {
-  .answer-question {
-    font-size: 16px;
-    margin-bottom: 13px;
-  }
-  .answer-result {
-    gap: 18px;
-  }
-  .verdict {
-    font-size: 17px;
-    min-width: 62px;
-  }
-  .answer-labels {
-    font-size: 10px;
-  }
   .players {
     max-height: 58px;
   }
@@ -1062,9 +1167,6 @@ meter::-moz-meter-bar {
   }
   .form-heading > span:last-child {
     font-size: 9px;
-  }
-  .answer-result {
-    gap: 10px;
   }
 }
 
@@ -1110,6 +1212,7 @@ meter::-moz-meter-bar {
   --muted: #a3a4af;
   --line: #393b45;
   --accent: #dfef78;
+  --no: #bdb2e4;
   --danger: #ffaaa0;
   --online: #dfee88;
   --radius: 8px;
@@ -1713,7 +1816,7 @@ textarea:focus {
 
 .room {
   max-width: 940px;
-  padding: 25px 40px 0;
+  padding: 12px 40px 0;
 }
 
 .room-title strong {
@@ -1756,45 +1859,6 @@ textarea:focus {
   color: #242c1d;
   border: 0;
   box-shadow: 8px 8px 0 #373a32;
-}
-
-.entry {
-  background: #24262e;
-  border-color: #3c3f4a;
-  border-radius: 10px;
-  padding: 20px 23px;
-}
-
-.entry .author {
-  color: #afb2bf;
-  font-size: 11px;
-}
-
-.entry.system {
-  background: #202229;
-}
-
-.entry.celebration {
-  background: #303828;
-  border-color: #697647;
-}
-
-.verdict.yes {
-  color: var(--accent);
-}
-.verdict.no {
-  color: #bdb2e4;
-}
-
-meter,
-meter::-webkit-meter-bar {
-  background: #494353;
-}
-meter::-webkit-meter-optimum-value {
-  background: var(--accent);
-}
-meter::-moz-meter-bar {
-  background: var(--accent);
 }
 
 .controls {
@@ -2357,9 +2421,6 @@ dialog .eyebrow {
     font-size: 36px;
     margin-bottom: 22px;
   }
-  .entry {
-    padding: 16px;
-  }
   .keyboard-hint {
     display: none;
   }
@@ -2573,28 +2634,97 @@ dialog .eyebrow {
   }
 }
 
-/* ルーム上部の固定情報。広い画面では従来どおり見出しの下に並べ、
-   スマホでは 1 本のバーに畳んでハンバーガーメニューに収める。 */
-.room-title {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
+/* ルーム上部の固定情報は、どの幅でも 1 本のバーに畳む。会話欄を画面の大部分にするため。
+   サイトヘッダーと「CONVERSATION」の見出しは出さず、ルーム番号・質問数・経過時間を 1 行に並べる。
+   広い画面では参加者一覧と招待・遊び方のボタンも同じバーに置き、
+   スマホではバー右端のハンバーガーメニューに畳む（要素の移動は layout.js）。
+   .room-title を display: contents にして、見出し・状態・参加者・ボタンを同じ flex の並びに置く。 */
+body:has(.room:not([hidden])) .site-header {
+  display: none;
+}
+.room-header {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px 16px;
+  gap: 8px 18px;
+  min-height: 52px;
+  padding: 2px 0 8px;
+  border-bottom: 1px solid var(--line);
+}
+.room-title {
+  display: contents;
+}
+.room-title .eyebrow,
+.log-heading {
+  display: none;
 }
 .room-title > div:first-child {
-  grid-area: 1 / 1;
+  order: 1;
 }
-.room-title .room-actions {
-  grid-area: 1 / 2;
+.room-title h1 {
+  margin: 0;
+  white-space: nowrap;
 }
-.room-title .menu-button {
-  grid-area: 1 / 3;
+.room-title strong {
+  font-size: 20px;
+  margin-left: 6px;
 }
 .room-title .game-status {
-  grid-area: 2 / 1 / 3 / -1;
+  order: 2;
+  margin: 0;
+  gap: 10px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+#players-slot {
+  order: 3;
+  flex: 1;
+  min-width: 0;
+}
+.room-header .players-row {
+  gap: 12px;
+  padding: 0;
+}
+.room-header .players-row .eyebrow {
+  display: none;
+}
+.room-header .players {
+  /* チップ 2 行ぶん。それ以上はスクロール */
+  max-height: 62px;
+}
+.room-title .room-actions {
+  order: 4;
 }
 .room-actions:not(:has(*)) {
   display: none;
+}
+.room-rules {
+  order: 5;
+  min-height: 44px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.room-rules span {
+  font-size: 16px;
+}
+.room-title .menu-button {
+  order: 6;
+}
+.room-header .secret,
+.room-header .offline {
+  order: 7;
+  flex-basis: 100%;
+  margin: 0;
+}
+.secret {
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  max-height: 64px;
+}
+.offline {
+  padding: 8px 12px;
+  font-size: 11px;
 }
 .menu-button {
   display: none;
@@ -2692,71 +2822,30 @@ dialog .eyebrow {
 }
 
 @media (max-width: 900px) {
-  body:has(.room:not([hidden])) .site-header {
-    display: none;
-  }
   .room {
-    height: 100vh;
-    height: 100dvh;
     padding: max(6px, env(safe-area-inset-top)) 4% 0;
   }
-  .room-title {
-    display: flex;
-    gap: 10px;
-    min-height: 52px;
-    padding: 2px 0 8px;
-    border-bottom: 1px solid var(--line);
-  }
-  .room-title .eyebrow {
-    display: none;
-  }
-  .room-title h1 {
-    margin: 0;
-    white-space: nowrap;
-  }
-  .room-title strong {
-    font-size: 20px;
-    margin-left: 6px;
+  .room-header {
+    gap: 8px 10px;
   }
   .room-title .game-status {
     flex: 1;
     justify-content: flex-end;
-    margin: 0;
-    gap: 10px;
-    font-size: 11px;
-    line-height: 1.4;
+  }
+  /* 参加者一覧と招待・遊び方はメニューの中へ。空になった置き場は詰める */
+  #players-slot,
+  .room-rules {
+    display: none;
   }
   .menu-button {
     display: grid;
     flex-shrink: 0;
   }
-  .log-heading {
-    display: none;
-  }
-  .secret {
-    margin: 8px 0 0;
-    padding: 8px 12px;
-    font-size: 12px;
-    line-height: 1.6;
-    max-height: 64px;
-  }
-  .offline {
-    margin: 8px 0 0;
-    padding: 8px 12px;
-    font-size: 11px;
-  }
   .log {
-    gap: 10px;
-    padding: 12px 0;
+    padding: 8px 0;
   }
-  .entry {
-    padding: 13px 14px;
-  }
-  .entry .author {
-    margin-bottom: 6px;
-  }
-  .entry .text {
-    line-height: 1.75;
+  .q-text {
+    font-size: 14.5px;
   }
   .controls {
     padding-top: 12px;
@@ -2777,20 +2866,21 @@ dialog .eyebrow {
    内側が暗い本体で、同じ多角形の clip-path を 2 枚重ねて縁取りにしている。
    寸法は --size（アバター）と吹き出しの変数に集め、スマホでは画面幅に応じて縮める。 */
 .entry.host {
-  --size: 160px;
-  --tail: 34px;
-  --cut: 34px;
+  --size: 120px;
+  --tail: 28px;
+  --cut: 28px;
   --edge: 2.5px;
   --tail-top: 22%;
   --tail-mid: 38%;
   --tail-bottom: 54%;
-  --lead: 30px;
-  --body: 17px;
+  --lead: 24px;
+  --body: 15px;
   position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 30px 30px 30px 26px;
+  margin: 8px 0;
+  padding: 22px 24px 22px 20px;
   border: 1px solid #2b2d3a;
   border-radius: 22px;
   background:
@@ -3190,7 +3280,7 @@ dialog .eyebrow {
 /* スマホ: アバターと文字は画面幅に連動して縮め、吹き出しの比率は保つ */
 @media (max-width: 900px) {
   .entry.host {
-    --size: clamp(64px, 21vw, 108px);
+    --size: clamp(56px, 18vw, 88px);
     --tail: 18px;
     --cut: 20px;
     --edge: 2px;
