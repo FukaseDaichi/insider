@@ -14,7 +14,7 @@ from tests.fakes import FakeClock, FakeJudge
 CORRECT = Verdict(1.0, True, "exact")
 PENDING = "❓ 果物ですか？\n… 判定中"
 ANSWER = "❓ 果物ですか？\n✅ はい　　はい 82% ██████████░░ いいえ 18%"
-STARTED = "🎮 ゲーム開始！お題が出されました。「🎙 押して話す」で質問をどうぞ"
+STARTED = "🎮 ゲーム開始！\nお題が出されました！\n「🎙 押して話す」で質問をどうぞ！"
 
 
 class FakeConnection:

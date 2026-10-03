@@ -2572,3 +2572,658 @@ dialog .eyebrow {
     width: auto;
   }
 }
+
+/* ルーム上部の固定情報。広い画面では従来どおり見出しの下に並べ、
+   スマホでは 1 本のバーに畳んでハンバーガーメニューに収める。 */
+.room-title {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px 16px;
+}
+.room-title > div:first-child {
+  grid-area: 1 / 1;
+}
+.room-title .room-actions {
+  grid-area: 1 / 2;
+}
+.room-title .menu-button {
+  grid-area: 1 / 3;
+}
+.room-title .game-status {
+  grid-area: 2 / 1 / 3 / -1;
+}
+.room-actions:not(:has(*)) {
+  display: none;
+}
+.menu-button {
+  display: none;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  place-items: center;
+}
+.menu-lines,
+.menu-lines::before,
+.menu-lines::after {
+  content: "";
+  display: block;
+  width: 18px;
+  height: 1.5px;
+  background: currentColor;
+  border-radius: 2px;
+}
+.menu-lines {
+  position: relative;
+}
+.menu-lines::before,
+.menu-lines::after {
+  position: absolute;
+  left: 0;
+}
+.menu-lines::before {
+  top: -6px;
+}
+.menu-lines::after {
+  top: 6px;
+}
+.menu-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #252b1c;
+  font: 700 10px/1 monospace;
+}
+.menu-count:empty {
+  display: none;
+}
+
+.menu-sheet h2 strong {
+  color: var(--accent);
+  font-family: monospace;
+  letter-spacing: 3px;
+  margin-left: 8px;
+}
+.menu-actions .secondary {
+  width: 100%;
+  min-height: 48px;
+  justify-content: center;
+}
+.menu-players {
+  margin: 22px 0;
+}
+.menu-players .players-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0;
+}
+.menu-players .players {
+  max-height: 40vh;
+  gap: 8px;
+}
+.menu-players .player {
+  font-size: 12px;
+  padding: 7px 12px;
+}
+.menu-links {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 18px;
+  font-size: 12px;
+}
+.menu-links a {
+  text-decoration: none;
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  body:has(.room:not([hidden])) .site-header {
+    display: none;
+  }
+  .room {
+    height: 100vh;
+    height: 100dvh;
+    padding: max(6px, env(safe-area-inset-top)) 4% 0;
+  }
+  .room-title {
+    display: flex;
+    gap: 10px;
+    min-height: 52px;
+    padding: 2px 0 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .room-title .eyebrow {
+    display: none;
+  }
+  .room-title h1 {
+    margin: 0;
+    white-space: nowrap;
+  }
+  .room-title strong {
+    font-size: 20px;
+    margin-left: 6px;
+  }
+  .room-title .game-status {
+    flex: 1;
+    justify-content: flex-end;
+    margin: 0;
+    gap: 10px;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .menu-button {
+    display: grid;
+    flex-shrink: 0;
+  }
+  .log-heading {
+    display: none;
+  }
+  .secret {
+    margin: 8px 0 0;
+    padding: 8px 12px;
+    font-size: 12px;
+    line-height: 1.6;
+    max-height: 64px;
+  }
+  .offline {
+    margin: 8px 0 0;
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+  .log {
+    gap: 10px;
+    padding: 12px 0;
+  }
+  .entry {
+    padding: 13px 14px;
+  }
+  .entry .author {
+    margin-bottom: 6px;
+  }
+  .entry .text {
+    line-height: 1.75;
+  }
+  .controls {
+    padding-top: 12px;
+  }
+  .talk {
+    min-height: 54px;
+  }
+  .voice {
+    gap: 8px;
+  }
+  .links {
+    margin-top: 2px;
+  }
+}
+
+/* ゲーム開始の案内は、案内役「GM」がアバター付きの吹き出しで喋る。
+   吹き出しは角を斜めに落とし、大きなしっぽでアバターを指す。外側がグラデーションの枠、
+   内側が暗い本体で、同じ多角形の clip-path を 2 枚重ねて縁取りにしている。
+   寸法は --size（アバター）と吹き出しの変数に集め、スマホでは画面幅に応じて縮める。 */
+.entry.host {
+  --size: 160px;
+  --tail: 34px;
+  --cut: 34px;
+  --edge: 2.5px;
+  --tail-top: 22%;
+  --tail-mid: 38%;
+  --tail-bottom: 54%;
+  --lead: 30px;
+  --body: 17px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 30px 30px 30px 26px;
+  border: 1px solid #2b2d3a;
+  border-radius: 22px;
+  background:
+    radial-gradient(90% 120% at 12% 50%, #262a3a 0%, transparent 55%),
+    radial-gradient(60% 90% at 95% 100%, #2a2440 0%, transparent 60%),
+    linear-gradient(120deg, #15161d, #1a1b24 55%, #141520);
+  overflow: hidden;
+}
+/* 背景に散る小さな三角と粒。ゆっくり漂う */
+.host-deco {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.host-deco i {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  opacity: 0.55;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  animation: host-float 4s ease-in-out infinite alternate;
+}
+.host-deco i:nth-child(1) {
+  top: 12%;
+  left: 3%;
+  transform: rotate(20deg);
+}
+.host-deco i:nth-child(2) {
+  bottom: 14%;
+  left: 7%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  clip-path: none;
+  background: #c8b8f5;
+  animation-delay: -1.2s;
+}
+.host-deco i:nth-child(3) {
+  top: 10%;
+  right: 6%;
+  width: 8px;
+  height: 8px;
+  background: #c8b8f5;
+  transform: rotate(-30deg);
+  animation-delay: -2s;
+}
+.host-deco i:nth-child(4) {
+  bottom: 10%;
+  right: 3%;
+  width: 7px;
+  height: 7px;
+  transform: rotate(180deg);
+  animation-delay: -0.6s;
+}
+.host-deco i:nth-child(5) {
+  top: 50%;
+  left: 1.5%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  clip-path: none;
+  animation-delay: -3s;
+}
+.host-deco i:nth-child(6) {
+  top: 6%;
+  left: 48%;
+  width: 6px;
+  height: 6px;
+  background: #c8b8f5;
+  transform: rotate(45deg);
+  animation-delay: -1.7s;
+}
+.host-avatar {
+  position: relative;
+  width: var(--size);
+  height: var(--size);
+  flex-shrink: 0;
+  margin: 0 8px 0 0;
+  padding: 3px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 150deg,
+    #b9a6ea,
+    var(--accent) 30%,
+    var(--accent) 60%,
+    #b9a6ea 85%,
+    #b9a6ea
+  );
+  animation:
+    host-pop 0.8s cubic-bezier(0.34, 1.7, 0.64, 1) both,
+    host-glow 2.2s 0.8s ease-in-out infinite alternate;
+}
+.host-face {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #14161d;
+  box-shadow: inset 0 0 0 2px #0e0f14;
+}
+.host-face img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* 元画像は上半身が入っているので、顔に寄せる */
+  transform: scale(1.3);
+  transform-origin: 52% 38%;
+}
+.host-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+  --angle: calc(var(--n) * 60deg - 110deg);
+  opacity: 0;
+  animation: host-dot 1.1s calc(0.35s + var(--n) * 0.06s) ease-out both;
+}
+.host-dot:nth-child(odd) {
+  background: #c8b8f5;
+  box-shadow: 0 0 10px #c8b8f5;
+  width: 5px;
+  height: 5px;
+}
+.host-marks {
+  position: absolute;
+  top: calc(var(--size) * -0.02);
+  right: calc(var(--size) * -0.1);
+  width: calc(var(--size) * 0.2);
+  height: calc(var(--size) * 0.2);
+  transform: rotate(20deg);
+  animation: host-marks 0.5s 0.55s ease-out both;
+}
+.host-marks::before,
+.host-marks::after {
+  content: "";
+  position: absolute;
+  width: 11%;
+  border-radius: 3px;
+  background: #fffdf3;
+  box-shadow: 0 0 8px var(--accent);
+}
+.host-marks::before {
+  left: 15%;
+  top: 0;
+  height: 60%;
+  transform: rotate(-25deg);
+}
+.host-marks::after {
+  left: 60%;
+  top: 25%;
+  height: 80%;
+  transform: rotate(-25deg);
+}
+.host-bubble {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  filter: drop-shadow(0 0 14px #dfef7840) drop-shadow(0 16px 34px #0009);
+  animation: host-burst 0.65s 0.25s cubic-bezier(0.34, 1.5, 0.64, 1) both;
+}
+.host-bubble-frame {
+  position: relative;
+  overflow: hidden; /* 光の帯が枠の外へ出て横スクロールを生まないように */
+  padding: var(--edge);
+  background: linear-gradient(
+    115deg,
+    #f4ffb0 0%,
+    var(--accent) 22%,
+    #c9b8f0 58%,
+    #8f78d6 100%
+  );
+}
+.host-bubble-frame,
+.host-shine {
+  clip-path: polygon(
+    calc(var(--tail) + var(--cut)) 0,
+    100% 0,
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    var(--tail) 100%,
+    var(--tail) var(--tail-bottom),
+    0 var(--tail-mid),
+    var(--tail) var(--tail-top)
+  );
+}
+.host-bubble-inner {
+  position: relative;
+  padding: 50px 56px 24px calc(var(--tail) + 28px);
+  background:
+    radial-gradient(120% 90% at 100% 0%, #2a2d3c, transparent 60%),
+    linear-gradient(135deg, #1c1e29, #121319);
+  clip-path: polygon(
+    calc(var(--tail) + var(--cut) + 1px) 0,
+    100% 0,
+    100% calc(100% - var(--cut) - 1px),
+    calc(100% - var(--cut) - 1px) 100%,
+    calc(var(--tail) - var(--edge)) 100%,
+    calc(var(--tail) - var(--edge)) calc(var(--tail-bottom) - 1.2%),
+    calc(var(--edge) * 1.6) var(--tail-mid),
+    calc(var(--tail) - var(--edge)) calc(var(--tail-top) + 1.2%)
+  );
+}
+/* 話者タグは上辺に乗ったタブ。左の斜めが角のカットと平行になる */
+.host-name {
+  position: absolute;
+  top: 0;
+  left: calc(var(--tail) + var(--cut) - 14px);
+  padding: 7px 22px 7px 20px;
+  background: linear-gradient(100deg, #f4ffb0, var(--accent) 60%, #c9e886);
+  color: #1d2215;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+  animation: host-tag 0.5s 0.6s cubic-bezier(0.34, 1.8, 0.64, 1) both;
+}
+.host-line {
+  margin: 0;
+  font-size: var(--body);
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+  text-shadow: 0 2px 10px #0008;
+  animation: host-line 0.45s ease-out both;
+  animation-delay: calc(0.7s + var(--i, 0) * 0.22s);
+}
+.host-line.lead {
+  font-size: var(--lead);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  margin-bottom: 10px;
+  color: #fffdf3;
+  text-shadow:
+    0 0 18px #dfef7866,
+    0 2px 10px #0008;
+}
+.host-spark {
+  position: absolute;
+  right: -2px;
+  bottom: -8px;
+  color: var(--accent);
+  font-size: 34px;
+  line-height: 1;
+  text-shadow:
+    0 0 14px var(--accent),
+    0 0 30px #dfef7888;
+  animation: host-twinkle 1.3s 1s ease-in-out infinite alternate;
+  opacity: 0;
+}
+.host-shine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    #ffffff77 48%,
+    #ffffffbb 50%,
+    #ffffff77 52%,
+    transparent 65%
+  );
+  transform: translateX(-110%);
+  animation: host-shine 1.1s 1.1s ease-in-out both;
+}
+@keyframes host-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotate(-25deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12) rotate(4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes host-glow {
+  from {
+    box-shadow:
+      0 0 0 5px #dfef7814,
+      0 0 24px #dfef7850,
+      0 0 60px #9b7fd640;
+  }
+  to {
+    box-shadow:
+      0 0 0 7px #dfef7822,
+      0 0 40px #dfef7890,
+      0 0 90px #9b7fd670;
+  }
+}
+@keyframes host-dot {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateX(calc(var(--size) * 0.3)) scale(0.2);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateX(calc(var(--size) * 0.72)) scale(1);
+  }
+}
+@keyframes host-marks {
+  0% {
+    opacity: 0;
+    transform: rotate(20deg) scale(0.3);
+  }
+  60% {
+    opacity: 1;
+    transform: rotate(20deg) scale(1.3);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(20deg) scale(1);
+  }
+}
+@keyframes host-burst {
+  0% {
+    opacity: 0;
+    transform: translateX(-40px) scale(0.5) rotate(-4deg);
+  }
+  65% {
+    opacity: 1;
+    transform: translateX(6px) scale(1.04) rotate(1deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes host-tag {
+  0% {
+    opacity: 0;
+    transform: scale(1.8) rotate(-6deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes host-line {
+  from {
+    opacity: 0;
+    transform: translateX(-10px) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes host-twinkle {
+  from {
+    opacity: 0.55;
+    transform: scale(0.7) rotate(0deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.25) rotate(35deg);
+  }
+}
+@keyframes host-shine {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(110%);
+  }
+}
+@keyframes host-float {
+  from {
+    translate: 0 -4px;
+  }
+  to {
+    translate: 0 5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .host-spark {
+    opacity: 1;
+  }
+  .host-dot,
+  .host-shine {
+    display: none;
+  }
+}
+/* スマホ: アバターと文字は画面幅に連動して縮め、吹き出しの比率は保つ */
+@media (max-width: 900px) {
+  .entry.host {
+    --size: clamp(76px, 25vw, 108px);
+    --tail: 20px;
+    --cut: 20px;
+    --edge: 2px;
+    --lead: clamp(18px, 5.6vw, 24px);
+    --body: clamp(12px, 3.5vw, 14px);
+    gap: 0;
+    padding: 18px 12px 16px 10px;
+    border-radius: 16px;
+  }
+  .host-avatar {
+    margin-right: 2px;
+  }
+  .host-bubble-inner {
+    padding: 36px 24px 14px calc(var(--tail) + 14px);
+  }
+  .host-name {
+    left: calc(var(--tail) + var(--cut) - 10px);
+    padding: 5px 16px 5px 14px;
+    font-size: 11px;
+    clip-path: polygon(9px 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
+  }
+  .host-line {
+    line-height: 1.6;
+  }
+  .host-line.lead {
+    margin-bottom: 6px;
+  }
+  .host-spark {
+    right: -2px;
+    bottom: -6px;
+    font-size: 24px;
+  }
+  .host-bubble {
+    filter: drop-shadow(0 0 10px #dfef7840) drop-shadow(0 10px 22px #0009);
+  }
+}

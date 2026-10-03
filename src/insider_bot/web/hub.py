@@ -39,7 +39,7 @@ def prepare_question(text: str) -> str:
 
 # Discord 用の「最後に「？」をつけてね」は、「？」を自動で付ける Web では声で「はてな」と言わせかねない。
 # 出題者は質問者に紛れて遊ぶので、名前を出さない
-WEB_STARTED = "🎮 ゲーム開始！お題が出されました。「🎙 押して話す」で質問をどうぞ"
+WEB_STARTED = "🎮 ゲーム開始！\nお題が出されました！\n「🎙 押して話す」で質問をどうぞ！"
 # ゲーム開始の音声。同じ部屋や通話で遊んでも声が重ならないよう、サーバーが選んで全員に同じものを送る
 START_SOUNDS = tuple(f"/static/sounds/start-{n}.m4a" for n in (1, 2, 3))
 

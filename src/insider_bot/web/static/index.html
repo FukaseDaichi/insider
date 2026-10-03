@@ -196,14 +196,28 @@
               <span class="eyebrow">THE CONVERSATION ROOM</span>
               <h1>ルーム <strong id="room-code"></strong></h1>
             </div>
-            <button id="invite-open" type="button" class="secondary small">
-              仲間を招待 <span aria-hidden="true">↗</span>
+            <p id="game-status" class="game-status"></p>
+            <div id="room-actions" class="room-actions">
+              <button id="invite-open" type="button" class="secondary small">
+                仲間を招待 <span aria-hidden="true">↗</span>
+              </button>
+            </div>
+            <button
+              id="menu-open"
+              type="button"
+              class="menu-button"
+              aria-label="参加者とルームの情報"
+              aria-haspopup="dialog"
+            >
+              <span class="menu-lines" aria-hidden="true"></span>
+              <span id="menu-count" class="menu-count" aria-hidden="true"></span>
             </button>
           </div>
-          <p id="game-status" class="game-status"></p>
-          <div class="players-row">
-            <span class="eyebrow">PLAYERS</span>
-            <p id="players" class="players"></p>
+          <div id="players-slot">
+            <div id="players-row" class="players-row">
+              <span class="eyebrow">PLAYERS</span>
+              <p id="players" class="players"></p>
+            </div>
           </div>
           <p id="secret" class="secret" hidden></p>
           <p id="offline" class="offline" role="status" hidden></p>
@@ -324,6 +338,21 @@
         >
       </section>
     </main>
+    <dialog id="room-menu" class="sheet menu-sheet" aria-labelledby="menu-title">
+      <p class="eyebrow">THE CONVERSATION ROOM</p>
+      <h2 id="menu-title">ルーム <strong id="menu-code"></strong></h2>
+      <div id="menu-actions" class="menu-actions"></div>
+      <div id="menu-players" class="menu-players"></div>
+      <div class="menu-links">
+        <button type="button" class="link" data-rules-open>
+          遊び方 <span aria-hidden="true">↗</span>
+        </button>
+        <a class="link muted-link" href="/">トップページへ</a>
+      </div>
+      <button id="menu-close" type="button" class="secondary wide">
+        会話に戻る
+      </button>
+    </dialog>
     <dialog id="invite" class="sheet" aria-labelledby="invite-title">
       <p class="eyebrow">GOOD MYSTERIES ARE SHARED.</p>
       <h2 id="invite-title">この秘密を、一緒に。</h2>

@@ -1,6 +1,8 @@
 // 画面全体: トップページ、名前の入力、ルーム画面（WebSocket の接続と再接続）
 import { parseAnswer } from "./answer.js";
 import { AskWatch } from "./askwatch.js";
+import { HOST_NAME, hostLines } from "./host.js";
+import { placeChrome, watchCompact } from "./layout.js";
 import { renderQr, Scanner } from "./qr.js";
 import { ROOM_CODE_PATTERN } from "./roomurl.js";
 import { SoundPlayer } from "./sound.js";
@@ -12,6 +14,8 @@ const tokenKey = (code) => `odai:token:${code}`;
 const RETRY_DELAYS_MS = [1000, 2000, 4000, 8000, 10000];
 const NOTICE_MS = 5000;
 const LOG_LIMIT = 300;
+// この幅以下では、参加者などの固定情報を上部のメニューにしまって会話を広く見せる
+const COMPACT_LAYOUT = "(max-width: 900px)";
 const CLOSE_MESSAGES = {
   4400: "ルームに入れませんでした。名前を確かめて、もう一度どうぞ",
   4404: "ルームが見つかりません（サーバーが再起動した可能性があります）",
@@ -49,6 +53,67 @@ function showPage(id) {
 function showFatal(message) {
   $("fatal-message").textContent = message;
   showPage("fatal");
+}
+
+// 案内役「GM」のアバターと吹き出し。行は順番に現れるよう、何行目かを CSS に渡す
+function renderHost(lines) {
+  // カードの背景に散る小さな飾り（読み上げない）
+  const deco = document.createElement("span");
+  deco.className = "host-deco";
+  deco.setAttribute("aria-hidden", "true");
+  for (let i = 0; i < 6; i++) deco.append(document.createElement("i"));
+
+  const avatar = document.createElement("figure");
+  avatar.className = "host-avatar";
+  avatar.setAttribute("aria-hidden", "true");
+  const face = document.createElement("span");
+  face.className = "host-face";
+  const img = document.createElement("img");
+  img.src = "/static/host.png";
+  img.alt = "";
+  img.width = 160;
+  img.height = 160;
+  face.append(img);
+  avatar.append(face);
+  // 登場時に周りへ散る光の粒と、頭の横の勢い線
+  for (let i = 0; i < 6; i++) {
+    const dot = document.createElement("i");
+    dot.className = "host-dot";
+    dot.style.setProperty("--n", String(i));
+    avatar.append(dot);
+  }
+  const marks = document.createElement("i");
+  marks.className = "host-marks";
+  avatar.append(marks);
+
+  // 影は clip-path で切られてしまうので、形を切る枠とその影を付ける外側を分ける
+  const bubble = document.createElement("div");
+  bubble.className = "host-bubble";
+  const frame = document.createElement("div");
+  frame.className = "host-bubble-frame";
+  const inner = document.createElement("div");
+  inner.className = "host-bubble-inner";
+  const name = document.createElement("span");
+  name.className = "host-name";
+  name.textContent = HOST_NAME;
+  inner.append(name);
+  lines.forEach((line, index) => {
+    const p = document.createElement("p");
+    p.className = index === 0 ? "host-line lead" : "host-line";
+    p.style.setProperty("--i", String(index));
+    p.textContent = line;
+    inner.append(p);
+  });
+  const shine = document.createElement("span");
+  shine.className = "host-shine";
+  shine.setAttribute("aria-hidden", "true");
+  frame.append(inner, shine);
+  const spark = document.createElement("span");
+  spark.className = "host-spark";
+  spark.setAttribute("aria-hidden", "true");
+  spark.textContent = "✦";
+  bubble.append(frame, spark);
+  return [deco, avatar, bubble];
 }
 
 function formatElapsed(totalSeconds) {
@@ -162,8 +227,10 @@ class RoomPage {
   start() {
     showPage("room");
     $("room-code").textContent = this.code;
+    $("menu-code").textContent = this.code;
     document.title = `ルーム ${this.code} — INSIDER`;
     this.bindControls();
+    this.bindMenu();
     if (!speechSupported) {
       $("speech-help").textContent = NO_SPEECH_HELP;
       $("speech-help").hidden = false;
@@ -290,6 +357,9 @@ class RoomPage {
     this.game = game;
     // 経過時間はサーバーが送った時点の秒数から画面側で進める
     this.startedAt = game ? performance.now() / 1000 - game.elapsed : 0;
+    $("menu-count").textContent = String(
+      players.filter((player) => player.online).length,
+    );
     $("players").replaceChildren(
       ...players.map((player) => {
         const item = document.createElement("span");
@@ -401,6 +471,9 @@ class RoomPage {
       scale.append(labels, meter);
       result.append(verdict, scale);
       parts.push(question, result);
+    } else if (!entry.author && !entry.pending && hostLines(entry.text)) {
+      item.classList.add("host");
+      parts.push(...renderHost(hostLines(entry.text)));
     } else {
       const text = document.createElement("span");
       text.className = "text";
@@ -411,6 +484,20 @@ class RoomPage {
     }
     item.replaceChildren(...parts);
     if (atBottom) log.scrollTop = log.scrollHeight;
+  }
+
+  // スマホでは招待ボタンと参加者一覧をハンバーガーメニューへ移し、広い画面では見出しに戻す
+  bindMenu() {
+    const moves = [
+      { node: $("invite-open"), wide: $("room-actions"), narrow: $("menu-actions") },
+      { node: $("players-row"), wide: $("players-slot"), narrow: $("menu-players") },
+    ];
+    watchCompact(matchMedia(COMPACT_LAYOUT), (compact) => {
+      placeChrome(compact, moves);
+      if (!compact && $("room-menu").open) $("room-menu").close();
+    });
+    $("menu-open").addEventListener("click", () => $("room-menu").showModal());
+    $("menu-close").addEventListener("click", () => $("room-menu").close());
   }
 
   bindControls() {
@@ -478,6 +565,7 @@ class RoomPage {
   }
 
   async openInvite() {
+    if ($("room-menu").open) $("room-menu").close();
     const url = `${location.origin}/r/${this.code}`;
     $("invite-code").textContent = this.code;
     $("invite-url").textContent = url;
