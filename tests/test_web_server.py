@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import json
 import re
 
 import pytest
@@ -77,7 +78,7 @@ async def wait_until(predicate):
 
 async def test_index_is_served_for_top_and_room_paths_without_caching(static_dir):
     async with serve(static_dir) as client:
-        for path in ("/", "/r/K7Q2MX"):
+        for path in ("/", "/r/K7Q2MX", "/r/K7Q2MX/"):
             response = await client.get(path)
             assert response.status == 200
             assert "テスト" in await response.text()
@@ -149,6 +150,18 @@ async def test_reconnect_during_judging_gets_pending_entry_then_result(static_di
         await receive_until(late, is_entry("果物ですか？"))
 
 
+async def test_japanese_is_sent_without_unicode_escapes(static_dir):
+    # 無料枠の外向き通信を抑えるため、日本語を \uXXXX に膨らませない
+    async with serve(static_dir) as client:
+        code = await create_room(client)
+        ws = await client.ws_connect(f"/r/{code}/ws")
+        await ws.send_json({"type": "join", "name": "はなこ", "token": None})
+        await ws.receive_str()
+        snapshot = await ws.receive_str()
+        assert "はなこ" in snapshot
+        assert "\\u" not in snapshot
+
+
 async def test_unknown_room_is_closed_with_4404(static_dir):
     async with serve(static_dir) as client:
         ws = await client.ws_connect("/r/ZZZZZZ/ws")
@@ -209,7 +222,7 @@ class FakeWs:
         self.gate = gate
         self.close_code: int | None = None
 
-    async def send_json(self, message: dict) -> None:
+    async def send_json(self, message: dict, *, dumps=json.dumps) -> None:
         if self.gate is not None:
             await self.gate.wait()
         if self.fail:

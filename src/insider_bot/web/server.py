@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import json
 import logging
 import weakref
@@ -34,6 +35,9 @@ _JOIN_ERRORS: dict[type[Exception], tuple[int, bytes]] = {
     RoomFull: (CLOSE_FULL, b"room full"),
     InvalidName: (CLOSE_BAD_REQUEST, b"invalid name"),
 }
+
+# 日本語を \uXXXX に膨らませない（無料枠の外向き通信を抑えるため）
+_dumps = functools.partial(json.dumps, ensure_ascii=False)
 
 HUB = web.AppKey("hub", RoomHub)
 STATIC = web.AppKey("static_dir", Path)
@@ -73,7 +77,7 @@ class WsConnection:
     async def _send_loop(self) -> None:
         try:
             while True:
-                await self._ws.send_json(await self._queue.get())
+                await self._ws.send_json(await self._queue.get(), dumps=_dumps)
         except asyncio.CancelledError:
             raise
         except Exception as error:
@@ -192,6 +196,8 @@ def create_app(
     app.router.add_get("/", index)
     app.router.add_post("/api/rooms", create_room)
     app.router.add_get("/r/{code}", index)
+    # 手で打った URL の末尾の / も受け付ける（画面側も /r/<番号>/ を受け付ける）
+    app.router.add_get("/r/{code}/", index)
     app.router.add_get("/r/{code}/ws", websocket)
     app.router.add_static("/static/", static_dir)
     app.on_response_prepare.append(_cache_headers)
