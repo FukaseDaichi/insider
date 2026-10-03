@@ -93,6 +93,19 @@ def test_ideographic_spaces_are_not_trimmed():
     assert second.topic == "　神　"
 
 
+def test_commands_are_matched_after_java_trim():
+    # Java の trim() は U+0020 以下の文字（空白・タブ・改行）を除いてからコマンド表と照らす
+    handler, _, villages, _ = make()
+    assert handler.handle(OWNER, " お題 ") == messages.created_reply(latest(villages).number)
+    assert latest(villages).topic is None  # お題として読まれていない
+    expected = [
+        Image("https://game.example.com/static/roles/966mpnqz.png"),
+        Text("https://line.me/R/ti/p/%40966mpnqz"),
+        Text("お友達ID\n@966mpnqz"),
+    ]
+    assert handler.handle(OWNER, "\t@配布\n") == expected
+
+
 def test_numbers_java_cannot_read_are_topics():
     # Integer.parseInt は「_」と int の範囲外を読めない。Java ではお題になる
     for text in ("1_0", "2147483648", "-2147483649", "99999999999"):
