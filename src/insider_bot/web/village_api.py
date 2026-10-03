@@ -67,15 +67,15 @@ class BadRequest(Exception):
 async def _read_body(request: web.Request) -> dict[str, Any]:
     try:
         body = await request.json()
-    except ValueError:
-        # JSON として読めない本文と、UTF-8 でない本文（UnicodeDecodeError も ValueError）
+    except (ValueError, LookupError, RecursionError):
+        # JSON でない・UTF-8 でない・charset が不明・入れ子が深すぎる
         raise BadRequest from None
     if not isinstance(body, dict):
         raise BadRequest
     # 孤立したサロゲートは UTF-8 にできず、お題に入ると以後の返事が送れなくなる
     try:
         json.dumps(body, ensure_ascii=False).encode("utf-8")
-    except UnicodeEncodeError:
+    except (UnicodeEncodeError, RecursionError):
         raise BadRequest from None
     return body
 

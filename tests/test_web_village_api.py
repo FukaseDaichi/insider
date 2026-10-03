@@ -284,6 +284,27 @@ async def test_non_json_bodies_are_rejected(page):
             assert response.status == 400, data
 
 
+async def test_bogus_charset_is_rejected(page):
+    async with serve(page) as client:
+        response = await client.post(
+            "/api/village/mine",
+            data=b'{"token": "owner-token-0123456789"}',
+            headers={"Content-Type": "application/json; charset=bogus"},
+        )
+        assert response.status == 400
+
+
+async def test_deeply_nested_json_is_rejected(page):
+    async with serve(page) as client:
+        deeply_nested = ('{"token": "owner-token-0123456789", "x": ' + "[" * 100000 + "]" * 100000 + "}").encode()
+        response = await client.post(
+            "/api/village/mine",
+            data=deeply_nested,
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status == 400
+
+
 async def test_the_token_and_the_topic_are_not_logged(page, caplog):
     with caplog.at_level(logging.DEBUG):
         async with serve(page, 0) as client:
