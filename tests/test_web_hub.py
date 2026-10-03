@@ -6,8 +6,9 @@ import pytest
 from insider_bot.game import GameManager
 from insider_bot.judge import JudgeError, Verdict
 from insider_bot.service import GameService
-from insider_bot.web.hub import RoomHub, prepare_question
+from insider_bot.web.hub import START_SOUNDS, RoomHub, prepare_question
 from insider_bot.web.rooms import InvalidName, RoomNotFound, RoomRegistry
+from insider_bot.web.server import STATIC_DIR
 from tests.fakes import FakeClock, FakeJudge
 
 CORRECT = Verdict(1.0, True, "exact")
@@ -39,13 +40,14 @@ class FakeConnection:
 
 
 class World:
-    def __init__(self, judge: FakeJudge | None = None) -> None:
+    def __init__(self, judge: FakeJudge | None = None, choose=None) -> None:
         self.clock = FakeClock()
         self.judge = judge or FakeJudge()
         self.manager = GameManager(clock=self.clock)
         service = GameService(self.manager, self.judge, clock=self.clock)
         registry = RoomRegistry(clock=self.clock, on_remove=lambda room: self.manager.end(room.room_id))
-        self.hub = RoomHub(registry, service, self.manager, clock=self.clock)
+        options = {} if choose is None else {"choose": choose}
+        self.hub = RoomHub(registry, service, self.manager, clock=self.clock, **options)
         self.room = self.hub.create_room()
 
     def join(self, name: str, token: str | None = None):
@@ -170,6 +172,27 @@ async def test_header_shows_question_count_and_elapsed_but_not_setter():
     assert asker_conn.last_room()["game"] == {"id": 1, "questions": 1, "elapsed": 30.0}
 
 
+
+async def test_start_plays_the_same_sound_for_everyone():
+    world = World(choose=lambda sounds: sounds[1])
+    setter_conn, setter = world.join("たろう")
+    asker_conn, _ = world.join("はなこ")
+    await world.hub.start(world.room, setter, "りんご", "")
+    for conn in (setter_conn, asker_conn):
+        assert conn.of("sound") == [{"type": "sound", "src": "/static/sounds/start-2.m4a"}]
+
+
+async def test_start_sound_is_not_replayed_on_join():
+    world, _, _ = await playing()
+    late_conn, _ = world.join("じろう")
+    assert late_conn.of("sound") == []
+
+
+def test_start_sounds_are_served():
+    assert len(START_SOUNDS) == 3
+    for src in START_SOUNDS:
+        assert (STATIC_DIR / src.removeprefix("/static/")).is_file()
+
 @pytest.mark.parametrize(
     ("topic", "hint", "notice"),
     [
@@ -184,6 +207,7 @@ async def test_start_rejects_invalid_lengths(topic, hint, notice):
     await world.hub.start(world.room, player, topic, hint)
     assert conn.notices() == [notice]
     assert world.manager.get(world.room.room_id) is None
+    assert conn.of("sound") == []
 
 
 async def test_near_simultaneous_starts_keep_the_first():
@@ -196,6 +220,7 @@ async def test_near_simultaneous_starts_keep_the_first():
     )
     assert world.manager.get(world.room.room_id).topic == "りんご"
     assert second_conn.notices() == ["このルームではゲームが進行中です"]
+    assert len(second_conn.of("sound")) == 1
 
 
 # --- 質問 ---

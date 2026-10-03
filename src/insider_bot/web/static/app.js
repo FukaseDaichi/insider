@@ -3,6 +3,7 @@ import { parseAnswer } from "./answer.js";
 import { AskWatch } from "./askwatch.js";
 import { renderQr, Scanner } from "./qr.js";
 import { ROOM_CODE_PATTERN } from "./roomurl.js";
+import { SoundPlayer } from "./sound.js";
 import { PushToTalk, speechSupported } from "./speech.js";
 
 const $ = (id) => document.getElementById(id);
@@ -18,6 +19,10 @@ const CLOSE_MESSAGES = {
 };
 const NO_SPEECH_HELP =
   "音声入力は Chrome / Edge / Safari で使えます（iPhone は LINE などのアプリの中ではなく Safari で開いてください）。このブラウザでは文字で質問してください";
+
+// トップページでの「入る」などの操作も音の許可に数えるため、ページを開いた時点から見張る
+const sounds = new SoundPlayer();
+sounds.unlockOn(document);
 
 function load(key) {
   try {
@@ -210,6 +215,9 @@ class RoomPage {
         break;
       case "notice":
         this.notice(message.text);
+        break;
+      case "sound":
+        sounds.play(message.src);
         break;
     }
   }

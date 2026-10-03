@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 import time
+from collections.abc import Callable, Sequence
 from typing import Any, Protocol
 
 from insider_bot import format as fmt
@@ -38,6 +40,8 @@ def prepare_question(text: str) -> str:
 # Discord 用の「最後に「？」をつけてね」は、「？」を自動で付ける Web では声で「はてな」と言わせかねない。
 # 出題者は質問者に紛れて遊ぶので、名前を出さない
 WEB_STARTED = "🎮 ゲーム開始！お題が出されました。「🎙 押して話す」で質問をどうぞ"
+# ゲーム開始の音声。同じ部屋や通話で遊んでも声が重ならないよう、サーバーが選んで全員に同じものを送る
+START_SOUNDS = tuple(f"/static/sounds/start-{n}.m4a" for n in (1, 2, 3))
 
 
 class RoomHub:
@@ -47,11 +51,13 @@ class RoomHub:
         service: GameService,
         manager: GameManager,
         clock: Clock = time.monotonic,
+        choose: Callable[[Sequence[str]], str] = random.choice,
     ) -> None:
         self._registry = registry
         self._service = service
         self._manager = manager
         self._clock = clock
+        self._choose = choose
         # 判定中のタスクが途中で回収されないよう、終わるまで参照を持つ
         self._tasks: set[asyncio.Task[None]] = set()
 
@@ -97,6 +103,8 @@ class RoomHub:
         outcome = await self._service.start(room.room_id, player.player_id, player.name, topic, hint)
         if outcome.public is not None:
             outcome = Outcome(private=outcome.private, public=WEB_STARTED)
+            # 状態ではなくその場かぎりの合図。再接続や途中参加の snapshot では鳴らさない
+            self._broadcast(room, {"type": "sound", "src": self._choose(START_SOUNDS)})
         self._apply(room, player, outcome, author=None)
 
     async def giveup(self, room: Room, player: Player) -> None:
@@ -174,7 +182,9 @@ class RoomHub:
                 conn.enqueue({"type": "room", **self._room_state(room, player)})
 
     def _broadcast_entry(self, room: Room, entry: Entry) -> None:
-        message = {"type": "entry", "entry": entry.to_message()}
+        self._broadcast(room, {"type": "entry", "entry": entry.to_message()})
+
+    def _broadcast(self, room: Room, message: dict[str, Any]) -> None:
         for conn in list(room.connections):
             conn.enqueue(message)
 
