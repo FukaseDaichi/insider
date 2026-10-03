@@ -13,7 +13,7 @@ from tests.fakes import FakeClock, FakeJudge
 CORRECT = Verdict(1.0, True, "exact")
 PENDING = "❓ 果物ですか？\n… 判定中"
 ANSWER = "❓ 果物ですか？\n✅ はい　　はい 82% ██████████░░ いいえ 18%"
-STARTED = "🎮 ゲーム開始！たろうさんがお題を出しました。「🎙 押して話す」で質問をどうぞ"
+STARTED = "🎮 ゲーム開始！お題が出されました。「🎙 押して話す」で質問をどうぞ"
 
 
 class FakeConnection:
@@ -163,11 +163,11 @@ async def test_topic_reaches_only_the_setter():
     assert again_conn.of("snapshot")[0]["room"]["you"] == {"is_setter": True, "topic": "りんご", "hint": "赤い果物"}
 
 
-async def test_header_shows_setter_question_count_and_elapsed():
+async def test_header_shows_question_count_and_elapsed_but_not_setter():
     world, _, (asker_conn, asker) = await playing()
     world.clock.advance(30)
     await world.hub.ask(world.room, asker, "果物ですか", world.game_id())
-    assert asker_conn.last_room()["game"] == {"id": 1, "setter": "たろう", "questions": 1, "elapsed": 30.0}
+    assert asker_conn.last_room()["game"] == {"id": 1, "questions": 1, "elapsed": 30.0}
 
 
 @pytest.mark.parametrize(
@@ -241,11 +241,20 @@ async def test_question_without_game_is_rejected():
     assert conn.entries() == []
 
 
-async def test_setter_cannot_ask():
-    world, (setter_conn, setter), _ = await playing()
+async def test_setter_can_ask_like_everyone():
+    world, (_, setter), (asker_conn, _) = await playing()
     await world.hub.ask(world.room, setter, "果物ですか", world.game_id())
-    assert setter_conn.notices()[-1] == "出題者は質問できません"
-    assert world.judge.calls == []
+    assert asker_conn.entries()[-1] == {"id": 2, "author": "たろう", "text": ANSWER, "pending": False}
+    assert asker_conn.last_room()["game"]["questions"] == 1
+
+
+async def test_setter_can_answer_correctly():
+    world, (_, setter), (asker_conn, _) = await playing(FakeJudge(answers={"りんご？": CORRECT}))
+    await world.hub.ask(world.room, setter, "りんご", world.game_id())
+    assert asker_conn.entries()[-1]["text"] == (
+        "🎉 正解です！お題は「りんご」でした\n正解者: たろう　質問数: 1　経過時間: 0秒"
+    )
+    assert asker_conn.last_room()["game"] is None
 
 
 async def test_question_for_previous_game_is_rejected():

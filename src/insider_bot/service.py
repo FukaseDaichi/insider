@@ -68,8 +68,13 @@ class GameService:
                 return Outcome(private=fmt.format_no_game())
             return Outcome(public=fmt.format_giveup(game))
 
-    async def handle_question(self, channel_id: int, author_id: int, author_name: str, text: str) -> Outcome:
-        """channel_id はゲームを登録したテキストチャンネルの ID。"""
+    async def handle_question(
+        self, channel_id: int, author_id: int, author_name: str, text: str, setter_can_ask: bool = False
+    ) -> Outcome:
+        """channel_id はゲームを登録したテキストチャンネルの ID。
+
+        setter_can_ask が真なら出題者の質問も判定する（Web 版は出題者を伏せて質問者に紛れ込ませる）。
+        """
         received = self._manager.get(channel_id)
         if received is None:
             return IGNORED
@@ -77,7 +82,7 @@ class GameService:
             game = self._manager.get(channel_id)
             if game is None or game.game_id != received.game_id:
                 return IGNORED
-            if author_id == game.setter_id or not is_question(text):
+            if (author_id == game.setter_id and not setter_can_ask) or not is_question(text):
                 return IGNORED
             try:
                 verdict = await self._judge.judge(game.topic, game.hint, text)

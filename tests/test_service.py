@@ -114,6 +114,13 @@ async def test_setter_and_blank_messages_are_ignored():
     assert manager.get(CH).question_count == 0
 
 
+async def test_setter_question_is_judged_when_setter_can_ask():
+    service, manager, judge, _ = await started()
+    outcome = await service.handle_question(CH, SETTER, "出題者", "果物ですか？", setter_can_ask=True)
+    assert outcome == Outcome(public="❓ 果物ですか？\n✅ はい　　はい 82% ██████████░░ いいえ 18%")
+    assert manager.get(CH).question_count == 1
+
+
 async def test_only_messages_ending_with_question_mark_are_judged():
     service, manager, judge, _ = await started()
     for chat in ("果物ですか", "りんご！", "わからない?!", "？ヒント欲しい"):

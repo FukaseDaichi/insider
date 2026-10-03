@@ -132,7 +132,6 @@ class RoomPage {
     this.connected = false;
     this.retry = 0;
     this.game = null;
-    this.isSetter = false;
     this.startedAt = 0;
     this.items = new Map();
     this.noticeTimer = null;
@@ -281,7 +280,6 @@ class RoomPage {
     if (this.game?.id !== game?.id && $("giveup-dialog").open)
       $("giveup-dialog").close();
     this.game = game;
-    this.isSetter = you.is_setter;
     // 経過時間はサーバーが送った時点の秒数から画面側で進める
     this.startedAt = game ? performance.now() / 1000 - game.elapsed : 0;
     $("players").replaceChildren(
@@ -299,11 +297,10 @@ class RoomPage {
       ? `あなただけのお題：${you.topic}${you.hint ? `　／ 補足：${you.hint}` : ""}`
       : "";
     $("start-panel").hidden = Boolean(game);
-    $("setter-panel").hidden = !game || !you.is_setter;
-    $("asker-panel").hidden = !game || you.is_setter;
+    // 出題者も質問者に紛れて遊ぶので、全員に同じ操作を出す
+    $("asker-panel").hidden = !game;
     if (game) this.closeStartForm();
-    if (!game || you.is_setter)
-      this.talk?.cancel("ゲームが終わったため取り消しました");
+    if (!game) this.talk?.cancel("ゲームが終わったため取り消しました");
     this.renderStatus();
   }
 
@@ -316,10 +313,8 @@ class RoomPage {
       0,
       Math.floor(performance.now() / 1000 - this.startedAt),
     );
-    const setter = this.isSetter ? "あなた" : this.game.setter;
     $("game-status").replaceChildren(
       ...[
-        ["出題者", setter],
         ["質問", `${this.game.questions} 回`],
         ["経過", formatElapsed(elapsed)],
       ].map(([label, value]) => {
@@ -445,7 +440,6 @@ class RoomPage {
         this.send({ type: "giveup" });
       $("giveup-dialog").close();
     });
-    $("setter-giveup").addEventListener("click", giveup);
     $("asker-giveup").addEventListener("click", giveup);
     $("mode-toggle").addEventListener("click", () => {
       this.setTextMode(!this.textMode);

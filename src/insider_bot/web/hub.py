@@ -35,9 +35,9 @@ def prepare_question(text: str) -> str:
     return f"{text}？" if text else ""
 
 
-def format_web_started(setter_name: str) -> str:
-    # Discord 用の「最後に「？」をつけてね」は、「？」を自動で付ける Web では声で「はてな」と言わせかねない
-    return f"🎮 ゲーム開始！{setter_name}さんがお題を出しました。「🎙 押して話す」で質問をどうぞ"
+# Discord 用の「最後に「？」をつけてね」は、「？」を自動で付ける Web では声で「はてな」と言わせかねない。
+# 出題者は質問者に紛れて遊ぶので、名前を出さない
+WEB_STARTED = "🎮 ゲーム開始！お題が出されました。「🎙 押して話す」で質問をどうぞ"
 
 
 class RoomHub:
@@ -96,7 +96,7 @@ class RoomHub:
             return
         outcome = await self._service.start(room.room_id, player.player_id, player.name, topic, hint)
         if outcome.public is not None:
-            outcome = Outcome(private=outcome.private, public=format_web_started(player.name))
+            outcome = Outcome(private=outcome.private, public=WEB_STARTED)
         self._apply(room, player, outcome, author=None)
 
     async def giveup(self, room: Room, player: Player) -> None:
@@ -123,9 +123,6 @@ class RoomHub:
         if game is None:
             self._notify(room, player, fmt.format_no_game())
             return
-        if game.setter_id == player.player_id:
-            self._notify(room, player, "出題者は質問できません")
-            return
         if game_id != game.game_id:
             # 押している間に次のゲームが始まっていた。前のゲームへの質問を新しいお題で判定しない
             self._notify(room, player, "ゲームが変わったため、その質問は送りませんでした")
@@ -133,7 +130,9 @@ class RoomHub:
         entry = room.add_entry(player.name, f"❓ {question}\n… 判定中", pending=True)
         self._broadcast_entry(room, entry)
         try:
-            outcome = await self._service.handle_question(room.room_id, player.player_id, player.name, question)
+            outcome = await self._service.handle_question(
+                room.room_id, player.player_id, player.name, question, setter_can_ask=True
+            )
         except Exception:
             log.exception("質問の処理に失敗しました（room=%s）", room.code)
             outcome = Outcome(public=fmt.format_error())
@@ -160,12 +159,11 @@ class RoomHub:
         if game is not None:
             header = {
                 "id": game.game_id,
-                "setter": game.setter_name,
                 "questions": game.question_count,
                 "elapsed": round(self._clock() - game.started_at, 1),
             }
             if game.setter_id == player.player_id:
-                # お題と補足は出題者の接続にだけ入れる
+                # お題と補足は出題者の接続にだけ入れる。誰が出題者かはほかの接続に送らない
                 you = {"is_setter": True, "topic": game.topic, "hint": game.hint}
         players = [{"name": p.name, "online": room.is_online(p)} for p in room.players.values()]
         return {"players": players, "game": header, "you": you}

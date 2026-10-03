@@ -680,16 +680,6 @@ body:has(.room:not([hidden])) {
   margin: 0 0 3px;
 }
 
-.setter-label {
-  text-align: center;
-}
-
-.setter-label p {
-  font-size: 12px;
-  margin: 7px 0 15px;
-  color: var(--muted);
-}
-
 .transcript {
   font-size: 14px;
   line-height: 1.7;
