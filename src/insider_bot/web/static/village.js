@@ -137,6 +137,8 @@ function initNew() {
   let startingOver = false;
   let invited = null;
   let timer = null;
+  // 配布状況の欄に最後に描いた返事。中身が同じなら描き直さない（読み上げの繰り返しとフォーカスの喪失を避ける）
+  let shownStatus = null;
 
   function stepOf(owned) {
     if (owned === null || startingOver) return "step-kind";
@@ -162,8 +164,17 @@ function initNew() {
       return; // 次の更新で取り直す
     }
     if (village === null || village.number !== number) return;
-    renderReplies($("status-replies"), body.replies, onStatusAction);
-    if (body.village?.number === number) {
+    showStatus(body);
+  }
+
+  // 配布状況の返事を欄に描く。変わっていなければ描き直さず、自分の村の要約が付いていれば村とオーナーのボタンを更新する
+  function showStatus(body) {
+    const serialized = JSON.stringify(body.replies);
+    if (serialized !== shownStatus) {
+      shownStatus = serialized;
+      renderReplies($("status-replies"), body.replies, onStatusAction);
+    }
+    if (village !== null && body.village?.number === village.number) {
       village = body.village;
       updateOwnerButtons(village);
     }
@@ -173,11 +184,7 @@ function initNew() {
   async function onStatusAction(action) {
     const body = await run(message, () => actionCall(action));
     if (body === null) return;
-    renderReplies($("status-replies"), body.replies, onStatusAction);
-    if (village !== null && body.village?.number === village.number) {
-      village = body.village;
-      updateOwnerButtons(village);
-    }
+    showStatus(body);
   }
 
   function startStatus() {
@@ -185,6 +192,7 @@ function initNew() {
     if (invited !== village.number) {
       invited = village.number;
       $("status-replies").replaceChildren();
+      shownStatus = null;
       showInvite(village.number, { canvas: $("status-qr"), url: $("status-url"), copy: $("status-copy"), message });
     }
     updateOwnerButtons(village);
