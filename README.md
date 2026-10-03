@@ -41,6 +41,14 @@ uv run --env-file .env python -m insider_bot.web   # http://localhost:8080 を�
 
 `localhost` 以外からマイクを使うには HTTPS が必要です。
 
+### インサイダーの配役
+
+Web 版の `/village`（トップページの「インサイダーの配役」）で、LINE Bot と同じように役職とお題を配れます。
+
+1. 「村を作る」で種類・お題・人数を決め、表示された村番号か QR を参加者に伝える
+2. 参加者は `/village` で村番号を入れるか QR を読み取り、自分の役職を見る（同じブラウザなら、もう一度開いても同じ役職）
+3. 「特殊村を作る」では、1 行 1 通で入れたメッセージを、参加した人に 1 通ずつ配れる
+
 ### 仲間と遊ぶとき（Mac で起動して公開する）
 
 Discord ボットと Web 版をまとめて起動し、Web 版を Tailscale Funnel で公開します（構成の考え方は [docs/infra.md](docs/infra.md)）。
@@ -87,6 +95,8 @@ uv run --env-file .env python -m insider_bot
 | `JEV_TIMEOUT_SECONDS` | | 10 | Jev 呼び出しのタイムアウト秒数 |
 | `WEB_HOST` | | 127.0.0.1 | Web 版が待ち受けるアドレス |
 | `WEB_PORT` | | 8080 | Web 版が待ち受けるポート |
+| `PUBLIC_BASE_URL` | | — | Web 版の公開 URL（例 `https://game.example.com`）。配役ツールの役職画像と特殊村フォームの URL に使う。未設定ならサイト内のパス |
+| `ILLUSTRATION_CATALOG_URL` | | — | 役職画像の外部カタログ（Google Apps Script のデプロイ URL）。設定すると 5 分ごとに取り直す |
 
 ## 開発
 
