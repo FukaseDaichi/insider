@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import random
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 from insider_bot.village import messages
 from insider_bot.village.illust import Illustrations
@@ -19,6 +20,21 @@ from insider_bot.village.registry import SpecialVillageRegistry, VillageRegistry
 from insider_bot.village.reply import Reply
 from insider_bot.village.werewords import MIN_WEREWORDS_SIZE, werewords_messages
 from insider_bot.village.words import BEGINNER_RANK, Dictionary
+
+
+@dataclass(frozen=True)
+class OwnedVillage:
+    """オーナーから見た、自分の最新の村の進み具合。画面が次に聞くこと（お題・人数）を決めるのに使う。
+
+    お題そのものは持たない（配布状況の返事で本人には見える）。
+    """
+
+    number: int
+    mode: str
+    has_topic: bool
+    size: int
+    member_count: int
+    reverse: bool
 
 
 class VillageService:
@@ -142,3 +158,25 @@ class VillageService:
 
     def pick_topic(self, rank: int) -> str | None:
         return self._dictionary.pick(rank, self._rng)
+
+    # --- オーナーから見た村 ---
+
+    def latest_owned(self, user_id: str) -> OwnedVillage | None:
+        """利用者がオーナーの、最も新しい村の要約。作成の直後に呼べば、いま作った村を指す。"""
+        village = self._villages.find_latest_owned(user_id, lambda v: True)
+        if village is None:
+            return None
+        if village.random_mode:
+            mode = "random"
+        elif village.has_game_master():
+            mode = "god"
+        else:
+            mode = "normal"
+        return OwnedVillage(
+            number=village.number,
+            mode=mode,
+            has_topic=village.topic is not None,
+            size=village.size,
+            member_count=village.member_count(),
+            reverse=village.reverse,
+        )

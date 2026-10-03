@@ -266,3 +266,44 @@ def test_text_commands_and_structured_operations_answer_the_same_script_the_same
     assert len(through_text) == len(SCRIPT)
     for text, a, b in zip(SCRIPT, through_text, through_service):
         assert normalize(a) == normalize(b), f"入力『{text}』への応答が経路で異なる"
+
+
+# --- ポストバック ---
+
+
+def test_postback_0_to_9_offers_a_topic_candidate_without_a_user():
+    handler, _, _, _ = make(0, 0)
+    assert handler.postback(None, "2") == messages.candidate_reply("a")
+    # 0 は「お題の自動取得」。2・3・4 以外は指定なしの範囲
+    assert handler.postback(OWNER, "0") == messages.candidate_reply("a")
+
+
+def test_postback_with_a_village_number_shows_the_status():
+    handler, _, villages, _ = make(0)
+    handler.handle(OWNER, "お題")
+    handler.handle(OWNER, "2")
+    number = latest(villages).number
+    handler.handle(MEMBER, str(number))
+    assert handler.postback(MEMBER, str(number)) == messages.status_reply(latest(villages), MEMBER)
+
+
+def test_postback_with_a_special_village_number_shows_the_special_status():
+    handler, service, _, specials = make()
+    number = service.create_special_village(["a", "b"])
+    handler.handle(MEMBER, str(number))
+    assert handler.postback(MEMBER, str(number)) == messages.status_reply(specials.get(number), MEMBER)
+
+
+def test_postback_without_a_user_is_refused_unless_it_is_a_topic_candidate():
+    handler, _, villages, _ = make()
+    handler.handle(OWNER, "お題")
+    assert handler.postback(None, str(latest(villages).number)) == [
+        Text("ユーザーを識別できないため操作できません。\nbotとの1対1のトークから操作してください。")
+    ]
+
+
+def test_postback_for_unknown_or_unreadable_data_is_none():
+    handler, _, _, _ = make()
+    # 「１０」は全角でも数値（10）として読み、該当する村がない。「 3」は前後の空白を除かないので読めない
+    for data in ("1234", "99999", "-5", "すいか", "", " 3", "１０"):
+        assert handler.postback(OWNER, data) is None, data

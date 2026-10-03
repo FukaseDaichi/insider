@@ -244,3 +244,9 @@ def test_simple_text_replies():
     assert messages.size_error_reply() == [Text(texts.ERR_NUMSET_MESSAGE)]
     assert messages.full_reply() == [Text("村がいっぱいです。")]
     assert messages.random_numset_reply() == [Text(texts.RANDOM_NUMSET_MESSAGE)]
+
+
+def test_guide_reply_is_the_default_message_text():
+    assert messages.guide_reply() == [
+        Text("お題を配りたい方は「お題」または「神」を、\nお題及び役職を確認したい場合は村番号（数字4桁）を入力してください。")
+    ]

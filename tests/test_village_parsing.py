@@ -1,6 +1,6 @@
 import pytest
 
-from insider_bot.village.parsing import java_split, java_trim, parse_java_int
+from insider_bot.village.parsing import java_length, java_split, java_trim, parse_java_int
 
 
 @pytest.mark.parametrize(
@@ -53,3 +53,12 @@ def test_split_drops_trailing_empty_parts():
     assert java_split("GM__a", "_") == ["GM", "", "a"]
     assert java_split("", "_") == [""]
     assert java_split("_", "_") == []
+
+
+def test_java_length_counts_utf16_code_units():
+    assert java_length("") == 0
+    assert java_length("abc") == 3
+    assert java_length("あいう") == 3
+    # 絵文字はサロゲートペアなので 2
+    assert java_length("😀") == 2
+    assert java_length("a😀b") == 4

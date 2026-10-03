@@ -59,3 +59,8 @@ def java_split(text: str, separator: str) -> list[str]:
     while parts and parts[-1] == "":
         parts.pop()
     return parts
+
+
+def java_length(text: str) -> int:
+    """Java の String.length() と同じく UTF-16 の符号単位で数える（絵文字は 2）。LINE の文字数の上限はこの数え方。"""
+    return len(text.encode("utf-16-le")) // 2

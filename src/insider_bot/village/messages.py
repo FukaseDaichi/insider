@@ -161,3 +161,8 @@ def full_reply() -> list[Reply]:
 
 def random_numset_reply() -> list[Reply]:
     return [Text(texts.RANDOM_NUMSET_MESSAGE)]
+
+
+def guide_reply() -> list[Reply]:
+    """Web の入口の既定応答（対象の村がないとき）。LINE の確認テンプレートの代替文と同じ案内文を出す。"""
+    return [Text(texts.DEFAULT_MESSAGE)]

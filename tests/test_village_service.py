@@ -4,7 +4,7 @@ from insider_bot.village import messages
 from insider_bot.village.illust import Illustrations
 from insider_bot.village.model import Role
 from insider_bot.village.registry import SpecialVillageRegistry, VillageRegistry
-from insider_bot.village.service import VillageService
+from insider_bot.village.service import OwnedVillage, VillageService
 from insider_bot.village.words import BEGINNER_RANK, parse_dictionary
 from tests.fakes import FixedRandom
 
@@ -336,3 +336,31 @@ def test_werewords_does_not_fall_back_to_an_older_eligible_village():
 def test_pick_topic_delegates_to_the_dictionary():
     service, _, _, _ = make(0)
     assert service.pick_topic(BEGINNER_RANK) == "a"
+
+
+# --- オーナーから見た村 ---
+
+
+def test_latest_owned_follows_the_setup_of_the_newest_village():
+    service, villages, _, _ = make(0)
+    assert service.latest_owned(OWNER) is None
+    service.create_village(OWNER, god_mode=False)
+    number = latest(villages).number
+    assert service.latest_owned(OWNER) == OwnedVillage(number, "normal", False, 0, 0, False)
+    service.set_topic(OWNER, "すいか")
+    service.set_size(OWNER, 2)
+    service.join_village("line:m1", number)
+    assert service.latest_owned(OWNER) == OwnedVillage(number, "normal", True, 2, 1, False)
+
+
+def test_latest_owned_reports_the_mode_and_reverse():
+    service, _, _, _ = make(0)
+    service.create_village(OWNER, god_mode=True)
+    assert service.latest_owned(OWNER).mode == "god"
+    service.create_village(OWNER, god_mode=False)
+    service.set_reverse(OWNER)
+    assert service.latest_owned(OWNER).reverse
+    service.create_random_village(OWNER)
+    owned = service.latest_owned(OWNER)
+    assert (owned.mode, owned.has_topic) == ("random", True)
+    assert service.latest_owned("line:other") is None
