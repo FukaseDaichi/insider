@@ -1,4 +1,5 @@
 // 画面全体: トップページ、名前の入力、ルーム画面（WebSocket の接続と再接続）
+import { parseAnswer } from "./answer.js";
 import { AskWatch } from "./askwatch.js";
 import { renderQr, Scanner } from "./qr.js";
 import { ROOM_CODE_PATTERN } from "./roomurl.js";
@@ -35,7 +36,9 @@ function save(key, value) {
 }
 
 function showPage(id) {
-  for (const page of document.querySelectorAll(".page")) page.hidden = page.id !== id;
+  for (const page of document.querySelectorAll(".page"))
+    page.hidden = page.id !== id;
+  document.body.dataset.page = id;
 }
 
 function showFatal(message) {
@@ -48,7 +51,9 @@ function formatElapsed(totalSeconds) {
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
   const pad = (n) => String(n).padStart(2, "0");
-  return hours ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
+  return hours
+    ? `${hours}:${pad(minutes)}:${pad(seconds)}`
+    : `${minutes}:${pad(seconds)}`;
 }
 
 function initHome() {
@@ -58,6 +63,11 @@ function initHome() {
     event.preventDefault();
     const name = $("home-name").value.trim();
     if (!name) return;
+    const button = $("create-room");
+    if (button.disabled) return;
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    button.querySelector("span").textContent = "ルームを準備中…";
     save(NAME_KEY, name);
     $("home-message").textContent = "";
     let response = null;
@@ -67,15 +77,24 @@ function initHome() {
       // 下でまとめて案内する
     }
     if (!response?.ok) {
-      $("home-message").textContent = "今はルームを作れません。しばらくしてからどうぞ";
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      button.querySelector("span").textContent = "ルームを作る";
+      $("home-message").textContent =
+        "今はルームを作れません。しばらくしてからどうぞ";
       return;
     }
     const { code } = await response.json();
     location.href = `/r/${code}?invite=1`;
   });
-  const scanner = new Scanner($("scanner"), $("scanner-video"), $("scanner-message"), (code) => {
-    location.href = `/r/${code}`;
-  });
+  const scanner = new Scanner(
+    $("scanner"),
+    $("scanner-video"),
+    $("scanner-message"),
+    (code) => {
+      location.href = `/r/${code}`;
+    },
+  );
   $("scan-open").addEventListener("click", () => scanner.open());
   $("scanner-close").addEventListener("click", () => scanner.close());
 }
@@ -137,6 +156,7 @@ class RoomPage {
   start() {
     showPage("room");
     $("room-code").textContent = this.code;
+    document.title = `ルーム ${this.code} — INSIDER`;
     this.bindControls();
     if (!speechSupported) {
       $("speech-help").textContent = NO_SPEECH_HELP;
@@ -155,9 +175,13 @@ class RoomPage {
     const ws = new WebSocket(`${scheme}://${location.host}/r/${this.code}/ws`);
     this.ws = ws;
     ws.addEventListener("open", () => {
-      ws.send(JSON.stringify({ type: "join", name: this.name, token: this.token }));
+      ws.send(
+        JSON.stringify({ type: "join", name: this.name, token: this.token }),
+      );
     });
-    ws.addEventListener("message", (event) => this.receive(JSON.parse(event.data)));
+    ws.addEventListener("message", (event) =>
+      this.receive(JSON.parse(event.data)),
+    );
     ws.addEventListener("close", (event) => {
       // reconnectNow で見切った古い接続の close は無視する
       if (this.ws === ws) this.closed(event.code);
@@ -198,7 +222,8 @@ class RoomPage {
       return;
     }
     $("offline").textContent = "再接続中…";
-    const delay = RETRY_DELAYS_MS[Math.min(this.retry, RETRY_DELAYS_MS.length - 1)];
+    const delay =
+      RETRY_DELAYS_MS[Math.min(this.retry, RETRY_DELAYS_MS.length - 1)];
     this.retry += 1;
     setTimeout(() => this.connect(), delay);
   }
@@ -220,7 +245,9 @@ class RoomPage {
   }
 
   askLost(text) {
-    this.notice("質問が届いていない可能性があります。通信を確かめて、もう一度どうぞ");
+    this.notice(
+      "質問が届いていない可能性があります。通信を確かめて、もう一度どうぞ",
+    );
     this.setTextMode(true);
     $("text-input").value = text;
     this.reconnectNow();
@@ -238,14 +265,19 @@ class RoomPage {
   setConnected(connected) {
     this.connected = connected;
     $("offline").hidden = connected;
-    for (const control of $("controls").querySelectorAll("button:not(#talk), input, textarea")) {
+    for (const control of $("controls").querySelectorAll(
+      "button:not(#talk), input, textarea",
+    )) {
       control.disabled = !connected;
     }
     // 押して話すボタンは disabled にせず、新しく押し始められないようにするだけ（speech.js の enabled）
     if (this.talk) this.talk.enabled = connected;
+    $("giveup-confirm").disabled = !connected;
   }
 
   renderRoom({ players, game, you }) {
+    if (this.game?.id !== game?.id && $("giveup-dialog").open)
+      $("giveup-dialog").close();
     this.game = game;
     this.isSetter = you.is_setter;
     // 経過時間はサーバーが送った時点の秒数から画面側で進める
@@ -255,38 +287,61 @@ class RoomPage {
         const item = document.createElement("span");
         item.className = player.online ? "player online" : "player";
         item.textContent = player.name;
+        item.title = `${player.name}：${player.online ? "接続中" : "オフライン"}`;
         return item;
       }),
     );
     const secret = $("secret");
     secret.hidden = !you.is_setter;
-    secret.textContent = you.is_setter ? `🤫 お題「${you.topic}」${you.hint ? `　補足: ${you.hint}` : ""}` : "";
+    secret.textContent = you.is_setter
+      ? `あなただけのお題：${you.topic}${you.hint ? `　／ 補足：${you.hint}` : ""}`
+      : "";
     $("start-panel").hidden = Boolean(game);
     $("setter-panel").hidden = !game || !you.is_setter;
     $("asker-panel").hidden = !game || you.is_setter;
     if (game) this.closeStartForm();
-    if (!game || you.is_setter) this.talk?.cancel("ゲームが終わったため取り消しました");
+    if (!game || you.is_setter)
+      this.talk?.cancel("ゲームが終わったため取り消しました");
     this.renderStatus();
   }
 
   renderStatus() {
     if (!this.game) {
-      $("game-status").textContent = "ゲームは始まっていません。誰かが「お題を出す」から始めます";
+      $("game-status").textContent = "準備中 — 仲間を招いて、お題をひとつ。";
       return;
     }
-    const elapsed = Math.max(0, Math.floor(performance.now() / 1000 - this.startedAt));
+    const elapsed = Math.max(
+      0,
+      Math.floor(performance.now() / 1000 - this.startedAt),
+    );
     const setter = this.isSetter ? "あなた" : this.game.setter;
-    $("game-status").textContent = `出題者 ${setter}・質問 ${this.game.questions}・${formatElapsed(elapsed)}`;
+    $("game-status").replaceChildren(
+      ...[
+        ["出題者", setter],
+        ["質問", `${this.game.questions} 回`],
+        ["経過", formatElapsed(elapsed)],
+      ].map(([label, value]) => {
+        const stat = document.createElement("span");
+        stat.append(label);
+        const strong = document.createElement("span");
+        strong.className = "status-value";
+        strong.textContent = value;
+        stat.append(strong);
+        return stat;
+      }),
+    );
   }
 
   renderLog(entries) {
     this.items.clear();
     $("log").replaceChildren();
+    $("empty-room").hidden = entries.length > 0;
     for (const entry of entries) this.upsertEntry(entry);
   }
 
   upsertEntry(entry) {
     const log = $("log");
+    $("empty-room").hidden = true;
     const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
     let item = this.items.get(entry.id);
     if (!item) {
@@ -300,7 +355,11 @@ class RoomPage {
         oldest.remove();
       }
     }
-    item.className = entry.pending ? "entry pending" : "entry";
+    item.className = entry.pending
+      ? "entry pending"
+      : entry.author
+        ? "entry"
+        : "entry system";
     const parts = [];
     if (entry.author) {
       const author = document.createElement("span");
@@ -308,10 +367,43 @@ class RoomPage {
       author.textContent = entry.author;
       parts.push(author);
     }
-    const text = document.createElement("span");
-    text.className = "text";
-    text.textContent = entry.text;
-    parts.push(text);
+    const answer = !entry.pending && parseAnswer(entry.text);
+    if (answer) {
+      item.classList.add("answer-entry");
+      const question = document.createElement("p");
+      question.className = "answer-question";
+      question.textContent = answer.question;
+      const result = document.createElement("div");
+      result.className = "answer-result";
+      const verdict = document.createElement("strong");
+      verdict.className = answer.positive ? "verdict yes" : "verdict no";
+      verdict.textContent = answer.positive ? "はい" : "いいえ";
+      const scale = document.createElement("div");
+      scale.className = "answer-scale";
+      const labels = document.createElement("div");
+      labels.className = "answer-labels";
+      for (const label of [`はい ${answer.yes}%`, `いいえ ${answer.no}%`]) {
+        const part = document.createElement("span");
+        part.textContent = label;
+        labels.append(part);
+      }
+      const meter = document.createElement("meter");
+      meter.min = 0;
+      meter.max = 100;
+      meter.value = answer.yes;
+      meter.setAttribute("aria-label", "はいの割合");
+      meter.textContent = `${answer.yes}%`;
+      scale.append(labels, meter);
+      result.append(verdict, scale);
+      parts.push(question, result);
+    } else {
+      const text = document.createElement("span");
+      text.className = "text";
+      text.textContent = entry.text;
+      parts.push(text);
+      if (entry.text.startsWith("🎉 正解です！"))
+        item.classList.add("celebration");
+    }
     item.replaceChildren(...parts);
     if (atBottom) log.scrollTop = log.scrollHeight;
   }
@@ -325,22 +417,38 @@ class RoomPage {
       $("start-form").hidden = false;
       $("topic").focus();
     });
-    $("start-cancel").addEventListener("click", () => this.closeStartForm());
+    $("start-cancel").addEventListener("click", () => {
+      this.closeStartForm();
+      $("start-open").focus();
+    });
     $("start-form").addEventListener("submit", (event) => {
       event.preventDefault();
       const topic = $("topic").value.trim();
       if (!topic) return;
-      if (!this.send({ type: "start", topic, hint: $("hint").value.trim() })) return;
+      if (!this.send({ type: "start", topic, hint: $("hint").value.trim() }))
+        return;
       $("topic").value = "";
       $("hint").value = "";
       this.closeStartForm();
     });
     const giveup = () => {
-      if (confirm("ギブアップしてお題を公開しますか？")) this.send({ type: "giveup" });
+      this.giveupGameId = this.game?.id;
+      $("giveup-dialog").showModal();
     };
+    $("giveup-cancel").addEventListener("click", () =>
+      $("giveup-dialog").close(),
+    );
+    $("giveup-confirm").addEventListener("click", () => {
+      if (this.game && this.game.id === this.giveupGameId)
+        this.send({ type: "giveup" });
+      $("giveup-dialog").close();
+    });
     $("setter-giveup").addEventListener("click", giveup);
     $("asker-giveup").addEventListener("click", giveup);
-    $("mode-toggle").addEventListener("click", () => this.setTextMode(!this.textMode));
+    $("mode-toggle").addEventListener("click", () => {
+      this.setTextMode(!this.textMode);
+      $(this.textMode ? "text-input" : "talk").focus();
+    });
     $("text-form").addEventListener("submit", (event) => {
       event.preventDefault();
       const text = $("text-input").value.trim();
@@ -359,7 +467,9 @@ class RoomPage {
     this.textMode = on || !speechSupported;
     $("voice").hidden = this.textMode;
     $("text-form").hidden = !this.textMode;
-    $("mode-toggle").textContent = this.textMode ? "🎙 声で質問" : "⌨ 文字で質問";
+    $("mode-toggle").textContent = this.textMode
+      ? "声で質問に切り替え"
+      : "文字で質問に切り替え";
     if (this.textMode) this.talk?.cancel();
   }
 
@@ -372,7 +482,8 @@ class RoomPage {
     try {
       await renderQr($("invite-qr"), url);
     } catch {
-      $("invite-message").textContent = "QR コードを表示できませんでした。URL を共有してください";
+      $("invite-message").textContent =
+        "QR コードを表示できませんでした。URL を共有してください";
     }
   }
 
@@ -381,7 +492,8 @@ class RoomPage {
       await navigator.clipboard.writeText(`${location.origin}/r/${this.code}`);
       $("invite-message").textContent = "コピーしました";
     } catch {
-      $("invite-message").textContent = "コピーできませんでした。URL を長押ししてコピーしてください";
+      $("invite-message").textContent =
+        "コピーできませんでした。URL を長押ししてコピーしてください";
     }
   }
 
@@ -394,12 +506,19 @@ class RoomPage {
   }
 }
 
+// 共通のガイドは、ホーム・参加・ゲーム中のどこからでも参照できる。
+for (const button of document.querySelectorAll("[data-rules-open]")) {
+  button.addEventListener("click", () => $("rules").showModal());
+}
+$("rules-close").addEventListener("click", () => $("rules").close());
+
 const match = /^\/r\/([^/]+)\/?$/.exec(location.pathname);
 if (!match) {
   initHome();
 } else {
   const code = match[1].toUpperCase();
-  if (!ROOM_CODE_PATTERN.test(code)) showFatal("ルームが見つかりません（URL を確かめてください）");
+  if (!ROOM_CODE_PATTERN.test(code))
+    showFatal("ルームが見つかりません（URL を確かめてください）");
   else if (code !== match[1]) location.replace(`/r/${code}${location.search}`);
   else initRoom(code);
 }

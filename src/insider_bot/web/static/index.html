@@ -1,116 +1,397 @@
 <!doctype html>
 <html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="color-scheme" content="light dark">
-  <title>お題当てゲーム</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <script type="module" src="/static/app.js"></script>
-</head>
-<body>
-  <main>
-    <section id="home" class="page" hidden>
-      <h1>お題当てゲーム</h1>
-      <p class="lead">出題者のお題を、はい・いいえで答えられる質問で当てるゲームです。</p>
-      <form id="home-form" class="stack">
-        <label class="field">名前
-          <input id="home-name" maxlength="20" autocomplete="nickname" required>
-        </label>
-        <button type="submit" class="primary">ルームを作る</button>
-      </form>
-      <button id="scan-open" type="button" class="secondary wide">📷 QR で参加</button>
-      <p id="home-message" class="message" role="status"></p>
-    </section>
-
-    <section id="name-page" class="page" hidden>
-      <h1>ルーム <span id="name-room-code"></span> に参加</h1>
-      <form id="name-form" class="stack">
-        <label class="field">名前
-          <input id="name-input" maxlength="20" autocomplete="nickname" required>
-        </label>
-        <button type="submit" class="primary">参加する</button>
-      </form>
-    </section>
-
-    <section id="room" class="page room" hidden>
-      <header class="room-header">
-        <div class="room-title">
-          <span>ルーム <strong id="room-code"></strong></span>
-          <button id="invite-open" type="button" class="secondary small">招待</button>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#f1efe7" />
+    <meta
+      name="description"
+      content="ひとつの秘密を、みんなの質問で。声でつながる、お題当てゲーム INSIDER。ルームを作って、仲間と推理を始めよう。"
+    />
+    <title>INSIDER — ひとつの秘密を、みんなの質問で。</title>
+    <link rel="icon" href="/static/mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/style.css" />
+    <script type="module" src="/static/app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">コンテンツへ</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="INSIDER ホーム"
+        ><span class="brand-mark" aria-hidden="true"></span>INSIDER<span
+          class="brand-dot"
+          aria-hidden="true"
+          >✳</span
+        ></a
+      >
+      <span class="header-caption"
+        >A LITTLE MYSTERY. A LOT OF CONVERSATION.</span
+      >
+      <button class="rules-link" type="button" data-rules-open>
+        遊び方 <span aria-hidden="true">↗</span>
+      </button>
+    </header>
+    <main id="main">
+      <section id="home" class="page home" hidden>
+        <div class="hero-copy">
+          <p class="eyebrow">
+            <span class="signal-dot"></span> THE CONVERSATION GAME
+            <span class="edition">VOL. 01</span>
+          </p>
+          <h1>
+            その質問が、<br />秘密を<span class="serif-word">ほどく。</span>
+          </h1>
+          <p class="lead">
+            ひとつのお題。手がかりは「はい」と「いいえ」。<br />声を重ねて、みんなで答えにたどり着こう。
+          </p>
+          <div class="entry-panel">
+            <form id="home-form" class="stack">
+              <label class="field" for="home-name"
+                ><span
+                  >まずは、あなたの呼び名を
+                  <span class="field-note">20文字まで</span></span
+                >
+                <input
+                  id="home-name"
+                  maxlength="20"
+                  autocomplete="nickname"
+                  placeholder="ニックネーム"
+                  required
+                />
+              </label>
+              <button
+                id="create-room"
+                type="submit"
+                class="primary arrow-button"
+              >
+                <span>ルームを作る</span><span aria-hidden="true">↗</span>
+              </button>
+            </form>
+            <button id="scan-open" type="button" class="secondary wide">
+              <span class="scan-icon" aria-hidden="true">⌗</span> QR で参加
+            </button>
+            <p class="entry-note">
+              登録不要 <span>／</span> URL を送るだけで、集まれる。
+            </p>
+            <p id="home-message" class="message" role="status"></p>
+          </div>
         </div>
-        <p id="game-status" class="game-status"></p>
-        <p id="players" class="players"></p>
-        <p id="secret" class="secret" hidden></p>
-        <p id="offline" class="offline" role="status" hidden></p>
-      </header>
-      <ol id="log" class="log" aria-live="polite"></ol>
-      <footer id="controls" class="controls">
-        <p id="notice" class="notice" role="status"></p>
-
-        <div id="start-panel" hidden>
-          <button id="start-open" type="button" class="primary wide">お題を出す</button>
-          <form id="start-form" class="stack" hidden>
-            <label class="field">お題（50文字まで）
-              <input id="topic" maxlength="50" autocomplete="off" required>
-            </label>
-            <label class="field">補足（任意・300文字まで）
-              <textarea id="hint" maxlength="300" rows="2"></textarea>
-            </label>
-            <div class="row">
-              <button type="submit" class="primary">開始</button>
-              <button id="start-cancel" type="button" class="secondary">やめる</button>
+        <div
+          class="hero-art"
+          aria-label="裏返された秘密のカードと、はい・いいえのカードのイラスト"
+          role="img"
+        >
+          <div class="art-orbit orbit-one"></div>
+          <div class="art-orbit orbit-two"></div>
+          <span class="art-coordinate">FIG. 01 — THE UNKNOWN</span>
+          <div class="answer-card card-no">
+            <span>02 / ANSWER</span><strong>NO<span>いいえ</span></strong
+            ><i aria-hidden="true">↙</i>
+          </div>
+          <div class="answer-card card-yes">
+            <span>01 / ANSWER</span><strong>YES<span>はい</span></strong
+            ><i aria-hidden="true">↗</i>
+          </div>
+          <div class="mystery-card">
+            <div class="card-top"><span>INSIDER</span><span>✳</span></div>
+            <div class="eye"><div class="eye-pupil">?</div></div>
+            <p>ONLY ONE KNOWS.</p>
+            <div class="card-bottom">
+              <span>ひみつのお題</span><span>001</span>
             </div>
-          </form>
-        </div>
-
-        <div id="setter-panel" hidden>
-          <p class="center">あなたは出題者です</p>
-          <button id="setter-giveup" type="button" class="secondary wide">ギブアップ（お題を公開）</button>
-        </div>
-
-        <div id="asker-panel" hidden>
-          <p id="transcript" class="transcript"></p>
-          <div id="voice" class="voice">
-            <button id="talk" type="button" class="talk">🎙 押して話す</button>
-            <p class="hint">離すと送信／外で離すと取消（PC はスペースキー長押し）</p>
           </div>
-          <form id="text-form" class="row" hidden>
-            <input id="text-input" maxlength="200" autocomplete="off" placeholder="質問（例: 果物ですか）">
-            <button type="submit" class="primary">送信</button>
-          </form>
-          <p id="speech-help" class="hint" hidden></p>
-          <div class="row links">
-            <button id="mode-toggle" type="button" class="link">⌨ 文字で質問</button>
-            <button id="asker-giveup" type="button" class="link">ギブアップ</button>
+          <span class="art-spark spark-one" aria-hidden="true">✳</span
+          ><span class="art-spark spark-two" aria-hidden="true">+</span>
+          <p class="art-caption">
+            THE ANSWER IS IN THE CONVERSATION.<br /><span
+              >答えは、会話のなかに。</span
+            >
+          </p>
+        </div>
+        <div class="how-strip" aria-label="ゲームの流れ">
+          <div class="strip-intro">
+            <span class="eyebrow">HOW TO PLAY</span
+            ><span>3つのステップで、始めよう。</span>
+          </div>
+          <div class="step">
+            <span class="step-number">01</span>
+            <div>
+              <h2>仲間を招く</h2>
+              <p>URL や QR で、同じルームへ。</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-number">02</span>
+            <div>
+              <h2>秘密を決める</h2>
+              <p>ひとりが、こっそりお題を設定。</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-number">03</span>
+            <div>
+              <h2>声で、探る</h2>
+              <p>質問を重ねて、答えを見つけよう。</p>
+            </div>
           </div>
         </div>
-      </footer>
-    </section>
+        <footer class="home-footer">
+          <span>LESS SCROLLING, MORE TALKING.</span>
+          <p>仲間との通話は Discord や Zoom で。</p>
+          <span>INSIDER / お題当てゲーム</span>
+        </footer>
+      </section>
 
-    <section id="fatal" class="page" hidden>
-      <p id="fatal-message"></p>
-      <a href="/" class="button primary">トップページへ</a>
-    </section>
-  </main>
+      <section id="name-page" class="page entrance" hidden>
+        <p class="eyebrow">YOU'RE INVITED</p>
+        <h1>会話の輪に、<br />ようこそ。</h1>
+        <p class="lead">
+          ルーム <strong id="name-room-code"></strong> に参加します。
+        </p>
+        <form id="name-form" class="stack">
+          <label class="field"
+            >あなたの呼び名<input
+              id="name-input"
+              maxlength="20"
+              autocomplete="nickname"
+              placeholder="ニックネーム"
+              required /></label
+          ><button type="submit" class="primary arrow-button">
+            参加する <span aria-hidden="true">↗</span>
+          </button>
+        </form>
+      </section>
 
-  <dialog id="invite" class="sheet">
-    <h2>招待</h2>
-    <canvas id="invite-qr" class="qr" width="1" height="1" aria-label="ルームの QR コード"></canvas>
-    <p class="center">ルーム <strong id="invite-code"></strong></p>
-    <p id="invite-url" class="url"></p>
-    <div class="row">
-      <button id="invite-copy" type="button" class="primary">URL をコピー</button>
-      <button id="invite-close" type="button" class="secondary">閉じる</button>
-    </div>
-    <p id="invite-message" class="message" role="status"></p>
-  </dialog>
-
-  <dialog id="scanner" class="sheet">
-    <h2>QR で参加</h2>
-    <video id="scanner-video" class="scanner-video" playsinline muted></video>
-    <p id="scanner-message" class="message" role="status"></p>
-    <button id="scanner-close" type="button" class="secondary wide">閉じる</button>
-  </dialog>
-</body>
+      <section id="room" class="page room" hidden>
+        <header class="room-header">
+          <div class="room-title">
+            <div>
+              <span class="eyebrow">THE CONVERSATION ROOM</span>
+              <h1>ルーム <strong id="room-code"></strong></h1>
+            </div>
+            <button id="invite-open" type="button" class="secondary small">
+              仲間を招待 <span aria-hidden="true">↗</span>
+            </button>
+          </div>
+          <p id="game-status" class="game-status"></p>
+          <div class="players-row">
+            <span class="eyebrow">PLAYERS</span>
+            <p id="players" class="players"></p>
+          </div>
+          <p id="secret" class="secret" hidden></p>
+          <p id="offline" class="offline" role="status" hidden></p>
+        </header>
+        <div class="log-heading">
+          <span class="eyebrow">CONVERSATION</span
+          ><span>質問の先に、答えがある。</span>
+        </div>
+        <div class="conversation">
+          <div id="empty-room" class="empty-room">
+            <span class="empty-symbol" aria-hidden="true">?</span>
+            <p class="eyebrow">EVERY MYSTERY STARTS SOMEWHERE.</p>
+            <h2>最初の秘密を、ひとつ。</h2>
+            <p>
+              仲間が集まったら「お題を出す」からスタート。<br />お題は、出題者にだけ表示されます。
+            </p>
+          </div>
+          <ol
+            id="log"
+            class="log"
+            aria-label="質問と回答の履歴"
+            aria-live="polite"
+          ></ol>
+        </div>
+        <footer id="controls" class="controls">
+          <p id="notice" class="notice" role="status"></p>
+          <div id="start-panel" hidden>
+            <button
+              id="start-open"
+              type="button"
+              class="primary wide arrow-button"
+            >
+              お題を出す <span aria-hidden="true">＋</span>
+            </button>
+            <form id="start-form" class="stack" hidden>
+              <div class="form-heading">
+                <span class="eyebrow">YOUR SECRET</span
+                ><span>このお題は、あなただけに。</span>
+              </div>
+              <label class="field"
+                >お題 <span class="field-note">50文字まで</span
+                ><input
+                  id="topic"
+                  maxlength="50"
+                  autocomplete="off"
+                  placeholder="例：りんご"
+                  required
+              /></label>
+              <label class="field"
+                >補足 <span class="field-note">任意・300文字まで</span
+                ><textarea
+                  id="hint"
+                  maxlength="300"
+                  rows="2"
+                  placeholder="例：赤い果物。品種は問いません。"
+                ></textarea>
+              </label>
+              <div class="row">
+                <button type="submit" class="primary">
+                  このお題で始める <span aria-hidden="true">↗</span></button
+                ><button id="start-cancel" type="button" class="secondary">
+                  やめる
+                </button>
+              </div>
+            </form>
+          </div>
+          <div id="setter-panel" hidden>
+            <div class="setter-label">
+              <span class="eyebrow">YOU KNOW THE ANSWER.</span>
+              <p>あなたは出題者です。みんなの推理を見守ろう。</p>
+            </div>
+            <button id="setter-giveup" type="button" class="secondary wide">
+              ギブアップして、お題を公開
+            </button>
+          </div>
+          <div id="asker-panel" hidden>
+            <p id="transcript" class="transcript" aria-live="polite"></p>
+            <div id="voice" class="voice">
+              <button id="talk" type="button" class="talk">押して話す</button>
+              <p class="hint">
+                離すと送信・外で離すと取消
+                <span class="keyboard-hint"
+                  >／ <kbd>SPACE</kbd> 長押しでも</span
+                >
+              </p>
+            </div>
+            <form id="text-form" class="row" hidden>
+              <input
+                id="text-input"
+                aria-label="質問"
+                maxlength="200"
+                autocomplete="off"
+                placeholder="たとえば、果物ですか？"
+                required
+              /><button type="submit" class="primary">
+                送信 <span aria-hidden="true">↑</span>
+              </button>
+            </form>
+            <p id="speech-help" class="hint" hidden></p>
+            <div class="row links">
+              <button id="mode-toggle" type="button" class="link">
+                文字で質問</button
+              ><button id="asker-giveup" type="button" class="link muted-link">
+                ギブアップ
+              </button>
+            </div>
+          </div>
+        </footer>
+      </section>
+      <section id="fatal" class="page entrance" hidden>
+        <p class="eyebrow">ROOM NOT AVAILABLE</p>
+        <h1>ここには、<br />まだ秘密がない。</h1>
+        <p id="fatal-message" class="lead"></p>
+        <a href="/" class="button primary"
+          >トップページへ <span aria-hidden="true">↗</span></a
+        >
+      </section>
+    </main>
+    <dialog id="invite" class="sheet" aria-labelledby="invite-title">
+      <p class="eyebrow">GOOD MYSTERIES ARE SHARED.</p>
+      <h2 id="invite-title">この秘密を、一緒に。</h2>
+      <p class="dialog-lead">QR を読み取るか、URL を仲間に送ろう。</p>
+      <canvas
+        id="invite-qr"
+        class="qr"
+        width="1"
+        height="1"
+        aria-label="ルームの QR コード"
+      ></canvas>
+      <p class="invite-code-line">ROOM <strong id="invite-code"></strong></p>
+      <p id="invite-url" class="url"></p>
+      <div class="row">
+        <button id="invite-copy" type="button" class="primary">
+          URL をコピー</button
+        ><button id="invite-close" type="button" class="secondary">
+          閉じる
+        </button>
+      </div>
+      <p id="invite-message" class="message" role="status"></p>
+    </dialog>
+    <dialog id="scanner" class="sheet" aria-labelledby="scanner-title">
+      <p class="eyebrow">JOIN THE CONVERSATION</p>
+      <h2 id="scanner-title">QR で参加</h2>
+      <video id="scanner-video" class="scanner-video" playsinline muted></video>
+      <p id="scanner-message" class="message" role="status"></p>
+      <button id="scanner-close" type="button" class="secondary wide">
+        閉じる
+      </button>
+    </dialog>
+    <dialog id="rules" class="sheet rules-sheet" aria-labelledby="rules-title">
+      <p class="eyebrow">A SMALL GUIDE TO BIG QUESTIONS</p>
+      <h2 id="rules-title">答えは、会話のなかに。</h2>
+      <ol class="rules-list">
+        <li>
+          <span>01</span>
+          <div>
+            <h3>仲間とルームに集まる</h3>
+            <p>
+              ルームを作り、URL や QR を共有。会話には Discord や Zoom
+              などの通話を使います。
+            </p>
+          </div>
+        </li>
+        <li>
+          <span>02</span>
+          <div>
+            <h3>ひとりがお題を決める</h3>
+            <p>
+              「お題を出す」から秘密の言葉を設定。お題は出題者の画面にだけ表示されます。
+            </p>
+          </div>
+        </li>
+        <li>
+          <span>03</span>
+          <div>
+            <h3>はい・いいえで、絞り込む</h3>
+            <p>
+              「果物ですか？」のように質問。ボタンを押して話し、離すと送信。文字でも質問できます。
+            </p>
+          </div>
+        </li>
+        <li>
+          <span>04</span>
+          <div>
+            <h3>わかったら、答えを質問する</h3>
+            <p>
+              「りんごですか？」と聞いて正解を目指そう。ギブアップするとお題を公開して終了します。
+            </p>
+          </div>
+        </li>
+      </ol>
+      <button id="rules-close" class="primary wide" type="button">
+        さあ、始めよう <span aria-hidden="true">↗</span>
+      </button>
+    </dialog>
+    <dialog id="giveup-dialog" class="sheet" aria-labelledby="giveup-title">
+      <p class="eyebrow">REVEAL THE SECRET</p>
+      <h2 id="giveup-title">答えを、ひらきますか？</h2>
+      <p class="dialog-lead">お題を全員に公開して、このゲームを終了します。</p>
+      <div class="row">
+        <button id="giveup-cancel" type="button" class="secondary" autofocus>
+          推理を続ける
+        </button>
+        <button id="giveup-confirm" type="button" class="primary">
+          お題を公開
+        </button>
+      </div>
+    </dialog>
+    <noscript
+      ><p class="entrance">
+        遊ぶには JavaScript を有効にしてください。
+      </p></noscript
+    >
+  </body>
 </html>

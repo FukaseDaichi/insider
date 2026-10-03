@@ -1,18 +1,20 @@
 // 押して話す: ボタン（PC はスペースキー）を押している間だけ Web Speech API で聞き取り、離したら送る
-const Recognition = globalThis.SpeechRecognition ?? globalThis.webkitSpeechRecognition;
+const Recognition =
+  globalThis.SpeechRecognition ?? globalThis.webkitSpeechRecognition;
 export const speechSupported = Boolean(Recognition);
 
 const MAX_HOLD_MS = 20000;
 const STOP_WAIT_MS = 2000;
 const CANCELLED = "取り消しました";
 const LABELS = {
-  idle: "🎙 押して話す",
+  idle: "押して話す",
   starting: "準備中…",
   listening: "聞いています…",
   outside: "離すと取り消し",
   stopping: "送信中…",
 };
-const MIC_DENIED = "マイクが許可されていません。ブラウザの設定から許可するか、文字で質問してください";
+const MIC_DENIED =
+  "マイクが許可されていません。ブラウザの設定から許可するか、文字で質問してください";
 // 聞き直しても直らないエラー。文字入力に切り替える
 const UNAVAILABLE_ERRORS = {
   "not-allowed": MIC_DENIED,
@@ -71,6 +73,7 @@ export class PushToTalk {
   set enabled(value) {
     this._enabled = value;
     this.button.classList.toggle("off", !value);
+    this.button.setAttribute("aria-disabled", String(!value));
   }
 
   text() {
@@ -107,7 +110,11 @@ export class PushToTalk {
       }
     };
     recognition.onresult = (event) => {
-      ({ finals: this.finals, interim: this.interim } = mergeResults(this.finals, event.results, event.resultIndex));
+      ({ finals: this.finals, interim: this.interim } = mergeResults(
+        this.finals,
+        event.results,
+        event.resultIndex,
+      ));
       this.handlers.onTranscript(this.text());
     };
     recognition.onerror = (event) => {
@@ -149,7 +156,12 @@ export class PushToTalk {
     clearTimeout(this.holdTimer);
     if (this.state === "starting") {
       // 初回はマイクの許可を求める間に指を離しがち
-      this.finish(null, this.everStarted ? "長押ししてから話してください" : "マイクの使用を許可したら、もう一度押して話してください");
+      this.finish(
+        null,
+        this.everStarted
+          ? "長押ししてから話してください"
+          : "マイクの使用を許可したら、もう一度押して話してください",
+      );
       return;
     }
     if (this.state !== "listening") return;
@@ -173,7 +185,11 @@ export class PushToTalk {
     const recognition = this.recognition;
     this.recognition = null;
     if (recognition) {
-      recognition.onstart = recognition.onresult = recognition.onerror = recognition.onend = null;
+      recognition.onstart =
+        recognition.onresult =
+        recognition.onerror =
+        recognition.onend =
+          null;
       try {
         recognition.abort();
       } catch {
@@ -199,14 +215,20 @@ export class PushToTalk {
   }
 
   render() {
-    const state = this.state === "listening" && this.outside ? "outside" : this.state;
+    const state =
+      this.state === "listening" && this.outside ? "outside" : this.state;
     this.button.dataset.state = state;
     this.button.textContent = LABELS[state];
   }
 
   isInside(event) {
     const rect = this.button.getBoundingClientRect();
-    return event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+    return (
+      event.clientX >= rect.left &&
+      event.clientX <= rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.bottom
+    );
   }
 
   bindPointer() {
@@ -251,7 +273,8 @@ export class PushToTalk {
         this.cancel(CANCELLED);
         return;
       }
-      if (event.code !== "Space" || event.repeat || !this.keyboardUsable(event)) return;
+      if (event.code !== "Space" || event.repeat || !this.keyboardUsable(event))
+        return;
       event.preventDefault();
       if (this.state !== "idle") return;
       this.keyHeld = true;
@@ -267,9 +290,19 @@ export class PushToTalk {
 
   keyboardUsable(event) {
     const target = event.target;
-    if (target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) {
+    if (
+      target instanceof HTMLElement &&
+      (target.isContentEditable ||
+        ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
+    ) {
       return false;
     }
+    if (
+      target instanceof HTMLElement &&
+      target !== this.button &&
+      target.closest("button, a, summary")
+    )
+      return false;
     if (document.querySelector("dialog[open]")) return false;
     return this.enabled && this.button.offsetParent !== null;
   }
