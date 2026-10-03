@@ -6,7 +6,8 @@ set -euo pipefail
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_USER="$(id -un)"
 UV="$HOME/.local/bin/uv"
-SERVICE=insider-bot
+# Discord ボットと Web 版。どちらも同じ .env を読む
+SERVICES=(insider-bot insider-web)
 
 if [ "$(id -u)" -eq 0 ]; then
   echo "root ではなく通常ユーザーで実行してください（必要な箇所は中で sudo します）" >&2
@@ -34,8 +35,10 @@ echo "== 依存パッケージ"
 (cd "$APP_DIR" && "$UV" sync --frozen --no-dev)
 
 echo "== systemd"
-sed -e "s|__USER__|$APP_USER|g" -e "s|__APP_DIR__|$APP_DIR|g" -e "s|__UV__|$UV|g" \
-  "$APP_DIR/deploy/$SERVICE.service" | sudo tee "/etc/systemd/system/$SERVICE.service" >/dev/null
+for service in "${SERVICES[@]}"; do
+  sed -e "s|__USER__|$APP_USER|g" -e "s|__APP_DIR__|$APP_DIR|g" -e "s|__UV__|$UV|g" \
+    "$APP_DIR/deploy/$service.service" | sudo tee "/etc/systemd/system/$service.service" >/dev/null
+done
 sudo systemctl daemon-reload
 
 echo "== .env"
@@ -53,9 +56,9 @@ if ! grep -Eq '^DISCORD_TOKEN=[^[:space:]]' "$ENV_FILE" || ! grep -Eq '^TYPESAFE
 fi
 
 echo "== 起動"
-sudo systemctl enable "$SERVICE"
-sudo systemctl restart "$SERVICE"
+sudo systemctl enable "${SERVICES[@]}"
+sudo systemctl restart "${SERVICES[@]}"
 sleep 5
-sudo systemctl status "$SERVICE" --no-pager || true
+sudo systemctl status "${SERVICES[@]}" --no-pager || true
 echo
-echo "ログを見る: journalctl -u $SERVICE -f"
+echo "ログを見る: journalctl -u insider-bot -f ／ journalctl -u insider-web -f"

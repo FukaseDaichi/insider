@@ -3,6 +3,8 @@
 Discord で「お題当てゲーム」の GM を務めるボットです。出題者が登録したお題について、
 参加者の質問に TypeSafe AI の Jev が「はい／いいえ」とその割合で答え、言い当てたら「正解です」でゲーム終了します。
 
+ブラウザで遊べる **Web 版** もあります。ボタンを押している間に話した言葉が質問になります（[Web 版](#web-版押して話す音声入力)）。
+
 ## 遊び方
 
 1. 出題者がゲームをするチャンネルで `/odai set お題:りんご 補足:赤い果物`（補足は任意）
@@ -18,6 +20,25 @@ Discord で「お題当てゲーム」の GM を務めるボットです。出�
 
 ゲーム中のチャンネルでは、出題者以外の発言のうち末尾が「？」か「?」のものだけが質問として扱われます（答えを言うときも「りんご？」のように「？」をつけます）。それ以外の発言は雑談として無視されます。
 ボットを再起動すると進行中のゲームは消えます。
+
+## Web 版（押して話す音声入力）
+
+Discord の代わりにブラウザで遊べます。Discord 版とは別のゲームで、会話は Discord や Zoom の通話で行う想定です。
+
+1. トップページで名前を入れて「ルームを作る」→ 招待パネルの URL か QR コードを仲間に共有する
+2. 誰かが「お題を出す」でお題を登録する（お題は出題者の画面にだけ表示される）
+3. 回答者は「🎙 押して話す」を押しながら質問し、離すと送られる（末尾の「？」は自動で付く）。ボタンの外で指を離すと取り消し。PC はスペースキー長押しでも話せる
+4. 正解かギブアップで終了（ギブアップは誰でもできる）
+
+- 音声入力は Chrome / Edge / Safari で使えます（iPhone は Siri を有効に）。使えないブラウザでは文字で質問します
+- トップページの「📷 QR で参加」で、カメラから QR コードを読み取って参加できます
+- サーバーを再起動するとルームは消えます
+
+```bash
+uv run --env-file .env python -m insider_bot.web   # http://localhost:8080 を開く
+```
+
+`localhost` 以外からマイクを使うには HTTPS が必要です。サーバーでの公開手順は [deploy/README.md](deploy/README.md) を参照してください。
 
 ## セットアップ
 
@@ -53,6 +74,8 @@ uv run --env-file .env python -m insider_bot
 | `DISCORD_GUILD_ID` | | — | コマンドを即時反映するサーバー ID |
 | `CORRECT_THRESHOLD` | | 0.8 | 正解とみなすしきい値（0〜1） |
 | `JEV_TIMEOUT_SECONDS` | | 10 | Jev 呼び出しのタイムアウト秒数 |
+| `WEB_HOST` | | 127.0.0.1 | Web 版が待ち受けるアドレス |
+| `WEB_PORT` | | 8080 | Web 版が待ち受けるポート |
 
 ## 開発
 
@@ -60,4 +83,5 @@ uv run --env-file .env python -m insider_bot
 uv run pytest                                   # 単体テスト
 uv run --env-file .env pytest -m integration    # 実際の Jev を呼ぶテスト
 uv run --env-file .env python scripts/jev_probe.py  # Jev の日本語判定の確認表
+node --test tests/js/*.test.mjs                 # Web 版の画面の単体テスト（Node が必要）
 ```
