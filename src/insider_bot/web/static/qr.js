@@ -55,11 +55,13 @@ export async function renderQr(canvas, text) {
 }
 
 export class Scanner {
-  constructor(dialog, video, message, onRoom) {
+  // parse は読み取った文字列から行き先（ルーム番号・村番号）を取り出し、このサイトのものでなければ null を返す
+  constructor(dialog, video, message, onFound, parse = (text) => parseRoomCode(text, location.origin)) {
     this.dialog = dialog;
     this.video = video;
     this.message = message;
-    this.onRoom = onRoom;
+    this.onFound = onFound;
+    this.parse = parse;
     this.stream = null;
     this.timer = null;
     this.canvas = document.createElement("canvas");
@@ -113,13 +115,13 @@ export class Scanner {
     const image = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
     const found = window.jsQR(image.data, image.width, image.height, { inversionAttempts: "dontInvert" });
     if (!found) return;
-    const code = parseRoomCode(found.data, location.origin);
-    if (!code) {
+    const target = this.parse(found.data);
+    if (target === null) {
       this.say("このゲームの QR コードではありません");
       return;
     }
     this.close();
-    this.onRoom(code);
+    this.onFound(target);
   }
 
   say(text) {

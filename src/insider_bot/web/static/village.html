@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#191a20" />
+    <meta
+      name="description"
+      content="インサイダーゲームの役職とお題を、参加者それぞれのスマホに配ります。"
+    />
+    <title>INSIDER — インサイダーの配役</title>
+    <link rel="icon" href="/static/mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/village.css" />
+    <script type="module" src="/static/village.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">コンテンツへ</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="INSIDER ホーム"
+        ><span class="brand-mark" aria-hidden="true"></span>INSIDER<span
+          class="brand-dot"
+          aria-hidden="true"
+          >✳</span
+        ></a
+      >
+      <span class="header-caption">インサイダーの配役</span>
+    </header>
+    <main id="main" class="village">
+      <section id="village-home" class="page entrance" hidden>
+        <p class="eyebrow">INSIDER CASTING</p>
+        <h1>役職とお題を、<br />ひとりずつに。</h1>
+        <p class="lead">
+          村を作って番号を伝えると、参加した人のスマホに、それぞれの役職とお題が届きます。
+        </p>
+        <div class="stack">
+          <a class="button primary arrow-button" href="/village/new"
+            ><span>村を作る</span><span aria-hidden="true">↗</span></a
+          >
+          <form id="join-form" class="stack">
+            <label class="field" for="join-number"
+              >村番号<input
+                id="join-number"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="4〜5 桁の数字"
+                required
+            /></label>
+            <button type="submit" class="secondary">村に入る</button>
+          </form>
+          <button id="scan-open" type="button" class="secondary wide">
+            QR で村に入る
+          </button>
+          <a class="button secondary wide" href="/village/special"
+            >特殊村を作る</a
+          >
+          <p id="home-message" class="message" role="status"></p>
+        </div>
+      </section>
+
+      <section id="village-new" class="page entrance" hidden>
+        <p class="eyebrow">NEW VILLAGE</p>
+        <h1>村を作る</h1>
+        <div id="step-kind" class="stack" hidden>
+          <p class="lead">遊び方を選んでください。</p>
+          <button type="button" class="secondary kind-button" data-kind="normal">
+            <span>通常の村</span
+            ><small>あなたが GM。参加者にインサイダー 1 人と村人を配ります</small>
+          </button>
+          <button type="button" class="secondary kind-button" data-kind="god">
+            <span>神モード</span
+            ><small>GM も参加者から選びます。あなたは配るだけ</small>
+          </button>
+          <button type="button" class="secondary kind-button" data-kind="random">
+            <span>ランダム</span
+            ><small>あなたも参加します。お題も役職もランダム</small>
+          </button>
+        </div>
+        <form id="step-topic" class="stack" hidden>
+          <label class="field" for="topic-input"
+            >お題<input id="topic-input" maxlength="5000" autocomplete="off" required
+          /></label>
+          <button type="submit" class="primary">お題を決める</button>
+        </form>
+        <form id="step-size" class="stack" hidden>
+          <label class="field" for="size-input"
+            >人数<input
+              id="size-input"
+              type="number"
+              inputmode="numeric"
+              max="100"
+              required
+          /></label>
+          <button type="submit" class="primary">人数を決める</button>
+        </form>
+        <div id="step-status" class="stack" hidden>
+          <p class="village-number">村番号<strong id="status-number"></strong></p>
+          <canvas
+            id="status-qr"
+            class="qr"
+            width="1"
+            height="1"
+            aria-label="村に入る QR コード"
+          ></canvas>
+          <p id="status-url" class="url"></p>
+          <button id="status-copy" type="button" class="secondary">
+            URL をコピー
+          </button>
+          <div id="status-replies" class="replies" aria-live="polite"></div>
+          <div class="row">
+            <button id="reverse-button" type="button" class="secondary" hidden>
+              逆村にする</button
+            ><button id="werewords-button" type="button" class="secondary" hidden>
+              ワーワーズにする
+            </button>
+          </div>
+          <button id="restart-button" type="button" class="link">
+            新しい村を作る
+          </button>
+        </div>
+        <div id="new-replies" class="replies" aria-live="polite"></div>
+        <p id="new-message" class="message" role="status"></p>
+      </section>
+
+      <section id="village-card" class="page entrance" hidden>
+        <p class="eyebrow">YOUR ROLE</p>
+        <h1>村 <span id="card-number"></span></h1>
+        <div id="card-replies" class="replies" aria-live="polite"></div>
+        <div id="card-status" class="replies" aria-live="polite"></div>
+        <div class="stack">
+          <button id="card-reload" type="button" class="secondary wide">
+            もう一度表示する
+          </button>
+          <a class="button secondary wide" href="/village">配役ツールのトップへ</a>
+        </div>
+        <p id="card-message" class="message" role="status"></p>
+      </section>
+
+      <section id="village-special" class="page entrance" hidden>
+        <p class="eyebrow">CUSTOM VILLAGE</p>
+        <h1>配る言葉から、<br />村をつくる。</h1>
+        <p class="lead">
+          1 行に 1 通。参加した人に 1 通ずつ届きます（届く順は作るときにシャッフルします）。途中の空の行には「メッセージは特にありません。」が届きます。
+        </p>
+        <form id="special-form" class="stack">
+          <label class="field" for="special-input"
+            ><span
+              >メッセージ
+              <span id="special-count" class="field-note">0 通</span></span
+            ><textarea id="special-input" rows="8" required></textarea>
+          </label>
+          <button
+            id="special-submit"
+            type="submit"
+            class="primary arrow-button"
+          >
+            <span>特殊村を作る</span><span aria-hidden="true">↗</span>
+          </button>
+        </form>
+        <div id="special-result" class="stack" hidden>
+          <p class="village-number">村番号<strong id="special-number"></strong></p>
+          <canvas
+            id="special-qr"
+            class="qr"
+            width="1"
+            height="1"
+            aria-label="村に入る QR コード"
+          ></canvas>
+          <p id="special-url" class="url"></p>
+          <button id="special-copy" type="button" class="secondary">
+            URL をコピー
+          </button>
+          <button id="special-again" type="button" class="link">
+            もう 1 つ作る
+          </button>
+        </div>
+        <p id="special-message" class="message" role="status"></p>
+      </section>
+    </main>
+
+    <dialog id="scanner" class="sheet" aria-labelledby="scanner-title">
+      <p class="eyebrow">JOIN THE VILLAGE</p>
+      <h2 id="scanner-title">QR で村に入る</h2>
+      <video id="scanner-video" class="scanner-video" playsinline muted></video>
+      <p id="scanner-message" class="message" role="status"></p>
+      <button id="scanner-close" type="button" class="secondary wide">
+        閉じる
+      </button>
+    </dialog>
+  </body>
+</html>

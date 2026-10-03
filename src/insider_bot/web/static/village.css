@@ -1,0 +1,86 @@
+/* 配役ツール。トップやルームと同じ夜の配色（style.css の変数）を使い、返事のカードと村番号だけを足す */
+
+.replies {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.replies:empty {
+  display: none;
+}
+
+.reply-text {
+  margin: 0;
+  line-height: 1.8;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.reply-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.reply-image,
+.reply-card-image {
+  justify-self: center;
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  border-radius: var(--radius);
+}
+
+.reply-card-title {
+  margin: 0;
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.reply-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reply-actions > * {
+  flex: 1 1 auto;
+  min-height: 44px;
+}
+
+.village-number {
+  margin: 0;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+}
+
+.village-number strong {
+  display: block;
+  color: var(--accent);
+  font-size: 48px;
+  letter-spacing: 0.06em;
+}
+
+.kind-button {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+}
+
+.kind-button small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+#special-input {
+  width: 100%;
+  min-height: 200px;
+  resize: vertical;
+}
