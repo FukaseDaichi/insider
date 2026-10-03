@@ -43,7 +43,16 @@ _KINDS = ("normal", "god", "random")
 _BAD_REQUEST = {"error": "入力が正しくありません"}
 
 # 画面はどのパスでも同じ HTML で、何を表示するかは画面側がパスで決める
-PAGE_PATHS = ("/village", "/village/", "/village/new", "/village/special", "/v/{number}", "/v/{number}/")
+PAGE_PATHS = (
+    "/village",
+    "/village/",
+    "/village/new",
+    "/village/new/",
+    "/village/special",
+    "/village/special/",
+    "/v/{number}",
+    "/v/{number}/",
+)
 
 # 日本語を \uXXXX に膨らませない（外向き通信を抑えるため）
 _dumps = functools.partial(json.dumps, ensure_ascii=False)
@@ -73,6 +82,10 @@ class BadRequest(Exception):
 
 
 async def _read_body(request: web.Request) -> dict[str, Any]:
+    # JSON と宣言された本文だけを読む。別のサイトのフォームが送れる text/plain などは通さず、
+    # JSON を送るにはプリフライトが要るので、CORS を許していないこのサーバーには別のオリジンから届かない
+    if request.content_type != "application/json":
+        raise BadRequest
     try:
         body = await request.json()
     except (ValueError, LookupError, RecursionError):

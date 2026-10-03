@@ -1,4 +1,5 @@
 import contextlib
+import json
 import logging
 import random
 
@@ -310,6 +311,25 @@ async def test_bogus_charset_is_rejected(page):
         assert response.status == 400
 
 
+@pytest.mark.parametrize("content_type", ["text/plain", "text/plain;charset=UTF-8", "application/x-www-form-urlencoded", None])
+@pytest.mark.parametrize(
+    ("path", "payload"),
+    [
+        ("/api/village/create", {"token": OWNER, "kind": "normal"}),
+        ("/api/village/special", {"messages": ["a"]}),
+    ],
+)
+async def test_only_application_json_bodies_are_accepted(page, path, payload, content_type):
+    """別のサイトのフォームやプリフライトなしの単純な POST が通らないよう、本文が JSON と宣言されている場合だけ読む。"""
+    async with serve(page) as client:
+        headers = {} if content_type is None else {"Content-Type": content_type}
+        response = await client.post(path, data=json.dumps(payload).encode(), headers=headers)
+        assert response.status == 400
+        assert await response.json() == {"error": "入力が正しくありません"}
+        # 弾いた POST では村ができていない
+        assert (await call(client, "mine"))["village"] is None
+
+
 async def test_deeply_nested_json_is_rejected(page):
     async with serve(page) as client:
         deeply_nested = ('{"token": "owner-token-0123456789", "x": ' + "[" * 100000 + "]" * 100000 + "}").encode()
@@ -336,7 +356,16 @@ async def test_the_token_and_the_topic_are_not_logged(page, caplog):
 
 async def test_the_page_is_served_on_every_village_path(page):
     async with serve(page) as client:
-        for path in ("/village", "/village/", "/village/new", "/village/special", "/v/1234", "/v/12345/"):
+        for path in (
+            "/village",
+            "/village/",
+            "/village/new",
+            "/village/new/",
+            "/village/special",
+            "/village/special/",
+            "/v/1234",
+            "/v/12345/",
+        ):
             response = await client.get(path)
             assert response.status == 200, path
             assert "配役" in await response.text()

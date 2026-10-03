@@ -27,12 +27,14 @@ def static_dir(tmp_path):
 
 @contextlib.asynccontextmanager
 async def serve(static_dir, judge=None, village=None, **limits):
+    """static_dir が None なら、本物の STATIC_DIR（既定）で組み立てる。"""
     clock = FakeClock()
     manager = GameManager(clock=clock)
     service = GameService(manager, judge or FakeJudge(), clock=clock)
     registry = RoomRegistry(clock=clock, on_remove=lambda room: manager.end(room.room_id), **limits)
     hub = RoomHub(registry, service, manager, clock=clock)
-    async with TestClient(TestServer(create_app(hub, static_dir=static_dir, village=village))) as client:
+    kwargs = {} if static_dir is None else {"static_dir": static_dir}
+    async with TestClient(TestServer(create_app(hub, village=village, **kwargs))) as client:
         yield client
 
 
@@ -296,3 +298,17 @@ async def test_the_largest_special_village_fits_the_request_size_limit(static_di
         body = json.dumps({"messages": ["あ" * 5000] * 100}, ensure_ascii=False).encode()
         response = await client.post("/api/village/special", data=body, headers={"Content-Type": "application/json"})
         assert response.status == 200
+
+
+async def test_the_real_village_page_is_served_and_the_special_form_link_leads_to_it():
+    village = build_village("", None)
+    async with serve(None, village=village) as client:
+        response = await client.get("/village")
+        assert response.status == 200
+        assert "配役" in await response.text()
+        # LINE の「@特殊」が返すフォームの URL も、同じ画面に着く
+        (reply,) = village.commands.handle("web:x", "@特殊")
+        assert reply.text == "/village/special"
+        response = await client.get(reply.text)
+        assert response.status == 200
+        assert "配役" in await response.text()
