@@ -41,3 +41,24 @@ class FakeJudge:
         if self.error is not None:
             raise self.error
         return self.answers.get(question, self.default)
+
+
+class FixedRandom:
+    """randrange が与えた値を順に返す乱数。shuffle は並びを変えない。
+
+    Java の FixedRandom（nextInt が固定値を返す）に対応する。配役の席を固定するために使う。
+    """
+
+    def __init__(self, *values: int) -> None:
+        self._values = list(values)
+
+    def randrange(self, n: int) -> int:
+        if not self._values:
+            raise AssertionError("FixedRandom の値を使い切りました")
+        value = self._values.pop(0)
+        if not 0 <= value < n:
+            raise AssertionError(f"FixedRandom の値 {value} が範囲 [0, {n}) の外です")
+        return value
+
+    def shuffle(self, seq: list) -> None:
+        return None
