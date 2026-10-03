@@ -31,27 +31,21 @@ def parse_java_int(text: str) -> int | None:
     if not _JAVA_INT.fullmatch(text):
         return None
 
-    # Extract sign and digit part
-    sign = ""
-    digits = text
-    if text and text[0] in "+-":
-        sign = text[0]
-        digits = text[1:]
+    sign = text[0] if text[0] in "+-" else ""
+    digits = text[len(sign) :]
 
-    # Skip leading zeros (including Unicode decimal zeros like full-width ０)
-    while digits and unicodedata.digit(digits[0], None) == 0:
-        digits = digits[1:]
+    # 先頭の 0（全角の「０」など他の 10 進数字の 0 を含む）は桁数に数えない。
+    # 1 文字ずつ切り詰めると入力長の 2 乗かかるので、添字を進めて 1 回で読み飛ばす
+    start = 0
+    while start < len(digits) and unicodedata.digit(digits[start]) == 0:
+        start += 1
+    significant = digits[start:]
 
-    # If more than 10 significant digits remain, outside int32 range
-    if len(digits) > 10:
+    # int32 は 10 桁まで。桁数で先に弾き、巨大な数字列を int() に渡さない
+    if len(significant) > 10:
         return None
 
-    # Convert remaining digits to int
-    try:
-        value = int(sign + digits) if digits else 0
-    except ValueError:
-        return None
-
+    value = int(sign + significant) if significant else 0
     if not _INT_MIN <= value <= _INT_MAX:
         return None
     return value
