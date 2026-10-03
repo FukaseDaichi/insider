@@ -1,4 +1,5 @@
 // 画面全体: トップページ、名前の入力、ルーム画面（WebSocket の接続と再接続）
+import { AskWatch } from "./askwatch.js";
 import { renderQr, Scanner } from "./qr.js";
 import { ROOM_CODE_PATTERN } from "./roomurl.js";
 import { PushToTalk, speechSupported } from "./speech.js";
@@ -116,6 +117,7 @@ class RoomPage {
     this.startedAt = 0;
     this.items = new Map();
     this.noticeTimer = null;
+    this.askWatch = new AskWatch((text) => this.askLost(text));
     this.textMode = !speechSupported;
     this.talk = speechSupported
       ? new PushToTalk($("talk"), {
@@ -156,10 +158,14 @@ class RoomPage {
       ws.send(JSON.stringify({ type: "join", name: this.name, token: this.token }));
     });
     ws.addEventListener("message", (event) => this.receive(JSON.parse(event.data)));
-    ws.addEventListener("close", (event) => this.closed(event.code));
+    ws.addEventListener("close", (event) => {
+      // reconnectNow で見切った古い接続の close は無視する
+      if (this.ws === ws) this.closed(event.code);
+    });
   }
 
   receive(message) {
+    this.askWatch.received();
     switch (message.type) {
       case "welcome":
         this.token = message.token;
@@ -186,6 +192,7 @@ class RoomPage {
   closed(code) {
     this.ws = null;
     this.setConnected(false);
+    this.askWatch.lost();
     if (code in CLOSE_MESSAGES) {
       showFatal(CLOSE_MESSAGES[code]);
       return;
@@ -203,10 +210,29 @@ class RoomPage {
   }
 
   ask(text) {
-    if (this.send({ type: "ask", text, game_id: this.game?.id ?? null })) return;
+    if (this.send({ type: "ask", text, game_id: this.game?.id ?? null })) {
+      this.askWatch.sent(text);
+      return;
+    }
     this.notice("接続が切れているため送れませんでした");
     this.setTextMode(true);
     $("text-input").value = text;
+  }
+
+  askLost(text) {
+    this.notice("質問が届いていない可能性があります。通信を確かめて、もう一度どうぞ");
+    this.setTextMode(true);
+    $("text-input").value = text;
+    this.reconnectNow();
+  }
+
+  // 送った質問に何の応答もない。接続が半開きになっているとみなして、close を待たずに張り直す
+  reconnectNow() {
+    const ws = this.ws;
+    if (!ws) return;
+    this.ws = null;
+    ws.close();
+    this.closed(1006);
   }
 
   setConnected(connected) {
