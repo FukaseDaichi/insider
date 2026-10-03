@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>お題当てゲーム</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/app.js"></script>
+</head>
+<body>
+  <main>
+    <section id="home" class="page" hidden>
+      <h1>お題当てゲーム</h1>
+      <p class="lead">出題者のお題を、はい・いいえで答えられる質問で当てるゲームです。</p>
+      <form id="home-form" class="stack">
+        <label class="field">名前
+          <input id="home-name" maxlength="20" autocomplete="nickname" required>
+        </label>
+        <button type="submit" class="primary">ルームを作る</button>
+      </form>
+      <button id="scan-open" type="button" class="secondary wide">📷 QR で参加</button>
+      <p id="home-message" class="message" role="status"></p>
+    </section>
+
+    <section id="name-page" class="page" hidden>
+      <h1>ルーム <span id="name-room-code"></span> に参加</h1>
+      <form id="name-form" class="stack">
+        <label class="field">名前
+          <input id="name-input" maxlength="20" autocomplete="nickname" required>
+        </label>
+        <button type="submit" class="primary">参加する</button>
+      </form>
+    </section>
+
+    <section id="room" class="page room" hidden>
+      <header class="room-header">
+        <div class="room-title">
+          <span>ルーム <strong id="room-code"></strong></span>
+          <button id="invite-open" type="button" class="secondary small">招待</button>
+        </div>
+        <p id="game-status" class="game-status"></p>
+        <p id="players" class="players"></p>
+        <p id="secret" class="secret" hidden></p>
+        <p id="offline" class="offline" role="status" hidden></p>
+      </header>
+      <ol id="log" class="log" aria-live="polite"></ol>
+      <footer id="controls" class="controls">
+        <p id="notice" class="notice" role="status"></p>
+
+        <div id="start-panel" hidden>
+          <button id="start-open" type="button" class="primary wide">お題を出す</button>
+          <form id="start-form" class="stack" hidden>
+            <label class="field">お題（50文字まで）
+              <input id="topic" maxlength="50" autocomplete="off" required>
+            </label>
+            <label class="field">補足（任意・300文字まで）
+              <textarea id="hint" maxlength="300" rows="2"></textarea>
+            </label>
+            <div class="row">
+              <button type="submit" class="primary">開始</button>
+              <button id="start-cancel" type="button" class="secondary">やめる</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="setter-panel" hidden>
+          <p class="center">あなたは出題者です</p>
+          <button id="setter-giveup" type="button" class="secondary wide">ギブアップ（お題を公開）</button>
+        </div>
+
+        <div id="asker-panel" hidden>
+          <p id="transcript" class="transcript"></p>
+          <div id="voice" class="voice">
+            <button id="talk" type="button" class="talk">🎙 押して話す</button>
+            <p class="hint">離すと送信／外で離すと取消（PC はスペースキー長押し）</p>
+          </div>
+          <form id="text-form" class="row" hidden>
+            <input id="text-input" maxlength="200" autocomplete="off" placeholder="質問（例: 果物ですか）">
+            <button type="submit" class="primary">送信</button>
+          </form>
+          <p id="speech-help" class="hint" hidden></p>
+          <div class="row links">
+            <button id="mode-toggle" type="button" class="link">⌨ 文字で質問</button>
+            <button id="asker-giveup" type="button" class="link">ギブアップ</button>
+          </div>
+        </div>
+      </footer>
+    </section>
+
+    <section id="fatal" class="page" hidden>
+      <p id="fatal-message"></p>
+      <a href="/" class="button primary">トップページへ</a>
+    </section>
+  </main>
+
+  <dialog id="invite" class="sheet">
+    <h2>招待</h2>
+    <canvas id="invite-qr" class="qr" width="1" height="1" aria-label="ルームの QR コード"></canvas>
+    <p class="center">ルーム <strong id="invite-code"></strong></p>
+    <p id="invite-url" class="url"></p>
+    <div class="row">
+      <button id="invite-copy" type="button" class="primary">URL をコピー</button>
+      <button id="invite-close" type="button" class="secondary">閉じる</button>
+    </div>
+    <p id="invite-message" class="message" role="status"></p>
+  </dialog>
+
+  <dialog id="scanner" class="sheet">
+    <h2>QR で参加</h2>
+    <video id="scanner-video" class="scanner-video" playsinline muted></video>
+    <p id="scanner-message" class="message" role="status"></p>
+    <button id="scanner-close" type="button" class="secondary wide">閉じる</button>
+  </dialog>
+</body>
+</html>
