@@ -102,6 +102,14 @@ def test_numbers_java_cannot_read_are_topics():
         assert latest(villages).topic == text
 
 
+def test_supplementary_plane_digits_are_topics():
+    # Java の Integer.parseInt は UTF-16 の 1 文字ずつ読むので、BMP 外の数字はサロゲートペアになり読めない
+    handler, _, villages, _ = make()
+    handler.handle(OWNER, "お題")
+    assert handler.handle(OWNER, "\U0001D7D1") == messages.topic_set_reply(latest(villages))
+    assert latest(villages).topic == "\U0001D7D1"
+
+
 def test_five_digit_numbers_join_special_villages():
     handler, service, _, specials = make()
     number = service.create_special_village(["a", "b"])

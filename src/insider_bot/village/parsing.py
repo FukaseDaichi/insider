@@ -24,6 +24,10 @@ def java_trim(text: str) -> str:
 
 def parse_java_int(text: str) -> int | None:
     """Integer.parseInt と同じ規則で読む。読めなければ None。前後の空白は読めない（先に java_trim する）。"""
+    # Java の Integer.parseInt は UTF-16 の 1 文字ずつ読むので、BMP 外の数字はサロゲートペアになり読めない
+    if any(ord(c) > 0xFFFF for c in text):
+        return None
+
     if not _JAVA_INT.fullmatch(text):
         return None
 

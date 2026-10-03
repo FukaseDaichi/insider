@@ -25,7 +25,7 @@ def test_reads_what_integer_parse_int_reads(text, expected):
 
 @pytest.mark.parametrize(
     "text",
-    ["", "+", "-", " 3", "3 ", "1_0", "3.0", "2147483648", "-2147483649", "99999999999", "三", "0x10", "+-3", "--3", "9" * 5000],
+    ["", "+", "-", " 3", "3 ", "1_0", "3.0", "2147483648", "-2147483649", "99999999999", "三", "0x10", "+-3", "--3", "9" * 5000, "\U0001D7D1", "\U0001D7CF\U0001D7CE"],
 )
 def test_rejects_what_integer_parse_int_rejects(text):
     assert parse_java_int(text) is None
