@@ -17,7 +17,7 @@ const CLOSE_MESSAGES = {
   4409: "このルームは満員です",
 };
 const NO_SPEECH_HELP =
-  "音声入力は Chrome / Edge / Safari で使えます（iPhone は Siri を有効にしてください）。このブラウザでは文字で質問してください";
+  "音声入力は Chrome / Edge / Safari で使えます（iPhone は LINE などのアプリの中ではなく Safari で開いてください）。このブラウザでは文字で質問してください";
 
 function load(key) {
   try {
@@ -145,9 +145,11 @@ class RoomPage {
           },
           onText: (text) => this.ask(text),
           onStatus: (text) => this.notice(text),
-          onUnavailable: (text) => {
+          onUnavailable: (text, reason) => {
             this.notice(text);
             this.setTextMode(true);
+            // iPhone で Safari の音声認識がオフのとき。設定のしかたを常に見える場所に出す
+            $("voice-help").hidden = reason !== "service-not-allowed";
           },
         })
       : null;

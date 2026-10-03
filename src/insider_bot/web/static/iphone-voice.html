@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#191a20" />
+    <title>iPhone で声の質問を使えるようにする — INSIDER</title>
+    <link rel="icon" href="/static/mark.svg" type="image/svg+xml" />
+    <style>
+      /* 色は style.css の midnight edition に合わせる */
+      :root {
+        --bg: #191a20;
+        --surface: #23252d;
+        --text: #f1f0e9;
+        --muted: #a3a4af;
+        --line: #393b45;
+        --accent: #dfef78;
+        --radius: 8px;
+        color-scheme: dark;
+        font-family:
+          "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.7;
+        -webkit-text-size-adjust: 100%;
+      }
+
+      main {
+        max-width: 560px;
+        margin: 0 auto;
+        padding: max(24px, env(safe-area-inset-top)) 16px
+          max(40px, env(safe-area-inset-bottom));
+      }
+
+      .eyebrow {
+        margin: 0;
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        color: var(--accent);
+      }
+
+      h1 {
+        margin: 6px 0 12px;
+        font-size: 26px;
+        line-height: 1.4;
+      }
+
+      .lead {
+        margin: 0 0 28px;
+        font-size: 16px;
+        color: var(--muted);
+      }
+
+      .lead strong {
+        color: var(--text);
+      }
+
+      ol {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 20px;
+      }
+
+      .step {
+        padding: 20px 16px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+
+      .step-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+
+      .number {
+        flex: 0 0 auto;
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: var(--bg);
+        font-weight: 700;
+        font-size: 18px;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 20px;
+        line-height: 1.4;
+      }
+
+      .step p {
+        margin: 0 0 14px;
+        font-size: 16px;
+      }
+
+      .step p:last-child {
+        margin-bottom: 0;
+      }
+
+      .key {
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: var(--bg);
+        color: var(--accent);
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      figure {
+        margin: 0;
+      }
+
+      figure img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 12px;
+      }
+
+      .done {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 56px;
+        margin-top: 4px;
+        border: 0;
+        border-radius: var(--radius);
+        background: var(--accent);
+        color: var(--bg);
+        font: inherit;
+        font-size: 17px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .trouble {
+        margin-top: 28px;
+        padding: 16px;
+        border: 1px dashed var(--line);
+        border-radius: 14px;
+        font-size: 15px;
+        color: var(--muted);
+      }
+
+      .trouble h2 {
+        margin-bottom: 8px;
+        font-size: 16px;
+        color: var(--text);
+      }
+
+      .trouble ul {
+        margin: 0;
+        padding-left: 1.2em;
+      }
+
+      .trouble li + li {
+        margin-top: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">INSIDER ／ iPhone の設定</p>
+      <h1>iPhone で「押して話す」を使えるようにする</h1>
+      <p class="lead">
+        Safari が声を文字にできるように、<strong>iPhone の「設定」で 1 か所オンにするだけ</strong>です。1 分で終わります。
+      </p>
+
+      <ol>
+        <li class="step">
+          <div class="step-head">
+            <span class="number" aria-hidden="true">1</span>
+            <h2>「設定」を開く</h2>
+          </div>
+          <p>ホーム画面の歯車のアイコン <span class="key">設定</span> をタップします。</p>
+          <figure>
+            <img
+              src="/static/help/step1-settings.png"
+              width="750"
+              height="900"
+              alt="ホーム画面。歯車の「設定」アイコンに印が付いている"
+            />
+          </figure>
+        </li>
+
+        <li class="step">
+          <div class="step-head">
+            <span class="number" aria-hidden="true">2</span>
+            <h2>「音声認識」を検索して開く</h2>
+          </div>
+          <p>
+            いちばん上の検索欄に <span class="key">音声認識</span> と入力し、出てきた「音声認識」をタップします。検索欄が見えないときは、画面を下に引っぱると出てきます。
+          </p>
+          <figure>
+            <img
+              src="/static/help/step2-search.png"
+              width="750"
+              height="460"
+              alt="設定の検索欄に「音声認識」と入力し、検索結果の「音声認識（プライバシーとセキュリティ）」に印が付いている"
+            />
+          </figure>
+        </li>
+
+        <li class="step">
+          <div class="step-head">
+            <span class="number" aria-hidden="true">3</span>
+            <h2>「Safari」をオンにする</h2>
+          </div>
+          <p>一覧の <span class="key">Safari</span> のスイッチをタップして、緑にします。</p>
+          <figure>
+            <img
+              src="/static/help/step3-safari.png"
+              width="750"
+              height="400"
+              alt="「音声認識」の画面。Safari のスイッチがオン（緑）になっていて、印が付いている"
+            />
+          </figure>
+        </li>
+
+        <li class="step">
+          <div class="step-head">
+            <span class="number" aria-hidden="true">4</span>
+            <h2>ゲームに戻って話す</h2>
+          </div>
+          <p>
+            Safari に戻り、ゲームのページを<strong>再読み込み</strong>してから「押して話す」を押したまま話します。マイクの使用を聞かれたら <span class="key">許可</span> をタップしてください。
+          </p>
+          <button id="done" class="done" type="button">ゲームに戻る</button>
+        </li>
+      </ol>
+
+      <section class="trouble" aria-labelledby="trouble-title">
+        <h2 id="trouble-title">うまくいかないとき</h2>
+        <ul>
+          <li>
+            一覧に Safari がない・オンにしても話せないときは、「設定」→「一般」→「キーボード」で <span class="key">音声入力</span> もオンにしてから、もう一度試してください。
+          </li>
+          <li>それでも話せないときは、ゲームの「文字で質問」から文字で質問できます。</li>
+        </ul>
+      </section>
+    </main>
+    <script>
+      // ゲームから別タブで開いたときはタブを閉じる。閉じられなければ（URL を直接開いたときなど）トップへ
+      document.getElementById("done").addEventListener("click", () => {
+        window.close();
+        setTimeout(() => {
+          location.href = "/";
+        }, 300);
+      });
+    </script>
+  </body>
+</html>

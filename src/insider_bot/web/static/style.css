@@ -791,6 +791,31 @@ kbd {
   margin-top: 12px;
 }
 
+.voice-help {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 0 16px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--accent);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.rules-note {
+  margin: 0 0 20px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.rules-note a {
+  color: var(--accent);
+}
+
 dialog.sheet {
   width: min(92vw, 440px);
   max-height: 90vh;

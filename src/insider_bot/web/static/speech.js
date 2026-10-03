@@ -18,7 +18,9 @@ const MIC_DENIED =
 // 聞き直しても直らないエラー。文字入力に切り替える
 const UNAVAILABLE_ERRORS = {
   "not-allowed": MIC_DENIED,
-  "service-not-allowed": MIC_DENIED,
+  // iPhone の Safari は、「設定」の「音声認識」で Safari がオフだとこうなる（マイクの許可とは別）
+  "service-not-allowed":
+    "音声認識が許可されていません。下の「設定のしかた」を見て、Safari の音声認識をオンにしてください。文字でも質問できます",
   "audio-capture": "マイクが見つかりません",
   "language-not-supported": "このブラウザは日本語の音声認識に対応していません",
 };
@@ -119,6 +121,9 @@ export class PushToTalk {
     };
     recognition.onerror = (event) => {
       this.error = event.error;
+      // iPhone の Safari は、使えないときの error の後に end を出さないので待たずに終える
+      if (event.error in UNAVAILABLE_ERRORS || event.error === "network")
+        this.ended();
     };
     recognition.onend = () => this.ended();
     this.recognition = recognition;
@@ -139,7 +144,7 @@ export class PushToTalk {
     if (this.state !== "starting" && this.state !== "listening") return;
     if (error in UNAVAILABLE_ERRORS) {
       this.finish(null);
-      this.handlers.onUnavailable(UNAVAILABLE_ERRORS[error]);
+      this.handlers.onUnavailable(UNAVAILABLE_ERRORS[error], error);
       return;
     }
     if (error === "network") {
