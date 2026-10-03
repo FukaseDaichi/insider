@@ -308,6 +308,28 @@ def test_werewords_needs_three_participants_and_a_topic_on_the_latest_empty_vill
     assert service.convert_to_werewords("line:nobody") is None
 
 
+def test_werewords_does_not_fall_back_to_an_older_eligible_village():
+    service, villages, _, _ = make(0, 0)
+    # Create village A (older, eligible): size 3, topic set, no members
+    service.create_village(OWNER, False)
+    village_a = latest(villages)
+    service.set_topic(OWNER, "すいか")
+    service.set_size(OWNER, 3)
+
+    # Create village B (newer, initially ineligible): size 3 but no topic
+    service.create_village(OWNER, False)
+    village_b = latest(villages)
+    service.set_size(OWNER, 3)
+
+    # B is newest but lacks topic, should not fall back to A
+    assert service.convert_to_werewords(OWNER) is None
+
+    # Set B's topic, now B is eligible and should be used
+    service.set_topic(OWNER, "めろん")
+    reply = service.convert_to_werewords(OWNER)
+    assert reply is not None
+
+
 # --- 辞書 ---
 
 
