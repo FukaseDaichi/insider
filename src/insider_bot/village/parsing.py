@@ -8,6 +8,7 @@ int の範囲外を読む）ので、利用者の入力や外部データの解�
 from __future__ import annotations
 
 import re
+import unicodedata
 
 # String.trim() が除くのは U+0020 以下の文字だけ
 _JAVA_TRIM_CHARS = "".join(chr(code) for code in range(0x21))
@@ -25,7 +26,28 @@ def parse_java_int(text: str) -> int | None:
     """Integer.parseInt と同じ規則で読む。読めなければ None。前後の空白は読めない（先に java_trim する）。"""
     if not _JAVA_INT.fullmatch(text):
         return None
-    value = int(text)
+
+    # Extract sign and digit part
+    sign = ""
+    digits = text
+    if text and text[0] in "+-":
+        sign = text[0]
+        digits = text[1:]
+
+    # Skip leading zeros (including Unicode decimal zeros like full-width ０)
+    while digits and unicodedata.digit(digits[0], None) == 0:
+        digits = digits[1:]
+
+    # If more than 10 significant digits remain, outside int32 range
+    if len(digits) > 10:
+        return None
+
+    # Convert remaining digits to int
+    try:
+        value = int(sign + digits) if digits else 0
+    except ValueError:
+        return None
+
     if not _INT_MIN <= value <= _INT_MAX:
         return None
     return value
