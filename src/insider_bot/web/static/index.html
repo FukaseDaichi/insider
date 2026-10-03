@@ -6,8 +6,8 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <meta name="color-scheme" content="light" />
-    <meta name="theme-color" content="#f1efe7" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#191a20" />
     <meta
       name="description"
       content="ひとつの秘密を、みんなの質問で。声でつながる、お題当てゲーム INSIDER。ルームを作って、仲間と推理を始めよう。"
@@ -27,41 +27,49 @@
           >✳</span
         ></a
       >
-      <span class="header-caption"
-        >A LITTLE MYSTERY. A LOT OF CONVERSATION.</span
-      >
+      <span class="header-caption">ひとつの秘密を、みんなの質問で。</span>
       <button class="rules-link" type="button" data-rules-open>
         遊び方 <span aria-hidden="true">↗</span>
       </button>
     </header>
     <main id="main">
       <section id="home" class="page home" hidden>
-        <div class="hero-copy">
+        <div class="hero-heading">
           <p class="eyebrow">
             <span class="signal-dot"></span> THE CONVERSATION GAME
-            <span class="edition">VOL. 01</span>
+            <span class="edition">NO. 001</span>
           </p>
           <h1>
-            その質問が、<br />秘密を<span class="serif-word">ほどく。</span>
+            いい質問が、<br /><span class="headline-last"
+              >秘密を<span class="serif-word">ほどく。</span
+              ><span class="headline-star" aria-hidden="true">✳</span></span
+            >
           </h1>
+          <a class="mobile-start" href="#home-name"
+            >さあ、始めよう <span aria-hidden="true">↗</span></a
+          >
+        </div>
+        <div class="hero-copy">
           <p class="lead">
-            ひとつのお題。手がかりは「はい」と「いいえ」。<br />声を重ねて、みんなで答えにたどり着こう。
+            答えを知っているのは、ひとりだけ。<br />「はい」と「いいえ」を手がかりに、<br />みんなの会話で、ひとつの答えへ。
           </p>
           <div class="entry-panel">
+            <div class="entry-heading">
+              <span class="eyebrow">LET’S PLAY</span
+              ><span>登録不要・ブラウザで遊べる</span>
+            </div>
             <form id="home-form" class="stack">
               <label class="field" for="home-name"
                 ><span
-                  >まずは、あなたの呼び名を
+                  >あなたの呼び名
                   <span class="field-note">20文字まで</span></span
-                >
-                <input
+                ><input
                   id="home-name"
                   maxlength="20"
                   autocomplete="nickname"
-                  placeholder="ニックネーム"
+                  placeholder="ニックネームを入力"
                   required
-                />
-              </label>
+              /></label>
               <button
                 id="create-room"
                 type="submit"
@@ -71,50 +79,64 @@
               </button>
             </form>
             <button id="scan-open" type="button" class="secondary wide">
-              <span class="scan-icon" aria-hidden="true">⌗</span> QR で参加
+              <span class="scan-icon" aria-hidden="true">⌗</span> QR で参加する
+              <span class="join-arrow" aria-hidden="true">↗</span>
             </button>
-            <p class="entry-note">
-              登録不要 <span>／</span> URL を送るだけで、集まれる。
-            </p>
+            <p class="entry-note">ルームの URL を送るだけで、集まれる。</p>
             <p id="home-message" class="message" role="status"></p>
           </div>
         </div>
         <div
           class="hero-art"
-          aria-label="裏返された秘密のカードと、はい・いいえのカードのイラスト"
+          aria-label="秘密のお題を囲む、はい・いいえのカード"
           role="img"
         >
+          <div class="art-grid"></div>
           <div class="art-orbit orbit-one"></div>
           <div class="art-orbit orbit-two"></div>
-          <span class="art-coordinate">FIG. 01 — THE UNKNOWN</span>
+          <span class="art-coordinate">INSIDE THE CONVERSATION / 01</span>
           <div class="answer-card card-no">
-            <span>02 / ANSWER</span><strong>NO<span>いいえ</span></strong
-            ><i aria-hidden="true">↙</i>
+            <span>02 — A LITTLE CLOSER</span
+            ><strong>NO<span>いいえ、もう少し。</span></strong
+            ><i aria-hidden="true">↘</i>
           </div>
           <div class="answer-card card-yes">
-            <span>01 / ANSWER</span><strong>YES<span>はい</span></strong
+            <span>01 — FOLLOW THE CLUE</span
+            ><strong>YES<span>はい、その調子。</span></strong
             ><i aria-hidden="true">↗</i>
           </div>
           <div class="mystery-card">
             <div class="card-top"><span>INSIDER</span><span>✳</span></div>
-            <div class="eye"><div class="eye-pupil">?</div></div>
+            <div class="secret-graphic">
+              <span class="graphic-ring ring-a"></span
+              ><span class="graphic-ring ring-b"></span
+              ><span class="graphic-ring ring-c"></span
+              ><span class="graphic-ring ring-d"></span
+              ><span class="graphic-question">?</span>
+            </div>
             <p>ONLY ONE KNOWS.</p>
             <div class="card-bottom">
-              <span>ひみつのお題</span><span>001</span>
+              <span>ひみつのお題</span><span>001 ↗</span>
             </div>
           </div>
-          <span class="art-spark spark-one" aria-hidden="true">✳</span
-          ><span class="art-spark spark-two" aria-hidden="true">+</span>
-          <p class="art-caption">
-            THE ANSWER IS IN THE CONVERSATION.<br /><span
-              >答えは、会話のなかに。</span
+          <div class="art-sticker">
+            <span>ひらめきは、</span><strong>会話のなかに。</strong
+            ><span aria-hidden="true">↗</span>
+          </div>
+          <span class="art-spark spark-one" aria-hidden="true">✳</span>
+          <div class="clue-pill">
+            <span class="signal-dot"></span> それは、食べられますか？<span
+              >↗</span
             >
+          </div>
+          <p class="art-caption">
+            <span class="caption-line"></span> ONE SECRET. ENDLESS QUESTIONS.
           </p>
         </div>
         <div class="how-strip" aria-label="ゲームの流れ">
           <div class="strip-intro">
             <span class="eyebrow">HOW TO PLAY</span
-            ><span>3つのステップで、始めよう。</span>
+            ><span>会話が、ゲームになる。</span>
           </div>
           <div class="step">
             <span class="step-number">01</span>
@@ -139,9 +161,11 @@
           </div>
         </div>
         <footer class="home-footer">
-          <span>LESS SCROLLING, MORE TALKING.</span>
+          <span class="footer-brand"
+            >INSIDER<span aria-hidden="true">✳</span></span
+          >
           <p>仲間との通話は Discord や Zoom で。</p>
-          <span>INSIDER / お題当てゲーム</span>
+          <span>A LITTLE MYSTERY. A LOT OF CONVERSATION.</span>
         </footer>
       </section>
 
