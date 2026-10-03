@@ -29,8 +29,10 @@
 1. **お題や特殊村のメッセージに `,` や改行が含まれる** → 文言にそのまま入り、辞書の CSV 解釈とは無関係に扱われること（Task 7・Task 8）
 2. **特殊村のメッセージに `None` と空文字が混ざる** → その参加者には「メッセージは特にありません。」が返り、入室状況は正しい番号になること（Task 3・Task 7）
 3. **人数に `0`・負数・`100`・`101` を送る** → 1 以下は再入力の案内、100 は人数、101 は村番号（該当なし）として扱われること（Task 9）
-4. **全角数字「３」や前後に空白のある「 3 」を送る** → Java の `Integer.parseInt` は全角を受け付けない。全角はお題として扱い、空白は除いて数値として扱うこと（Task 9）
-5. **辞書 CSV が壊れている（難易度が逆順・欠番・非整数）** → 辞書全体を破棄し、お題の抽選が `None` を返し、ERROR ログが出ること（Task 4）
+4. **全角数字「３」、前後に半角空白のある「 3 」、全角スペースで囲んだ「　3　」を送る** → Java の `Integer.parseInt` は全角数字を受け付け、`String.trim()` は U+0020 以下の文字しか除かない（全角スペースは残る）。「３」と「 3 」は人数 3、「　3　」と「お題　」はお題として扱うこと。Python の `int()` と `str.strip()` はどちらも Java より受け付ける範囲が広いので使わない（Task 1・Task 9）
+5. **int の範囲を超える数字「99999999999」や「1_0」を送る** → Java では数値として読めずお題になる。Python の `int()` は読めてしまうので、範囲と書式を Java に合わせること（Task 1・Task 9）
+6. **辞書 CSV が壊れている（難易度が逆順・欠番・非整数）** → 辞書全体を破棄し、お題の抽選が `None` を返し、ERROR ログが出ること（Task 4）
+7. **お題を決めないまま人数を設定し、参加者が入室する** → Java の文字列連結と同じく、お題の欄に『null』と出ること（Python の f 文字列だと『None』になる）（Task 7）
 
 ---
 
@@ -41,6 +43,7 @@ src/insider_bot/village/
   __init__.py       空
   reply.py          返事モデル（Text / Image / Buttons / Confirm とアクション）
   texts.py          文言の定数
+  parsing.py        Java と同じ規則の文字列解釈（trim / Integer.parseInt / split）
   model.py          Village / SpecialVillage / Role / Seat と不変条件
   registry.py       VillageRegistry / SpecialVillageRegistry
   words.py          お題辞書の読み込みと抽選
@@ -54,6 +57,8 @@ src/insider_bot/web/static/roles/
   INSIDER.png VILLAGERS.png GM.png GOD.png 966mpnqz.png   LineBot/Image から複製
 tests/
   fakes.py          FixedRandom を追加
+  test_village_reply.py
+  test_village_parsing.py
   test_village_model.py
   test_village_registry.py
   test_village_words.py
@@ -68,17 +73,20 @@ docs/spec.md        「村の中核」の節を追記
 
 ---
 
-### Task 1: 返事モデルと文言
+### Task 1: 返事モデル・文言・Java 互換の文字列解釈
 
 **Files:**
 - Create: `src/insider_bot/village/__init__.py`
 - Create: `src/insider_bot/village/reply.py`
 - Create: `src/insider_bot/village/texts.py`
+- Create: `src/insider_bot/village/parsing.py`
 - Test: `tests/test_village_reply.py`
+- Test: `tests/test_village_parsing.py`
 
 **Interfaces:**
 - Produces: `reply.py` の `Text`, `Image`, `Buttons`, `Confirm`, `MessageAction`, `PostbackAction`, `UriAction`, 型エイリアス `Action`, `Reply`。すべて frozen dataclass で、等値比較ができる
 - Produces: `texts.py` の定数（下記のコードそのまま）
+- Produces: `parsing.py` の `java_trim(text) -> str`、`parse_java_int(text) -> int | None`、`java_split(text, separator) -> list[str]`。Java の `String.trim()` / `Integer.parseInt()` / `String.split()` と同じ結果を返す（Task 4・5・9 と、M2 の LINE のポストバック解釈が使う）
 
 - [ ] **Step 1: 失敗するテストを書く**
 
@@ -136,6 +144,9 @@ LINE のボタンテンプレートは画像つきで 60 文字、画像なし�
 Java が Text＋入室状況の 2 通に落としていた分岐をここで表す。overflow の中にさらに
 Buttons を置けるので、「画像を外して収める → それでも無理なら Text」の多段も書ける。
 Web は制限がないので常に本体を描く。
+
+収まるかどうかの文字数は Java の String.length() と同じく UTF-16 の符号単位で数える（絵文字は 2）。
+Python の len() は符号位置で数えるので、LINE の入口がそのまま使うと Java と違う形で返事が届く。
 
 alt_text は LINE のテンプレートに添える代替文。None なら本文を使う。
 """
@@ -242,11 +253,119 @@ OFFICIAL_ACCOUNT_ID_MESSAGE = "お友達ID\n@966mpnqz"
 Run: `uv run pytest tests/test_village_reply.py -q`
 Expected: `4 passed`
 
-- [ ] **Step 6: コミット**
+- [ ] **Step 6: Java 互換の文字列解釈の失敗するテストを書く**
+
+期待値はすべて Java 11 で `String.trim()` / `Integer.parseInt()` / `String.split()` を実行して確かめた結果。
+
+```python
+# tests/test_village_parsing.py
+import pytest
+
+from insider_bot.village.parsing import java_split, java_trim, parse_java_int
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("3", 3),
+        ("-5", -5),
+        ("+5", 5),
+        ("３", 3),  # 全角数字も Unicode の 10 進数字として読む
+        ("１２", 12),
+        ("٣", 3),
+        ("2147483647", 2147483647),
+        ("-2147483648", -2147483648),
+    ],
+)
+def test_reads_what_integer_parse_int_reads(text, expected):
+    assert parse_java_int(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["", "+", "-", " 3", "3 ", "1_0", "3.0", "2147483648", "-2147483649", "99999999999", "三", "0x10", "+-3", "--3"],
+)
+def test_rejects_what_integer_parse_int_rejects(text):
+    assert parse_java_int(text) is None
+
+
+def test_trim_removes_only_ascii_spaces_and_controls():
+    assert java_trim(" \t\n3\r ") == "3"
+    # 全角スペース（U+3000）は U+0020 より大きいので残る
+    assert java_trim("　3　") == "　3　"
+
+
+def test_split_drops_trailing_empty_parts():
+    assert java_split("GM_1_a_", "_") == ["GM", "1", "a"]
+    assert java_split("GM_1_", "_") == ["GM", "1"]
+    assert java_split("_1_a", "_") == ["", "1", "a"]
+    assert java_split("GM__a", "_") == ["GM", "", "a"]
+    assert java_split("", "_") == [""]
+    assert java_split("_", "_") == []
+```
+
+- [ ] **Step 7: 失敗を確認する**
+
+Run: `uv run pytest tests/test_village_parsing.py -q`
+Expected: `ModuleNotFoundError: No module named 'insider_bot.village.parsing'`
+
+- [ ] **Step 8: Java 互換の文字列解釈を書く**
+
+```python
+# src/insider_bot/village/parsing.py
+"""Java（LineBot）と同じ規則で文字列を読む。
+
+入力の解釈が Java とずれると、同じ入力への応答が LINE 版と食い違う。Python の str.strip() と int() は
+Java の String.trim() と Integer.parseInt() より受け付ける範囲が広い（全角スペースを除く、「1_0」や
+int の範囲外を読む）ので、利用者の入力や外部データの解釈には使わない。
+"""
+
+from __future__ import annotations
+
+import re
+
+# String.trim() が除くのは U+0020 以下の文字だけ
+_JAVA_TRIM_CHARS = "".join(chr(code) for code in range(0x21))
+# Integer.parseInt は符号 1 つと Unicode の 10 進数字（全角数字を含む）だけを受け付ける
+_JAVA_INT = re.compile(r"[+-]?\d+")
+_INT_MIN = -(2**31)
+_INT_MAX = 2**31 - 1
+
+
+def java_trim(text: str) -> str:
+    return text.strip(_JAVA_TRIM_CHARS)
+
+
+def parse_java_int(text: str) -> int | None:
+    """Integer.parseInt と同じ規則で読む。読めなければ None。前後の空白は読めない（先に java_trim する）。"""
+    if not _JAVA_INT.fullmatch(text):
+        return None
+    value = int(text)
+    if not _INT_MIN <= value <= _INT_MAX:
+        return None
+    return value
+
+
+def java_split(text: str, separator: str) -> list[str]:
+    """String.split と同じく末尾の空要素を落とす。区切りが現れなければ元の文字列 1 つ。"""
+    if separator not in text:
+        return [text]
+    parts = text.split(separator)
+    while parts and parts[-1] == "":
+        parts.pop()
+    return parts
+```
+
+- [ ] **Step 9: テストが通ることを確認する**
+
+Run: `uv run pytest tests/test_village_reply.py tests/test_village_parsing.py -q`
+Expected: `28 passed`
+
+- [ ] **Step 10: コミット**
 
 ```bash
-git add src/insider_bot/village/__init__.py src/insider_bot/village/reply.py src/insider_bot/village/texts.py tests/test_village_reply.py
-git commit -m "feat: 村の中核の返事モデルと文言を追加"
+git add src/insider_bot/village/__init__.py src/insider_bot/village/reply.py src/insider_bot/village/texts.py src/insider_bot/village/parsing.py tests/test_village_reply.py tests/test_village_parsing.py
+git commit -m "feat: 村の中核の返事モデル・文言・Java 互換の文字列解釈を追加"
 ```
 
 ---
@@ -950,7 +1069,7 @@ git commit -m "feat: 特殊村の状態と、通常村・特殊村のレジス�
 - Test: `tests/test_village_words.py`
 
 **Interfaces:**
-- Consumes: Task 2 の `Rng`
+- Consumes: Task 1 の `parsing.java_split` / `java_trim` / `parse_java_int`、Task 2 の `Rng`
 - Produces: `words.py` の `BEGINNER_RANK = 2`、`ADVANCED_RANK = 3`、`EXPERT_RANK = 4`、`UNSPECIFIED_RANK = 10`、`Dictionary`（frozen dataclass: `words: tuple[str, ...]`、`last_lines: tuple[int, ...]`（添字 = 難易度 1〜5、添字 0 は 0）、メソッド `last_line(difficulty) -> int`、`is_empty` プロパティ、`pick(rank, rng) -> str | None`）、`load_dictionary(path: Path | None = None) -> Dictionary`、`parse_dictionary(lines: Iterable[str]) -> Dictionary`、`EMPTY_DICTIONARY`
 
 - [ ] **Step 1: 辞書を複製する**
@@ -1073,6 +1192,8 @@ def test_broken_csv_is_discarded_entirely(caplog):
         ["a", "b,2", "c,3", "d,4", "e,5"],  # 2 列目がない
         ["a,0", "b,2", "c,3", "d,4", "e,5"],  # 範囲外
         ["a,1", "b,2", "c,3", "d,4", "e,6"],  # 範囲外
+        ["a,0_1", "b,2", "c,3", "d,4", "e,5"],  # Integer.parseInt は「_」を読めない
+        ["a,　1　", "b,2", "c,3", "d,4", "e,5"],  # trim() は全角スペースを除かない
     ]
     for lines in broken:
         with caplog.at_level(logging.ERROR, logger="insider_bot.village.words"):
@@ -1082,10 +1203,12 @@ def test_broken_csv_is_discarded_entirely(caplog):
         assert any(record.levelno == logging.ERROR for record in caplog.records), lines
 
 
-def test_a_word_may_contain_a_comma_in_later_columns_is_not_supported_but_first_column_is_kept():
-    # Java の split(",") と同じく 1 列目だけを語として使う。3 列目以降は無視する
-    dictionary = parse_dictionary(["a,1,extra", "b,2", "c,3", "d,4", "e,5"])
+def test_only_the_first_column_is_the_word_and_the_difficulty_is_trimmed():
+    # Java の split(",") と同じく 1 列目だけを語として使い、3 列目以降は無視する。難易度は trim してから読む
+    dictionary = parse_dictionary(["a,1,extra", "b, 2 ", "c,3", "d,４", "e,5"])
     assert dictionary.words[0] == "a"
+    assert dictionary.last_line(2) == 2
+    assert dictionary.last_line(4) == 4
 
 
 def test_missing_file_gives_an_empty_dictionary(tmp_path, caplog):
@@ -1119,6 +1242,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from insider_bot.village.model import Rng
+from insider_bot.village.parsing import java_split, java_trim, parse_java_int
 
 log = logging.getLogger(__name__)
 
@@ -1170,7 +1294,7 @@ def parse_dictionary(lines: Iterable[str]) -> Dictionary:
     last_lines = [0] * (_MAX_DIFFICULTY + 1)
     previous = 0
     for line in lines:
-        columns = line.rstrip("\r\n").split(",")
+        columns = java_split(line.rstrip("\r\n"), ",")
         difficulty = _difficulty_of(columns)
         if difficulty < _MIN_DIFFICULTY or difficulty > _MAX_DIFFICULTY or difficulty < previous:
             log.error("お題辞書の %d 行目の難易度が使えないため、辞書を破棄します", len(words) + 1)
@@ -1196,12 +1320,11 @@ def load_dictionary(path: Path | None = None) -> Dictionary:
 
 
 def _difficulty_of(columns: list[str]) -> int:
+    """2 列目の難易度。Java と同じく trim してから Integer.parseInt の規則で読む。読めなければ -1。"""
     if len(columns) < 2:
         return -1
-    try:
-        return int(columns[1].strip())
-    except ValueError:
-        return -1
+    difficulty = parse_java_int(java_trim(columns[1]))
+    return -1 if difficulty is None else difficulty
 ```
 
 - [ ] **Step 5: テストが通ることを確認する**
@@ -1226,7 +1349,7 @@ git commit -m "feat: お題辞書（8,436 語）の読み込みと難易度別�
 - Test: `tests/test_village_illust.py`
 
 **Interfaces:**
-- Consumes: Task 2 の `Rng`
+- Consumes: Task 1 の `parsing.java_split` / `parse_java_int`、Task 2 の `Rng`
 - Produces: `illust.py` の `Illustrations(base_url: str, rng: Rng | None = None)`。メソッド `url_for(role_key: str) -> str`（`"INSIDER"` / `"VILLAGERS"` / `"GM"` / `"GOD"`。カタログに候補があれば重み付き抽選、なければ既定画像）、`default_url(role_key) -> str`（`{base_url}/static/roles/{role_key}.png`）、`invitation_image_url` プロパティ（`{base_url}/static/roles/966mpnqz.png`）、`apply_catalog(files: list[dict]) -> None`（カタログ応答の `files` を解析して差し替える）、`async refresh(client) -> None`（`catalog_url` を GET して `apply_catalog`。失敗は WARNING で前回分を維持）。コンストラクタの任意引数 `catalog_url: str | None = None`
 - Produces: `parse_catalog(files: list[dict]) -> dict[str, tuple[WeightedUrl, ...]]`、`WeightedUrl(url: str, cumulative_weight: int)`
 
@@ -1248,7 +1371,7 @@ import logging
 
 import pytest
 
-from insider_bot.village.illust import Illustrations, parse_catalog
+from insider_bot.village.illust import Illustrations, WeightedUrl, parse_catalog
 from tests.fakes import FixedRandom
 
 BASE = "https://game.example.com"
@@ -1286,6 +1409,21 @@ def test_entries_without_a_three_part_name_are_ignored():
         ]
     )
     assert set(parsed) == {"INSIDER"}
+
+
+def test_names_and_weights_are_read_like_java():
+    # Java の String.split は末尾の空要素を落とし、Integer.parseInt は空白と int の範囲外を読まず、全角数字を読む
+    parsed = parse_catalog(
+        [
+            entry("GM_1_a.png_", "https://x/trailing.png"),  # 末尾の空要素を落として 3 部
+            entry("GM_1_", "https://x/two-parts.png"),  # 2 部
+            entry("GM_1_a_b_", "https://x/four-parts.png"),  # 4 部
+            entry("GM_ 1 _a.png", "https://x/spaced.png"),  # 重みに空白
+            entry("GM_2147483648_a.png", "https://x/overflow.png"),  # int の範囲外
+            entry("GM_２_b.png", "https://x/fullwidth.png"),  # 全角数字の重み
+        ]
+    )
+    assert parsed == {"GM": (WeightedUrl("https://x/trailing.png", 1), WeightedUrl("https://x/fullwidth.png", 3))}
 
 
 def test_an_unusable_entry_is_skipped_without_dropping_the_rest(caplog):
@@ -1433,6 +1571,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from insider_bot.village.model import Rng
+from insider_bot.village.parsing import java_split, parse_java_int
 
 log = logging.getLogger(__name__)
 
@@ -1456,13 +1595,10 @@ def parse_catalog(files: list[Mapping[str, Any]]) -> dict[str, tuple[WeightedUrl
     for file in files:
         name = file.get("name")
         url = file.get("url")
-        parts = name.split("_") if isinstance(name, str) else []
-        if len(parts) != 3 or not isinstance(url, str):
-            ignored += 1
-            continue
-        try:
-            weight = int(parts[1])
-        except ValueError:
+        # Java の String.split / Integer.parseInt と同じ規則で読む（末尾の空要素を落とす、全角数字も重みとして読む）
+        parts = java_split(name, "_") if isinstance(name, str) else []
+        weight = parse_java_int(parts[1]) if len(parts) == 3 else None
+        if weight is None or not isinstance(url, str):
             ignored += 1
             continue
         candidates = parsed.setdefault(parts[0], [])
@@ -1524,7 +1660,7 @@ class Illustrations:
 - [ ] **Step 5: テストが通ることを確認する**
 
 Run: `uv run pytest tests/test_village_illust.py -q`
-Expected: `13 passed`
+Expected: `14 passed`
 
 - [ ] **Step 6: コミット**
 
@@ -1757,6 +1893,23 @@ def test_role_reply_for_a_stranger_is_the_default_text():
     assert messages.role_reply(village, "nobody", ILLUST) == [Text(texts.DEFAULT_MESSAGE)]
 
 
+def test_unset_topic_is_shown_as_null_like_java():
+    # お題を決めずに人数を設定した村。Java の文字列連結と同じく『null』と出る（Python の f 文字列なら『None』）
+    village = Village("owner")
+    village.number = 1234
+    assert village.configure(2, FixedRandom(0))
+    village.join("user")
+    assert messages.role_reply(village, "user", ILLUST)[0].text == "あなたの役職はインサイダーです。お題は『null』です。"
+    assert messages.owner_reply(village)[0].text == "1234村：1/2人にお題を配りました。お題は『null』です。"
+    god = Village("owner")
+    god.number = 1234
+    god.mark_god_mode()
+    assert god.configure(2, FixedRandom(0, 1))
+    god.join("a")
+    god.join("gm")
+    assert messages.role_reply(god, "gm", ILLUST)[0].text == "役職はＧＭです。\n2/2人にお題を配りました。お題は『null』です。"
+
+
 def test_topic_with_comma_and_newline_is_kept_verbatim():
     village = village_with(1, insider_at=1, topic="りんご,みかん\nぶどう")
     village.join("user")
@@ -1901,9 +2054,9 @@ def test_candidate_reply_offers_confirm_and_three_difficulties():
     ]
 
 
-def test_candidate_reply_with_a_broken_dictionary_shows_none_like_java():
-    assert messages.candidate_reply(None)[0].text == "お題は「None」です。確定しますか？"
-    assert messages.candidate_reply(None)[0].actions[0] == MessageAction("確定", "None")
+def test_candidate_reply_with_a_broken_dictionary_shows_null_like_java():
+    assert messages.candidate_reply(None)[0].text == "お題は「null」です。確定しますか？"
+    assert messages.candidate_reply(None)[0].actions[0] == MessageAction("確定", "null")
 
 
 def test_invitation_reply():
@@ -1942,6 +2095,11 @@ from insider_bot.village.reply import Buttons, Confirm, Image, MessageAction, Po
 from insider_bot.village.words import ADVANCED_RANK, BEGINNER_RANK, EXPERT_RANK
 
 
+def _shown(topic: str | None) -> str:
+    """Java の文字列連結と同じく、未設定のお題は「null」と書く。"""
+    return "null" if topic is None else topic
+
+
 def _status_text(village: Village | SpecialVillage, user_id: str) -> str:
     return f"あなたは{village.seat_number_of(user_id)}番目の参加者です。\n　入室状況：{village.member_count()}/{village.capacity() if isinstance(village, SpecialVillage) else village.size}人"
 
@@ -1957,21 +2115,21 @@ def role_reply(village: Village, user_id: str, illust: Illustrations) -> list[Re
     status = Text(_status_text(village, user_id))
     check = (PostbackAction("入室状況確認", str(village.number)),)
     if role is Role.INSIDER:
-        text = f"あなたの役職は{texts.INSIDER_ROLE}です。お題は『{village.topic}』です。"
+        text = f"あなたの役職は{texts.INSIDER_ROLE}です。お題は『{_shown(village.topic)}』です。"
         return [Buttons(text, check, image=illust.url_for("INSIDER"), overflow=(Text(text), status))]
     if role is Role.VILLAGER:
         text = f"あなたの役職は{texts.VILLAGER_ROLE}です。"
         return [Buttons(text, check, image=illust.url_for("VILLAGERS"))]
     text = (
         f"役職は{texts.GAME_MASTER_ROLE}です。\n"
-        f"{village.member_count()}/{village.size}人にお題を配りました。お題は『{village.topic}』です。"
+        f"{village.member_count()}/{village.size}人にお題を配りました。お題は『{_shown(village.topic)}』です。"
     )
     # 画像つき（60 文字）→ 画像なし（160 文字）→ Text＋入室状況 の 3 段
     return [Buttons(text, check, image=illust.url_for("GM"), overflow=(Buttons(text, check, overflow=(Text(text), status)),))]
 
 
 def owner_reply(village: Village) -> list[Reply]:
-    text = f"{village.number}村：{village.member_count()}/{village.size}人にお題を配りました。お題は『{village.topic}』です。"
+    text = f"{village.number}村：{village.member_count()}/{village.size}人にお題を配りました。お題は『{_shown(village.topic)}』です。"
     return [Buttons(text, (MessageAction("再確認", str(village.number)),), overflow=(Text(text),))]
 
 
@@ -2046,8 +2204,12 @@ def werewords_created_reply(topic: str, number: int, god_mode: bool) -> list[Rep
 
 
 def candidate_reply(topic: str | None) -> list[Reply]:
-    """お題候補と引き直しのボタン。辞書が壊れていると Java と同じく「None」が出る。"""
-    shown = str(topic)
+    """お題候補と引き直しのボタン。辞書が壊れていると Java の文字列連結と同じく「null」が出る。
+
+    Java は確定ボタンの text にも null をそのまま渡していた。返事モデルの型を str に保つため、ここでは表示と
+    同じ「null」を入れる。同梱の辞書は Task 4 のテストで読めることを確かめているので、通常は通らない。
+    """
+    shown = _shown(topic)
     text = f"お題は「{shown}」です。確定しますか？"
     return [
         Buttons(
@@ -2086,7 +2248,7 @@ def random_numset_reply() -> list[Reply]:
 - [ ] **Step 4: テストが通ることを確認する**
 
 Run: `uv run pytest tests/test_village_messages.py -q`
-Expected: `22 passed`
+Expected: `23 passed`
 
 - [ ] **Step 5: コミット**
 
@@ -2619,10 +2781,10 @@ git commit -m "feat: 村の構造化操作（作成・設定・参加・特殊�
 - Test: `tests/test_village_commands.py`
 
 **Interfaces:**
-- Consumes: Task 8 の `VillageService`、Task 7 の `messages`
+- Consumes: Task 1 の `parsing.java_trim` / `parse_java_int`、Task 8 の `VillageService`、Task 7 の `messages`
 - Produces: `commands.py` の `MAX_SIZE_INPUT = 100`、`CommandHandler(service: VillageService, special_form_url: str)`。メソッド `handle(user_id: str, text: str) -> list[Reply] | None`、`topic_candidate(rank: int) -> list[Reply]`
-- 入力の解釈（Java の TextCommandHandler と同じ）: 前後の空白を除いて `int()` で読めれば数値。10000 以上は特殊村へ参加、101〜9999 は通常村へ参加、100 以下は人数。数値でなければコマンド表（`お題`/`題`/`神`/`ランダム`/`@配布`/`＠配布`/`@特殊`/`＠特殊`/`@取得`/`＠取得`/`@逆村`/`＠逆村`/`@わーわーず`/`＠わーわーず`）、それ以外はお題（**空白を除かない元の文字列**）
-- 全角数字は数値として扱わない（Java の `Integer.parseInt` と同じ）。Python の `int()` は全角数字を受け付けてしまうので、`str.isascii()` で弾く
+- 入力の解釈（Java の TextCommandHandler と同じ）: `java_trim` で前後の U+0020 以下の文字を除き、`parse_java_int` で読めれば数値。10000 以上は特殊村へ参加、101〜9999 は通常村へ参加、100 以下は人数。数値でなければコマンド表（`お題`/`題`/`神`/`ランダム`/`@配布`/`＠配布`/`@特殊`/`＠特殊`/`@取得`/`＠取得`/`@逆村`/`＠逆村`/`@わーわーず`/`＠わーわーず`）、それ以外はお題（**trim しない元の文字列**）
+- 全角数字「３」は数値として扱い、全角スペースは除かない。「1_0」や int の範囲外は数値として読まずお題にする（Java の `Integer.parseInt` と `String.trim()` と同じ。Java 11 で確認済み）。Python の `int()` と `str.strip()` はどれも Java と違う結果になるので使わない
 
 - [ ] **Step 1: 失敗するテストを書く**
 
@@ -2692,12 +2854,44 @@ def test_surrounding_whitespace_is_ignored_for_numbers():
     assert handler.handle(OWNER, " 3 ")[0].text.startswith("人数を『3人』に設定しました。")
 
 
-def test_fullwidth_digits_are_treated_as_a_topic_not_a_number():
+def test_fullwidth_digits_are_numbers_like_java():
+    # Java の Integer.parseInt は全角数字を読む
+    handler, _, villages, _ = make(0)
+    handler.handle(OWNER, "お題")
+    assert handler.handle(OWNER, "３")[0].text.startswith("人数を『3人』に設定しました。")
+    assert latest(villages).size == 3
+
+
+def test_fullwidth_village_numbers_join_too():
+    handler, _, villages, _ = make(0)
+    handler.handle(OWNER, "お題")
+    handler.handle(OWNER, "すいか")
+    handler.handle(OWNER, "2")
+    number = str(latest(villages).number).translate(str.maketrans("0123456789", "０１２３４５６７８９"))
+    assert handler.handle(MEMBER, number)[0].text.startswith("あなたの役職は")
+
+
+def test_ideographic_spaces_are_not_trimmed():
+    # Java の trim() は全角スペースを除かないので、数値にもコマンドにもならずお題になる
     handler, _, villages, _ = make()
     handler.handle(OWNER, "お題")
-    reply = handler.handle(OWNER, "３")
-    assert reply == messages.topic_set_reply(latest(villages))
-    assert latest(villages).topic == "３"
+    first = latest(villages)
+    assert handler.handle(OWNER, "　3　") == messages.topic_set_reply(first)
+    assert first.topic == "　3　"
+    handler.handle(OWNER, "お題")
+    second = latest(villages)
+    assert handler.handle(OWNER, "　神　") == messages.topic_set_reply(second)
+    assert latest(villages) is second  # 神モードの村は作られていない
+    assert second.topic == "　神　"
+
+
+def test_numbers_java_cannot_read_are_topics():
+    # Integer.parseInt は「_」と int の範囲外を読めない。Java ではお題になる
+    for text in ("1_0", "2147483648", "-2147483649", "99999999999"):
+        handler, _, villages, _ = make()
+        handler.handle(OWNER, "お題")
+        assert handler.handle(OWNER, text) == messages.topic_set_reply(latest(villages)), text
+        assert latest(villages).topic == text
 
 
 def test_five_digit_numbers_join_special_villages():
@@ -2794,7 +2988,7 @@ def test_topic_candidate_uses_the_given_rank():
 
 # --- 経路一致 ---
 
-SCRIPT = ["お題", "すいか", "3", "<現在の村>", "@逆村", "＠わーわーず", "@特殊", "@配布", "101", "9999", " 3 ", "知らない文字列"]
+SCRIPT = ["お題", "すいか", "3", "<現在の村>", "@逆村", "＠わーわーず", "@特殊", "@配布", "101", "9999", " 3 ", "知らない文字列", "３", "　3　"]
 
 
 def run_through_text(handler, villages):
@@ -2823,6 +3017,8 @@ def run_through_service(service, villages):
         service.join_village(OWNER, 9999),
         service.set_size(OWNER, 3),
         service.set_topic(OWNER, "知らない文字列"),
+        service.set_size(OWNER, 3),
+        service.set_topic(OWNER, "　3　"),
     ]
 
 
@@ -2864,6 +3060,7 @@ Expected: `ModuleNotFoundError`
 from __future__ import annotations
 
 from insider_bot.village import messages
+from insider_bot.village.parsing import java_trim, parse_java_int
 from insider_bot.village.registry import MAX_VILLAGE_NUMBER
 from insider_bot.village.reply import Reply
 from insider_bot.village.service import VillageService
@@ -2881,24 +3078,15 @@ _REVERSE = ("@逆村", "＠逆村")
 _WEREWORDS = ("@わーわーず", "＠わーわーず")
 
 
-def _parse_int(command: str) -> int | None:
-    """Java の Integer.parseInt と同じく、ASCII の数字（先頭の - を含む）だけを数値とみなす。"""
-    if not command or not command.isascii():
-        return None
-    try:
-        return int(command)
-    except ValueError:
-        return None
-
-
 class CommandHandler:
     def __init__(self, service: VillageService, special_form_url: str) -> None:
         self._service = service
         self._special_form_url = special_form_url
 
     def handle(self, user_id: str, text: str) -> list[Reply] | None:
-        command = text.strip()
-        number = _parse_int(command)
+        # Java の String.trim() と Integer.parseInt() と同じ規則。全角数字は数値、全角スペースは除かない
+        command = java_trim(text)
+        number = parse_java_int(command)
         if number is not None:
             if number > MAX_VILLAGE_NUMBER:
                 return self._service.join_special_village(user_id, number)
@@ -2930,7 +3118,7 @@ class CommandHandler:
 - [ ] **Step 4: テストが通ることを確認する**
 
 Run: `uv run pytest tests/test_village_commands.py -q`
-Expected: `15 passed`
+Expected: `18 passed`
 
 - [ ] **Step 5: 全テストを流す**
 
@@ -2962,6 +3150,7 @@ LineBot の `/Users/fukasedaichi/git/LineBot/docs/game-spec.md` を土台にし�
 - 冒頭を「村（インサイダーゲームと Werewords の配役）の外部仕様。ここに書かれた入力と応答の対応が、LINE と Web の両方の入口が守る契約である」とする
 - 「特殊村」の作成方法 `POST /specialvillage` を「Web 版の特殊村フォーム（`/village/special`）」に、`@特殊` の応答を「Web 版の特殊村フォームの URL」に書き換える（入口そのものは M2 で作るが、docs は到達点の仕様として書く）
 - 「ユーザーを識別できない場合」は LINE 固有の制約なので、節の冒頭に「LINE の入口に固有」と注記する
+- game-spec.md が参照している `interfaces.md` の「数値の解釈」は insider に移さないので、表（10000 以上は特殊村、1000〜9999 は通常村、101〜999 は該当なしの村番号、100 以下は人数）を `docs/village.md` に取り込み、リンクを外す。「前後の空白を除いてから判定」は「前後の U+0020 以下の文字（半角スペース・タブ・改行）を除いてから判定。全角スペースは除かない」と正確に書き、全角数字は数値として読むこと、「1_0」や int の範囲外はお題になることを足す（`commands.py` と `parsing.py` の挙動）
 - 末尾に「実装の対応」の表を足す: 村の状態 → `village/model.py`、採番と上限 → `village/registry.py`、辞書 → `village/words.py`、Werewords → `village/werewords.py`、役職画像 → `village/illust.py`、文言 → `village/texts.py`、操作 → `village/service.py`、テキストの解釈 → `village/commands.py`、返事モデル → `village/reply.py`
 - 「返事モデル」の節を足し、`Text` / `Image` / `Buttons` / `Confirm`、`overflow` の意味（LINE の文字数制限で Java が Text に落としていた分岐）、`alt_text`、「対象の村がない」= `None` を説明する
 - 「並行性」の節を足し、asyncio 単一スレッドで「1 操作は同期関数で完結し、途中で await しない」ことが Java の `synchronized` に相当すると書く
