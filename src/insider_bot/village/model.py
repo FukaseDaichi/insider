@@ -6,6 +6,7 @@ asyncio 単一スレッドでは「1 つの同期メソッドで完結し、途�
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Protocol
@@ -138,3 +139,48 @@ class Village:
         if seat_number == self.gm_seat:
             return Role.GAME_MASTER
         return Role.INSIDER if self.reverse else Role.VILLAGER
+
+
+class SpecialVillage:
+    """任意のメッセージ集合を参加順に 1 通ずつ配る村。
+
+    不変条件は「i 番目の参加者に i 番目のメッセージが対応する」ことと「参加者数はメッセージ数を超えない」こと。
+    配布順は作成時に確定し（並べ替えは作る側の責務）、以降は参加者が増えるだけ。
+    """
+
+    def __init__(self, messages: Sequence[str | None]) -> None:
+        self.messages: tuple[str | None, ...] = tuple(messages)
+        self.number: int = 0
+        self.members: list[str] = []
+
+    def capacity(self) -> int:
+        return len(self.messages)
+
+    def member_count(self) -> int:
+        return len(self.members)
+
+    def has_member(self, user_id: str) -> bool:
+        return user_id in self.members
+
+    def join(self, user_id: str) -> bool:
+        """参加済みなら True のまま。満員なら False。"""
+        if user_id in self.members:
+            return True
+        if len(self.members) >= len(self.messages):
+            return False
+        self.members.append(user_id)
+        return True
+
+    def seat_number_of(self, user_id: str) -> int:
+        try:
+            return self.members.index(user_id) + 1
+        except ValueError:
+            return 0
+
+    def message_for(self, user_id: str) -> str | None:
+        """未参加なら None。空や None のメッセージは「メッセージは特にありません。」。"""
+        seat = self.seat_number_of(user_id)
+        if seat == 0:
+            return None
+        message = self.messages[seat - 1]
+        return message if message else texts.NO_SPECIAL_MESSAGE

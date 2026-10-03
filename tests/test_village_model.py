@@ -170,3 +170,50 @@ def test_role_labels_and_illust_keys():
 
 def test_god_mode_pending_is_not_a_seat():
     assert GOD_MODE_PENDING == 999
+
+
+# --- 特殊村 ---
+
+from insider_bot.village.model import SpecialVillage  # noqa: E402
+
+
+def test_special_village_hands_out_messages_in_join_order():
+    village = SpecialVillage(["1人目", "2人目", "3人目"])
+    assert village.capacity() == 3
+    assert village.join("a")
+    assert village.join("b")
+    assert village.message_for("a") == "1人目"
+    assert village.message_for("b") == "2人目"
+    assert village.seat_number_of("a") == 1
+    assert village.seat_number_of("b") == 2
+    assert village.member_count() == 2
+
+
+def test_special_village_join_is_idempotent_and_capacity_bound():
+    village = SpecialVillage(["only"])
+    assert village.join("a")
+    assert village.join("a")
+    assert not village.join("b")
+    assert village.member_count() == 1
+
+
+def test_special_village_blank_messages_get_the_placeholder():
+    village = SpecialVillage([None, "", "本文"])
+    for user in ("a", "b", "c"):
+        assert village.join(user)
+    assert village.message_for("a") == "メッセージは特にありません。"
+    assert village.message_for("b") == "メッセージは特にありません。"
+    assert village.message_for("c") == "本文"
+
+
+def test_special_village_message_for_unknown_user_is_none():
+    village = SpecialVillage(["x"])
+    assert village.message_for("nobody") is None
+    assert village.seat_number_of("nobody") == 0
+
+
+def test_special_village_copies_the_messages():
+    source = ["a", "b"]
+    village = SpecialVillage(source)
+    source.append("c")
+    assert village.capacity() == 2
