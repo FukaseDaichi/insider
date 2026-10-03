@@ -125,7 +125,7 @@ def candidate_reply(topic: str | None) -> list[Reply]:
     """お題候補と引き直しのボタン。辞書が壊れていると Java の文字列連結と同じく「null」が出る。
 
     Java は確定ボタンの text にも null をそのまま渡していた。返事モデルの型を str に保つため、ここでは表示と
-    同じ「null」を入れる。同梱の辞書は Task 4 のテストで読めることを確かめているので、通常は通らない。
+    同じ「null」を入れる。同梱の辞書は tests/test_village_words.py で読めることを確かめているので、通常は通らない。
     """
     shown = _shown(topic)
     text = f"お題は「{shown}」です。確定しますか？"

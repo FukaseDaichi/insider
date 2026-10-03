@@ -100,4 +100,4 @@ class Illustrations:
                 return
             self.apply_catalog(files)
         except Exception as error:
-            log.warning("役職画像のカタログを取り直せませんでした: %s", error)
+            log.warning("役職画像のカタログを取り直せませんでした: %r", error)
