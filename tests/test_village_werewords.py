@@ -7,7 +7,7 @@ from tests.fakes import FixedRandom
 def test_god_mode_distributes_one_message_per_participant():
     messages = werewords_messages(True, 5, "すいか", random.Random(0))
     assert len(messages) == 5
-    assert messages[0].startswith("あなたの役職はＧＭです。")
+    assert messages[0].startswith("あなたの役職はGMです。")
     assert "が欠けています。" in messages[0]
 
 
@@ -25,7 +25,7 @@ def test_every_message_is_assigned():
 def test_the_missing_role_is_the_first_after_shuffle():
     # shuffle しない乱数なら並びは [占師, インサイダー, 村人, 村人, 村人]。先頭の占師が欠け
     messages = werewords_messages(True, 5, "すいか", FixedRandom())
-    assert messages[0] == "あなたの役職はＧＭです。お題は「すいか」です。\n役職は「占師」が欠けています。"
+    assert messages[0] == "あなたの役職はGMです。お題は「すいか」です。\n役職は「占師」が欠けています。"
     assert messages[1] == "あなたの役職はインサイダーです。お題は「すいか」です。"
     assert messages[2:] == ["あなたの役職は村人です"] * 3
 

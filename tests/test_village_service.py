@@ -280,7 +280,7 @@ def test_werewords_from_a_god_village_distributes_size_messages():
     number = int(reply[0].text.split("『")[2].split("』")[0])
     assert reply == messages.werewords_created_reply("すいか", number, god_mode=True)
     assert specials.get(number).capacity() == 3
-    assert sum(1 for m in specials.get(number).messages if m.startswith("あなたの役職はＧＭです。")) == 1
+    assert sum(1 for m in specials.get(number).messages if m.startswith("あなたの役職はGMです。")) == 1
     # 元の村は残る
     assert villages.get(original.number) is original
 
