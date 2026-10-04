@@ -26,20 +26,19 @@ const UNAVAILABLE_ERRORS = {
 };
 
 /**
- * result イベントの内容を、それまでに確定した文字に合わせる。
- * 確定分は resultIndex 以降の新しいものだけを足し（二重に数えない）、未確定の部分はその時点のものに置き換える。
+ * result イベントの結果の一覧を、確定した文字と未確定の文字に分ける。
+ * 一覧には聞き始めからの結果がすべて入っているので、毎回はじめから読み直す。
+ * resultIndex（どこから新しいか）は、スマホのブラウザによって 0 のまま進まないので使わない。
  * stop() は全区間の確定を保証しないので、呼び出し側は「確定分＋未確定の末尾」を送る。
  */
-export function mergeResults(finals, results, resultIndex) {
-  let added = "";
-  for (let i = resultIndex; i < results.length; i++) {
-    if (results[i].isFinal) added += results[i][0].transcript;
-  }
+export function readResults(results) {
+  let finals = "";
   let interim = "";
   for (let i = 0; i < results.length; i++) {
-    if (!results[i].isFinal) interim += results[i][0].transcript;
+    if (results[i].isFinal) finals += results[i][0].transcript;
+    else interim += results[i][0].transcript;
   }
-  return { finals: finals + added, interim };
+  return { finals, interim };
 }
 
 export class PushToTalk {
@@ -52,6 +51,8 @@ export class PushToTalk {
     this.keyHeld = false;
     this.everStarted = false;
     this.recognition = null;
+    // earlier は聞き直す前までに聞き取った分。finals / interim は今の聞き取りの分
+    this.earlier = "";
     this.finals = "";
     this.interim = "";
     this.error = null;
@@ -79,11 +80,12 @@ export class PushToTalk {
   }
 
   text() {
-    return (this.finals + this.interim).trim();
+    return (this.earlier + this.finals + this.interim).trim();
   }
 
   press() {
     if (this.state !== "idle") return;
+    this.earlier = "";
     this.finals = "";
     this.interim = "";
     this.error = null;
@@ -112,10 +114,8 @@ export class PushToTalk {
       }
     };
     recognition.onresult = (event) => {
-      ({ finals: this.finals, interim: this.interim } = mergeResults(
-        this.finals,
+      ({ finals: this.finals, interim: this.interim } = readResults(
         event.results,
-        event.resultIndex,
       ));
       this.handlers.onTranscript(this.text());
     };
@@ -157,7 +157,8 @@ export class PushToTalk {
       return;
     }
     // 押している間に勝手に終わった（Android などで無音が続くと起きる）。聞き取った分を残して聞き直す
-    this.finals += this.interim;
+    this.earlier += this.finals + this.interim;
+    this.finals = "";
     this.interim = "";
     this.listen();
   }

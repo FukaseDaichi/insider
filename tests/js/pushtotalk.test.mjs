@@ -98,3 +98,37 @@ test("分類できないエラーで終わったら、聞き直さずに止め�
   assert.match(calls.status[0], /もう一度押して/);
   assert.deepEqual(calls.text, []);
 });
+
+// スマホのブラウザによっては、2 区切り目の途中経過でも resultIndex を 0 のまま送ってくる。
+// それを信じて確定分を足していたので、途中経過が届くたびに 1 区切り目が重なっていた
+test("resultIndex が進まなくても、確定した区切りを重ねない", (t) => {
+  const { ptt } = setup(t);
+  ptt.press();
+  const recognition = FakeRecognition.last;
+  recognition.onstart();
+  const first = result("体の部位を特定すると", true);
+  recognition.onresult({ results: [first], resultIndex: 0 });
+  for (const tail of ["お題", "お題が当てやすく", "お題が当てやすくなりますか"])
+    recognition.onresult({
+      results: [first, result(tail, false)],
+      resultIndex: 0,
+    });
+  assert.equal(ptt.text(), "体の部位を特定するとお題が当てやすくなりますか");
+});
+
+test("聞き直した後も、前に聞き取った分の後ろに新しい分をつなぐ", (t) => {
+  const { ptt } = setup(t);
+  ptt.press();
+  const first = FakeRecognition.last;
+  first.onstart();
+  first.onresult({ results: [result("赤い", true)], resultIndex: 0 });
+  first.onend();
+  const second = FakeRecognition.last;
+  const round = result("丸い", true);
+  second.onresult({ results: [round], resultIndex: 0 });
+  second.onresult({
+    results: [round, result("果物ですか", false)],
+    resultIndex: 0,
+  });
+  assert.equal(ptt.text(), "赤い丸い果物ですか");
+});
