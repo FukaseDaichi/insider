@@ -1,0 +1,46 @@
+{
+	# caddy-ratelimit は非標準ディレクティブなので、標準ディレクティブとの順序を宣言しないと使えない
+	# (basicauth は Caddy 2.8 で basic_auth に改名された。旧名は非推奨)
+	order rate_limit before basic_auth
+}
+
+# /etc/caddy/Caddyfile に置くときに insider.example.com を取得したホスト名へ置き換える (deploy/setup.md)
+# 1 つのホスト名で Web 版・配役ツール・LINE の webhook をすべて受ける
+insider.example.com {
+	# /api/village/* は署名検証のない状態変更 API。1 IP からの村の FIFO 追い出し (上限 50) を遅らせる。防止はできない。
+	# 2 つの zone は独立に数える (両方に合う要求は両方で数えられる):
+	#   village_create: 村を作る操作 (create / special / werewords / text。text は「お題」で村を作れる) を 30 回/分
+	#   village_all:    /api/village/* 全体を 300 回/分。配役ツールの画面は配布状況を 5 秒ごとに join / postback で取る
+	#                   (12 回/分/画面) ので、同じ Wi-Fi の 20 画面ぶんを通す
+	# /line/callback は LINE の署名検証があるので制限しない。画面・静的ファイル・お題当ての WebSocket も制限しない
+	rate_limit {
+		zone village_create {
+			match {
+				path /api/village/create /api/village/special /api/village/werewords /api/village/text
+			}
+			key {http.request.remote.host}
+			events 30
+			window 1m
+		}
+		zone village_all {
+			match {
+				path /api/village/*
+			}
+			key {http.request.remote.host}
+			events 300
+			window 1m
+		}
+	}
+
+	# 全パス共通の本文上限。aiohttp 側の client_max_size (server.py の MAX_REQUEST_BYTES = 2×1024×1024) と同じ値。
+	# Caddy の 2MB は 2,000,000 バイトなので MiB で書く。
+	# 根拠は特殊村: 1 村 100 通 × 5,000 文字 (UTF-16 単位) が仕様上の最大で、日本語は UTF-8 で 3 バイトなので約 1.5MB。
+	# 超過時の応答は 413 とは限らない。Caddy は Content-Length で事前に弾かず、下流が本文を読んだ時点で打ち切り、
+	# reverse_proxy は読み取りエラーを 502 に丸める。どちらでも aiohttp には届いていない
+	request_body {
+		max_size 2MiB
+	}
+
+	# WebSocket (/r/<番号>/ws) も reverse_proxy がそのまま通す
+	reverse_proxy 127.0.0.1:8080
+}

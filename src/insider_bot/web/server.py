@@ -26,7 +26,7 @@ JOIN_TIMEOUT_SECONDS = 10.0
 HEARTBEAT_SECONDS = 30.0
 MAX_MESSAGE_BYTES = 4096
 VENDOR_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
-# 特殊村は 100 通×5,000 文字まで受け取る（日本語の UTF-8 で約 1.5MB）。本番の Caddy の本文上限 2MB にそろえる
+# 特殊村は 100 通×5,000 文字まで受け取る（日本語の UTF-8 で約 1.5MB）。本番の Caddy の本文上限（deploy/Caddyfile の request_body の 2MiB）と同じ値
 MAX_REQUEST_BYTES = 2 * 1024 * 1024
 
 CLOSE_BAD_REQUEST = 4400
