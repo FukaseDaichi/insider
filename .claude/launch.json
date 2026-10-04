@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "insider-web",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "WEB_PORT=\"${PORT:-8080}\" exec uv run --env-file .env python -m insider_bot.web"],
+      "port": 8080,
+      "autoPort": true
+    }
+  ]
+}
