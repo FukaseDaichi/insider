@@ -5,7 +5,9 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
-from urllib.parse import urlsplit
+from urllib.parse import SplitResult, urlsplit
+
+from insider_bot.line.client import DEFAULT_API_BASE_URL
 
 
 class ConfigError(Exception):
@@ -30,6 +32,16 @@ class WebConfig:
     port: int
     # 役職画像と特殊村フォームの URL を組み立てる公開 URL（末尾の / なし）。空ならサイト内の絶対パス
     public_base_url: str = ""
+    # LINE Bot の webhook。None なら /line/callback を生やさない
+    line: LineConfig | None = None
+
+
+@dataclass(frozen=True)
+class LineConfig:
+    channel_secret: str
+    channel_token: str
+    # 返信 API の送り先。切替前の検証でスタブ（deploy/verify/line_api_stub.py）へ向けるときだけ変える
+    api_base_url: str = DEFAULT_API_BASE_URL
 
 
 def _get(env: Mapping[str, str], name: str) -> str:
@@ -84,15 +96,44 @@ def load_config(env: Mapping[str, str] | None = None) -> Config:
     )
 
 
+def _split_url(name: str, raw: str) -> SplitResult:
+    try:
+        return urlsplit(raw)
+    except ValueError:
+        # 「https://[x」のように URL として読めない値。起動時のトレースバックではなく設定エラーで伝える
+        raise ConfigError(f"{name} を URL として読めません（現在: {raw!r}）") from None
+
+
 def _public_base_url(env: Mapping[str, str]) -> str:
     raw = _get(env, "PUBLIC_BASE_URL")
     if not raw:
         return ""
-    parsed = urlsplit(raw)
+    parsed = _split_url("PUBLIC_BASE_URL", raw)
     # 画面と画像はサイトの根から配るので、パスやクエリを持つ URL は受け付けない
     if parsed.scheme not in ("https", "http") or not parsed.netloc or parsed.path not in ("", "/") or parsed.query or parsed.fragment:
         raise ConfigError(f"PUBLIC_BASE_URL は https://example.com のようにパスなしの URL で指定してください（現在: {raw!r}）")
     return raw.rstrip("/")
+
+
+def _line_config(env: Mapping[str, str], public_base_url: str) -> LineConfig | None:
+    secret = _get(env, "LINE_CHANNEL_SECRET")
+    token = _get(env, "LINE_CHANNEL_TOKEN")
+    if not secret and not token:
+        return None
+    if not secret or not token:
+        raise ConfigError(
+            "LINE を使うときは LINE_CHANNEL_SECRET と LINE_CHANNEL_TOKEN を両方指定してください（使わないなら両方空にする）"
+        )
+    # LINE は https で公開された画像しか表示できない。@特殊 の案内先とスタンプ応答のホームページもこの URL から作る
+    if not public_base_url.startswith("https://"):
+        raise ConfigError("LINE を使うときは PUBLIC_BASE_URL を https:// で始まる公開 URL で指定してください")
+    raw = _get(env, "LINE_API_BASE_URL")
+    if not raw:
+        return LineConfig(secret, token)
+    parsed = _split_url("LINE_API_BASE_URL", raw)
+    if parsed.scheme not in ("https", "http") or not parsed.netloc or parsed.query or parsed.fragment:
+        raise ConfigError(f"LINE_API_BASE_URL は http(s):// で始まる URL で指定してください（現在: {raw!r}）")
+    return LineConfig(secret, token, raw.rstrip("/"))
 
 
 def load_web_config(env: Mapping[str, str] | None = None) -> WebConfig:
@@ -108,11 +149,13 @@ def load_web_config(env: Mapping[str, str] | None = None) -> WebConfig:
     if not 1 <= port <= 65535:
         raise ConfigError(f"WEB_PORT は 1〜65535 で指定してください（現在: {port}）")
 
+    public_base_url = _public_base_url(env)
     return WebConfig(
         typesafe_api_key=_get(env, "TYPESAFE_API_KEY"),
         correct_threshold=threshold,
         jev_timeout_seconds=timeout,
         host=_get(env, "WEB_HOST") or "127.0.0.1",
         port=port,
-        public_base_url=_public_base_url(env),
+        public_base_url=public_base_url,
+        line=_line_config(env, public_base_url),
     )

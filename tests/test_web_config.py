@@ -1,6 +1,6 @@
 import pytest
 
-from insider_bot.config import ConfigError, WebConfig, load_web_config
+from insider_bot.config import ConfigError, LineConfig, WebConfig, load_web_config
 
 
 def test_web_needs_only_typesafe_key():
@@ -87,3 +87,46 @@ def test_obsolete_catalog_settings_are_ignored(value):
     assert load_web_config({"TYPESAFE_API_KEY": "ts-key", "ILLUSTRATION_CATALOG_URL": value}) == load_web_config(
         {"TYPESAFE_API_KEY": "ts-key"}
     )
+
+
+LINE_ENV = {
+    "TYPESAFE_API_KEY": "ts-key",
+    "PUBLIC_BASE_URL": "https://game.example.com",
+    "LINE_CHANNEL_SECRET": "secret",
+    "LINE_CHANNEL_TOKEN": "token",
+}
+
+
+def test_line_is_off_unless_configured():
+    assert load_web_config({"TYPESAFE_API_KEY": "ts-key"}).line is None
+
+
+def test_line_settings():
+    assert load_web_config(LINE_ENV).line == LineConfig("secret", "token", "https://api.line.me")
+    stub = load_web_config({**LINE_ENV, "LINE_API_BASE_URL": "http://127.0.0.1:18080/"})
+    assert stub.line.api_base_url == "http://127.0.0.1:18080"
+
+
+@pytest.mark.parametrize("missing", ["LINE_CHANNEL_SECRET", "LINE_CHANNEL_TOKEN"])
+def test_line_needs_both_the_secret_and_the_token(missing):
+    with pytest.raises(ConfigError, match="LINE_CHANNEL_SECRET と LINE_CHANNEL_TOKEN"):
+        load_web_config({name: value for name, value in LINE_ENV.items() if name != missing})
+
+
+@pytest.mark.parametrize("public", ["", "http://game.example.com"])
+def test_line_needs_an_https_public_base_url(public):
+    with pytest.raises(ConfigError, match="PUBLIC_BASE_URL"):
+        load_web_config({**LINE_ENV, "PUBLIC_BASE_URL": public})
+
+
+@pytest.mark.parametrize("value", ["127.0.0.1:18080", "ftp://127.0.0.1", "http://127.0.0.1:18080/?x=1"])
+def test_line_api_base_url_must_be_an_http_url(value):
+    with pytest.raises(ConfigError, match="LINE_API_BASE_URL"):
+        load_web_config({**LINE_ENV, "LINE_API_BASE_URL": value})
+
+
+@pytest.mark.parametrize("name", ["PUBLIC_BASE_URL", "LINE_API_BASE_URL"])
+def test_unreadable_urls_are_config_errors_naming_the_variable(name):
+    # urlsplit は「https://[x」で ValueError を投げる。起動時にトレースバックではなく設定エラーとして伝える
+    with pytest.raises(ConfigError, match=name):
+        load_web_config({**LINE_ENV, name: "https://[x"})
