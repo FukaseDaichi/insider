@@ -1,0 +1,4 @@
+# /etc/sudoers.d/insider (root:root, 0440)
+# 配備は insider ユーザーで SSH し、更新スクリプトだけを root で実行する。
+# スクリプト本体は root 所有 0755 で /usr/local/bin に置く (insider が書き換えられると権限昇格になる)
+insider ALL=(root) NOPASSWD: /usr/local/bin/insider-release.sh
