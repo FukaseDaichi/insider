@@ -51,6 +51,33 @@ Web 版の `/village`（トップページの「インサイダーの配役」�
 
 役職画像は神・GM・村人・インサイダー各5枚を同梱し、表示するたびに同じ役職の5枚から等確率で選びます。画像URLにはバージョンを付け、画像を更新した際に旧画像のキャッシュが使われないようにします。
 
+### LINE Bot
+
+Web 版のプロセスが LINE Bot の webhook も受けます。`LINE_CHANNEL_SECRET`・`LINE_CHANNEL_TOKEN` と、https の `PUBLIC_BASE_URL` を設定すると `/line/callback` が有効になります。LINE で作った村に Web から入れます（逆も同じ）。
+
+1. LINE Developers のチャネルで、Webhook URL を `https://<公開 URL>/line/callback` にし、Webhook の利用をオンにする（応答メッセージはオフ）
+2. コンソールの「検証」で成功を確かめる
+
+LINE へ送らずに確かめるときは、返信 API のスタブを起動し、Web 版を `LINE_API_BASE_URL=http://127.0.0.1:18080` を足して起動してから、署名付きの webhook を送ります。返信の中身はスタブの端末に出ます。
+
+```bash
+uv run python deploy/verify/line_api_stub.py 18080
+```
+
+```bash
+LINE_CHANNEL_SECRET=<Web 版と同じ値> uv run python deploy/verify/post_callback.py http://127.0.0.1:8080/line/callback text U0000 お題
+```
+
+LINE の返信が Java の LineBot と同じかは `tests/test_line_golden.py` が確かめます。比べる JSON（`tests/golden/line_callapi.json`）は、Java の LineBot を手元で動かして採ります（`<LineBot>` は LineBot のリポジトリ。Java は本番と同じ 8 を使う）。まだ採っていないあいだは比較を飛ばします（skip）。`tests/line_golden.py` の手順を変えたら採り直します。
+
+```bash
+LINE_BOT_CHANNEL_TOKEN=golden LINE_BOT_CHANNEL_SECRET=golden java -jar <LineBot>/insider-game-bot/build/libs/insider-game-bot-2.7.0-SNAPSHOT.jar --server.port=18080
+```
+
+```bash
+uv run python -m tests.line_golden http://127.0.0.1:18080/callapi
+```
+
 ### 仲間と遊ぶとき（Mac で起動して公開する）
 
 Discord ボットと Web 版をまとめて起動し、Web 版を Tailscale Funnel で公開します（構成の考え方は [docs/infra.md](docs/infra.md)）。
@@ -98,6 +125,9 @@ uv run --env-file .env python -m insider_bot
 | `WEB_HOST` | | 127.0.0.1 | Web 版が待ち受けるアドレス |
 | `WEB_PORT` | | 8080 | Web 版が待ち受けるポート |
 | `PUBLIC_BASE_URL` | | — | Web 版の公開 URL（例 `https://game.example.com`）。配役ツールの役職画像と特殊村フォームの URL に使う。未設定ならサイト内のパス |
+| `LINE_CHANNEL_SECRET` | | — | LINE Bot のチャネルシークレット。`LINE_CHANNEL_TOKEN` と両方設定すると `/line/callback` で webhook を受ける（`PUBLIC_BASE_URL` に https の公開 URL が要る） |
+| `LINE_CHANNEL_TOKEN` | | — | LINE Bot のチャネルアクセストークン（長期） |
+| `LINE_API_BASE_URL` | | `https://api.line.me` | LINE の返信 API の送り先。切替前の検証でスタブへ向けるときだけ変える |
 
 ## 開発
 

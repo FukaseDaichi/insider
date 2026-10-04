@@ -380,3 +380,6 @@ LINE と Web の同一人物は紐づけない。別の識別子は別人とし�
 | テキストの解釈 | `village/commands.py` |
 | 入力の読み方（空白・数値・分割） | `village/parsing.py` |
 | 返事モデル | `village/reply.py` |
+| LINE の入口（webhook・署名・返信 API） | `line/webhook.py`、`line/signature.py`、`line/client.py` |
+| LINE のメッセージの形 | `line/render.py` |
+| スタンプ応答 | `line/sticker.py` |
