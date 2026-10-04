@@ -58,14 +58,43 @@ jobs:
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # 止まった接続で deploy-production の group を何時間も塞がない。runner 側を切っても、
+    # VM 上の更新スクリプトは HUP と PIPE を無視して戻しまで完走する
+    timeout-minutes: 20
     # 連続 push で並走させない。実行中の job は cancel しない (VM 側の更新を途中で打ち切らせない)。
     # GitHub は group 内の順序を保証しないので、排他を取った後に main の最新 SHA を再確認する
     concurrency:
       group: deploy-production
       cancel-in-progress: false
     steps:
+      # Secrets が 3 つとも未登録のあいだ (VM を用意する前) は、配備を飛ばして成功で終わる。
+      # 一部だけ未登録なら設定の誤りなので失敗する。if: は secrets を直接読めないので、ここで判定して output に出す
+      - name: Check deploy secrets
+        id: secrets
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          missing=()
+          for name in DEPLOY_SSH_KEY DEPLOY_HOST_KEY DEPLOY_HOST; do
+            if [ -z "${!name}" ]; then
+              missing+=("$name")
+            fi
+          done
+          if [ "${#missing[@]}" -eq 3 ]; then
+            echo "::notice::Deploy secrets are not set; skipping deploy"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ "${#missing[@]}" -gt 0 ]; then
+            for name in "${missing[@]}"; do
+              echo "$name secret is not set" >&2
+            done
+            exit 1
+          fi
+
       - name: Confirm this commit is still the head of main
         id: head
+        if: steps.secrets.outputs.skip != 'true'
         run: |
           # 既定のシェルは bash -e で pipefail が付かないため、明示しないと git ls-remote の失敗が
           # cut の 0 に隠れ、head が空 = skip=true になる。それでは job が緑のまま何も配備されない
@@ -78,7 +107,7 @@ jobs:
           fi
 
       - name: Download release
-        if: steps.head.outputs.skip != 'true'
+        if: steps.secrets.outputs.skip != 'true' && steps.head.outputs.skip != 'true'
         uses: actions/download-artifact@v8
         with:
           name: insider-release
@@ -86,18 +115,12 @@ jobs:
 
       # ホスト鍵を固定する。固定しないと DNS や経路を乗っ取られたときに tar を偽の VM へ送り込まれる
       - name: Configure SSH
-        if: steps.head.outputs.skip != 'true'
+        if: steps.secrets.outputs.skip != 'true' && steps.head.outputs.skip != 'true'
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
-          for name in DEPLOY_SSH_KEY DEPLOY_HOST_KEY DEPLOY_HOST; do
-            if [ -z "${!name}" ]; then
-              echo "$name secret is not set" >&2
-              exit 1
-            fi
-          done
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
@@ -106,19 +129,23 @@ jobs:
           chmod 644 ~/.ssh/known_hosts
 
       - name: Upload release to the VM
-        if: steps.head.outputs.skip != 'true'
+        if: steps.secrets.outputs.skip != 'true' && steps.head.outputs.skip != 'true'
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
           # 稼働中の世代 (releases/) ではなく incoming/ へ置く。同じ commit の re-run でも本番を上書きしない
+          # BatchMode はパスワードを尋ねずに失敗させる。ConnectTimeout と ServerAlive は、繋がらない・止まった接続を 15〜60 秒で見切る
+          opts=(-o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
           target="insider@${DEPLOY_HOST}"
-          ssh -o StrictHostKeyChecking=yes "$target" "rm -rf /opt/insider/incoming/${GITHUB_SHA} && mkdir -p /opt/insider/incoming/${GITHUB_SHA}"
-          scp -o StrictHostKeyChecking=yes dist/insider.tar.gz dist/insider.tar.gz.sha256 "$target:/opt/insider/incoming/${GITHUB_SHA}/"
+          ssh "${opts[@]}" "$target" "rm -rf /opt/insider/incoming/${GITHUB_SHA} && mkdir -p /opt/insider/incoming/${GITHUB_SHA}"
+          scp "${opts[@]}" dist/insider.tar.gz dist/insider.tar.gz.sha256 "$target:/opt/insider/incoming/${GITHUB_SHA}/"
 
       # 検証 → 展開 → uv sync → 昇格 → 再起動 → ヘルスチェック → 復旧 → 世代管理は VM 上の 1 本が flock 付きで完走する。
       # この step の終了コードがそのまま job の成否になる
       - name: Release on the VM
-        if: steps.head.outputs.skip != 'true'
+        if: steps.secrets.outputs.skip != 'true' && steps.head.outputs.skip != 'true'
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-        run: ssh -o StrictHostKeyChecking=yes "insider@${DEPLOY_HOST}" "sudo /usr/local/bin/insider-release.sh ${GITHUB_SHA}"
+        run: |
+          opts=(-o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+          ssh "${opts[@]}" "insider@${DEPLOY_HOST}" "sudo /usr/local/bin/insider-release.sh ${GITHUB_SHA}"
