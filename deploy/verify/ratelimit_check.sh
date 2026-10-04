@@ -12,6 +12,6 @@ path="${2:?path (例 /api/village/special)}"
 count="${3:-40}"
 
 start=$SECONDS
-seq "$count" | xargs -P 10 -I{} curl -s -o /dev/null -w '%{http_code}\n' -X POST \
+seq "$count" | xargs -P 10 -I@ curl -s -o /dev/null -w '%{http_code}\n' -X POST \
   -H 'Content-Type: application/json' --data '{}' "$base$path" | sort | uniq -c
 echo "elapsed: $((SECONDS - start))s（60 秒を超えていたら計り直す）"
