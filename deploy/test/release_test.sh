@@ -1,21 +1,26 @@
 #!/usr/bin/env bash
 # deploy/insider-release.sh の振る舞いを、systemctl・curl・uv を偽物に差し替えて確かめる。
-# 本番は Linux (flock / sha256sum)。CI の build job で必ず走らせる。Mac では shasum に切り替わり、排他なしで動く。
+# 本番は Linux (flock / sha256sum)。CI の build job で必ず走らせる。sha256sum が無ければ shasum に切り替え、
+# flock が無ければ (Mac) 排他なしで動く。
 #
 # tar の中の BEHAVIOR ファイルが「振る舞い」を表す:
 #   GOOD     起動して 200 ok を返し、bot も active
-#   BROKEN   起動しない (curl が失敗する)
-#   HALFUP   本文は ok だが HTTP 503 (ステータスを見ていないと健康と誤判定する)
+#   BROKEN   Web も bot も起動しない (curl が失敗し、bot は起動の直後に落ちて自動再起動を繰り返す)
+#   HALFUP   本文は ok だが HTTP 503 (ステータスを見ていないと健康と誤判定する)。bot は正常
 #   NOSTART  systemctl restart 自体が失敗する
 #   FLAKY    本文も HTTP 200 も正常だが curl 自体が失敗する (終了コードを見ていないと健康と誤判定する)
 #   NOSYNC   uv sync が失敗する (current を変えずに終わる)
 #   NOIMPORT 展開後の python が import に失敗する (current を変えずに終わる)
-#   BOTDOWN  Web は 200 ok だが insider-bot が自動再起動している (NRestarts が 0 でない)
-#   BOTLATE  Web は 200 ok で bot も最初の確認では NRestarts が 0 だが、BOT_SETTLE の後の再確認で 1 (起動の数秒後に落ちる)
+#   BOTDOWN  Web は 200 ok だが insider-bot が起動の直後に落ち、自動再起動を繰り返す (NRestarts が 0 でない)
+#   BOTLATE  Web は 200 ok で bot も最初の確認では NRestarts が 0 だが、BOT_SETTLE の後の再確認で 1
+#            (起動の数秒後に落ち、以後は自動再起動を繰り返す)
 # 世代の外にある状態 ($INSIDER_HOME 直下) も偽物が見る:
-#   stopped-<unit>  systemctl stop が作り、restart が消す。ある間は is-active が失敗し、Web の curl も失敗する
-#   env-broken      ある間はどの世代でも curl が失敗する (/etc/insider.env の誤りを模す)
-#   slow-fail       ある間は起動しない世代の curl が 0.5 秒遅れて失敗する (出力側が閉じる時間を作る)
+#   stopped-<unit>    systemctl stop が作り、restart が消す。ある間は is-active が失敗し、Web の curl も失敗する
+#   env-broken        ある間はどの世代でも curl が失敗し、bot も起動の直後に落ちる (/etc/insider.env の誤りを模す)
+#   bot-broken        ある間はどの世代でも bot だけが起動の直後に落ちる (DISCORD_TOKEN の誤りや失効を模す)
+#   slow-fail         ある間は起動しない世代の curl が 0.5 秒遅れて失敗する (出力側が閉じる時間を作る)
+#   nrestarts-<unit>  NRestarts の値 (無ければ 0)
+#   crashloop-<unit>  ある間、そのユニットは落ちて自動再起動を待っている (下の偽 systemctl を参照)
 set -euo pipefail
 
 script="$(cd "$(dirname "$0")/.." && pwd)/insider-release.sh"
@@ -30,36 +35,64 @@ fi
 fake_bin="$(mktemp -d)"
 cat > "$fake_bin/systemctl" <<'FAKE'
 #!/usr/bin/env bash
+# 本物の systemd (Ubuntu 24.04 の 255) のうち、更新スクリプトの判定に効く振る舞いを真似る。
+# NRestarts (自動再起動の回数) は手動の restart で 0 に戻る。ただし、落ちて自動再起動を待っている間 (auto-restart) に
+# 来た restart では 0 に戻らない (実測)。reset-failed と stop は 0 に戻す。
+# ここでは落ち続けているユニットへの restart は必ずその待ちの間に来ることにする (本物ではたいていそうなる)
 behavior="$(cat "$INSIDER_HOME/current/BEHAVIOR" 2>/dev/null || true)"
 unit="${*: -1}"
+count_file="$INSIDER_HOME/nrestarts-$unit"
+crashloop="$INSIDER_HOME/crashloop-$unit"
+nrestarts() { cat "$count_file" 2>/dev/null || echo 0; }
 case "$1" in
-  restart|stop)
-    echo "$1 $2" >> "$INSIDER_HOME/systemctl.log"
-    if [[ "$1" == restart ]]; then
-      [[ "$behavior" == NOSTART ]] && exit 1
-      rm -f "$INSIDER_HOME/stopped-$unit" "$INSIDER_HOME/show-count"
-    else
-      : > "$INSIDER_HOME/stopped-$unit"
+  reset-failed)
+    echo "$1 $unit" >> "$INSIDER_HOME/systemctl.log"
+    echo 0 > "$count_file"
+    rm -f "$crashloop"
+    exit 0 ;;
+  restart)
+    echo "$1 $unit" >> "$INSIDER_HOME/systemctl.log"
+    [[ "$behavior" == NOSTART ]] && exit 1
+    rm -f "$INSIDER_HOME/stopped-$unit" "$INSIDER_HOME/show-count"
+    [[ -e "$crashloop" ]] || echo 0 > "$count_file"
+    rm -f "$crashloop"
+    if [[ "$unit" == insider-bot ]]; then
+      if [[ -e "$INSIDER_HOME/env-broken" || -e "$INSIDER_HOME/bot-broken" || "$behavior" == BROKEN || "$behavior" == BOTDOWN ]]; then
+        # 起動の直後に落ち、自動再起動を繰り返す
+        echo $(( $(nrestarts) + 1 )) > "$count_file"
+        : > "$crashloop"
+      elif [[ "$behavior" == BOTLATE ]]; then
+        # 起動の数秒後に落ち (数が増えるのは下の show の 2 回目)、以後は自動再起動を繰り返す
+        : > "$crashloop"
+      fi
     fi
     exit 0 ;;
-  is-active)
-    [[ -e "$INSIDER_HOME/stopped-$unit" ]] && exit 3
+  stop)
+    echo "$1 $unit" >> "$INSIDER_HOME/systemctl.log"
+    : > "$INSIDER_HOME/stopped-$unit"
+    echo 0 > "$count_file"
+    rm -f "$crashloop"
     exit 0 ;;
+  is-active)
+    if [[ -e "$INSIDER_HOME/stopped-$unit" ]]; then state=inactive rc=3; else state=active rc=0; fi
+    [[ "$2" == --quiet ]] || echo "$state"
+    exit "$rc" ;;
   show)
     # show -p NRestarts --value <unit>
-    case "$behavior" in
-      BOTDOWN) echo 1 ;;
-      BOTLATE)
-        # restart の後の最初の 1 回は 0、それ以降は 1 (起動の数秒後に落ちて自動再起動した)
-        if [[ -e "$INSIDER_HOME/show-count" ]]; then echo 1; else : > "$INSIDER_HOME/show-count"; echo 0; fi ;;
-      *) echo 0 ;;
-    esac
+    if [[ "$unit" == insider-bot && "$behavior" == BOTLATE ]]; then
+      # restart の後の最初の 1 回はそのままの数、2 回目からは 1 回落ちて自動再起動した後の数
+      case "$(cat "$INSIDER_HOME/show-count" 2>/dev/null)" in
+        '') echo first > "$INSIDER_HOME/show-count" ;;
+        first) echo crashed > "$INSIDER_HOME/show-count"; echo $(( $(nrestarts) + 1 )) > "$count_file" ;;
+      esac
+    fi
+    nrestarts
     exit 0 ;;
 esac
 FAKE
 cat > "$fake_bin/curl" <<'FAKE'
 #!/usr/bin/env bash
-# 本物と同じく -o <file> に本文を書き、-w の代わりに HTTP ステータスを標準出力へ出す
+# 本物と同じく -o <file> に本文を書き、-w の代わりに HTTP ステータスを標準出力へ出す (繋がらなければ 000)
 out=/dev/null
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -69,13 +102,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 # 世代の外の状態: Web が止まっている間と、/etc/insider.env が誤っている間は、どの世代でも繋がらない
-if [[ -e "$INSIDER_HOME/stopped-insider-web" || -e "$INSIDER_HOME/env-broken" ]]; then exit 7; fi
+if [[ -e "$INSIDER_HOME/stopped-insider-web" || -e "$INSIDER_HOME/env-broken" ]]; then printf 000; exit 7; fi
 behavior="$(cat "$INSIDER_HOME/current/BEHAVIOR" 2>/dev/null || true)"
 case "$behavior" in
   GOOD|BOTDOWN|BOTLATE) printf ok > "$out"; printf 200; exit 0 ;;
   HALFUP)       printf ok > "$out"; printf 503; exit 0 ;;
   FLAKY)        printf ok > "$out"; printf 200; exit 7 ;;
-  *)            [[ -e "$INSIDER_HOME/slow-fail" ]] && sleep 0.5; exit 7 ;;
+  *)            [[ -e "$INSIDER_HOME/slow-fail" ]] && sleep 0.5; printf 000; exit 7 ;;
 esac
 FAKE
 cat > "$fake_bin/uv" <<'FAKE'
@@ -159,7 +192,16 @@ botlate="$(rep40 8)"   # Web は上がり、bot も最初の確認は通るが�
 released() { echo "$INSIDER_HOME/releases/$1"; }
 current() { readlink "$INSIDER_HOME/current" 2>/dev/null || echo none; }
 previous() { readlink "$INSIDER_HOME/previous" 2>/dev/null || echo none; }
-systemctl_log() { cat "$INSIDER_HOME/systemctl.log" 2>/dev/null | tr '\n' ';' || true; }
+# restart と stop の並び。更新スクリプトは restart の直前に必ず reset-failed するので、その行はここでは除き、
+# systemctl_log_all と restarts_without_reset で別に確かめる
+systemctl_log() { grep -v '^reset-failed ' "$INSIDER_HOME/systemctl.log" 2>/dev/null | tr '\n' ';' || true; }
+systemctl_log_all() { cat "$INSIDER_HOME/systemctl.log" 2>/dev/null | tr '\n' ';' || true; }
+# 直前の行が同じユニットの reset-failed でない restart の数
+restarts_without_reset() {
+  { cat "$INSIDER_HOME/systemctl.log" 2>/dev/null || true; } |
+    awk '/^restart / { if (prev != "reset-failed " $2) n++ } { prev = $0 } END { print n + 0 }'
+}
+logged() { grep -qF -- "$1" "$INSIDER_HOME/out.log" && echo yes || echo no; }
 uv_log() { cat "$INSIDER_HOME/uv.log" 2>/dev/null | tr '\n' ';' || true; }
 incoming_count() { ls -1 "$INSIDER_HOME/incoming" | wc -l | tr -d ' '; }
 release_count() { ls -1 "$INSIDER_HOME/releases" | grep -cE '^[0-9a-f]{40}$' || true; }
@@ -188,6 +230,8 @@ assert_eq "uv sync は展開中のディレクトリで 1 回" "$INSIDER_HOME/re
 assert_eq "uv sync は --locked --no-dev --no-editable" "sync --locked --no-dev --no-editable" "$(cat "$INSIDER_HOME/uv-args.log")"
 assert_eq "展開中のディレクトリは残らない" 0 "$(staging_count)"
 assert_eq "web と bot を 1 回ずつ再起動する" "restart insider-web;restart insider-bot;" "$(systemctl_log)"
+assert_eq "restart の直前に、同じユニットを reset-failed する (自動再起動の待ちの最中でも NRestarts を 0 に戻す)" \
+  "reset-failed insider-web;restart insider-web;reset-failed insider-bot;restart insider-bot;" "$(systemctl_log_all)"
 assert_eq "起動する 2 つのエントリ (python -m insider_bot と python -m insider_bot.web) を import で確かめる" \
   "-c import insider_bot.__main__, insider_bot.web.__main__" "$(cat "$INSIDER_HOME/python-args.log")"
 
@@ -224,6 +268,8 @@ add_release "$halfup" HALFUP
 run_release "$halfup"
 assert_eq "job は失敗する" 1 "$status"
 assert_eq "current が bbb に戻る" "$(released "$bbb")" "$(current)"
+assert_eq "どの確認で落ちたかをログに 1 行で出す (HTTP ステータス・curl の終了コード・本文・bot の状態・NRestarts)" yes \
+  "$(logged "not healthy within 0s: web http=503 curl=0 body=ok; bot active NRestarts=0")"
 
 echo "# systemctl restart 自体の失敗も戻す"
 add_release "$nostart" NOSTART
@@ -236,12 +282,16 @@ add_release "$botdown" BOTDOWN
 run_release "$botdown"
 assert_eq "job は失敗する" 1 "$status"
 assert_eq "current が bbb に戻る" "$(released "$bbb")" "$(current)"
+assert_eq "ログに bot の NRestarts が出る" yes "$(logged "not healthy within 0s: web http=200 curl=0 body=ok; bot active NRestarts=1")"
 
 echo "# Web が上がり bot も最初の確認は通っても、BOT_SETTLE の後に自動再起動していれば戻す"
 add_release "$botlate" BOTLATE
 run_release "$botlate"
 assert_eq "job は失敗する (最初の確認だけで健康と見なさない)" 1 "$status"
 assert_eq "current が bbb に戻る" "$(released "$bbb")" "$(current)"
+assert_eq "BOT_SETTLE の後の再確認で落ちたことがログに出る" yes \
+  "$(logged "not healthy 0s after passing: web http=200 curl=0 body=ok; bot active NRestarts=1")"
+assert_eq "戻した世代で健康になり、何も止めない" 0 "$(systemctl_log | tr ';' '\n' | grep -c '^stop ' || true)"
 
 echo "# uv sync の失敗は current も previous も変えず、再起動もしない"
 # previous が current と違う状態 (aaa → bbb) から始める。失敗する前に current を previous へ昇格させる実装を見逃さないため
@@ -275,12 +325,91 @@ assert_eq "previous も変わらない (aaa のまま)" "$(released "$aaa")" "$(
 assert_eq "restart は呼ばれない" "$before_log" "$(systemctl_log)"
 assert_eq "失敗した世代は releases に残らない" no "$(exists "$(released "$noimport")")"
 
-echo "# 戻し先が無ければ停止する"
+echo "# 戻し先が無く、Web も bot も通らなければ両方を止める"
 fresh_home
 add_release "$ddd" BROKEN
 run_release "$ddd"
 assert_eq "job は失敗する" 1 "$status"
 assert_eq "restart の後に両方を stop する" "restart insider-web;restart insider-bot;stop insider-web;stop insider-bot;" "$(systemctl_log)"
+assert_eq "止めたユニットと残したユニットをログに出す" yes "$(logged "no healthy release; stopped: insider-web insider-bot; kept running: none")"
+
+echo "# 戻し先が無く bot だけが通らなければ、bot だけを止めて Web と LINE は動かしたままにする"
+fresh_home
+add_release "$botdown" BOTDOWN
+run_release "$botdown"
+assert_eq "job は失敗する" 1 "$status"
+assert_eq "restart の後に bot だけを stop する" "restart insider-web;restart insider-bot;stop insider-bot;" "$(systemctl_log)"
+assert_eq "Web は動いたまま (is-active)" active "$(systemctl is-active insider-web)"
+assert_eq "ログに bot を止めて Web を残したと出る" yes "$(logged "no healthy release; stopped: insider-bot; kept running: insider-web")"
+
+echo "# 戻し先が無く Web だけが通らなければ、Web だけを止めて bot は動かしたままにする"
+fresh_home
+add_release "$halfup" HALFUP
+run_release "$halfup"
+assert_eq "job は失敗する" 1 "$status"
+assert_eq "restart の後に Web だけを stop する" "restart insider-web;restart insider-bot;stop insider-web;" "$(systemctl_log)"
+assert_eq "bot は動いたまま (is-active)" active "$(systemctl is-active insider-bot)"
+assert_eq "ログに Web を止めて bot を残したと出る" yes "$(logged "no healthy release; stopped: insider-web; kept running: insider-bot")"
+
+echo "# 戻しても bot だけが通らなければ (Discord 側の障害など)、bot だけを止めて Web と LINE は動かしたままにする"
+fresh_home
+add_release "$aaa" GOOD
+run_release "$aaa"
+touch "$INSIDER_HOME/bot-broken"   # どの世代の bot も起動しない
+add_release "$bbb" GOOD
+run_release "$bbb"
+assert_eq "job は失敗する" 1 "$status"
+assert_eq "ログに戻しも通らなかったと出る" yes "$(logged "rollback did not become healthy either")"
+assert_eq "current は戻した aaa" "$(released "$aaa")" "$(current)"
+assert_eq "aaa、bbb、戻しの restart の後に、bot だけを stop する" \
+  "restart insider-web;restart insider-bot;restart insider-web;restart insider-bot;restart insider-web;restart insider-bot;stop insider-bot;" "$(systemctl_log)"
+assert_eq "Web は動いたまま (is-active)" active "$(systemctl is-active insider-web)"
+
+echo "# 落ち続ける bot の世代から戻すとき、直前の世代の bot を健康と判定できる (NRestarts を引き継がない)"
+# 落ちて自動再起動を待っている bot へ restart しても、systemd 255 は NRestarts を 0 に戻さない。
+# reset-failed をしないと、正常な bbb の bot まで「自動再起動した」と見えて戻しが失敗し、全部を止めてしまう
+fresh_home
+add_release "$aaa" GOOD
+run_release "$aaa"
+add_release "$bbb" GOOD
+run_release "$bbb"
+add_release "$botdown" BOTDOWN
+run_release "$botdown"
+assert_eq "job は失敗する (戻せても配備した commit は動いていない)" 1 "$status"
+assert_eq "current が bbb に戻る" "$(released "$bbb")" "$(current)"
+assert_eq "ログに rolled back と出る" yes "$(logged "rolled back; production is running $(released "$bbb")")"
+assert_eq "stop は呼ばない" 0 "$(systemctl_log | tr ';' '\n' | grep -c '^stop ' || true)"
+assert_eq "戻した後の bot は active" active "$(systemctl is-active insider-bot)"
+assert_eq "戻した後の bot の NRestarts は 0" 0 "$(systemctl show -p NRestarts --value insider-bot)"
+assert_eq "どの restart の直前にも、同じユニットの reset-failed がある" 0 "$(restarts_without_reset)"
+
+echo "# 稼働中の bot が落ち続けている間に env を直し、同じ commit を再実行すると、再起動して成功する"
+fresh_home
+add_release "$aaa" GOOD
+run_release "$aaa"
+touch "$INSIDER_HOME/bot-broken"   # 稼働中に DISCORD_TOKEN が失効した。Restart=always で落ちては上がり直す
+systemctl restart insider-bot      # 失効の後の最初の起動 (落ちて自動再起動を待つ状態になる)
+assert_eq "前提: bot の NRestarts が 0 でない" 1 "$(systemctl show -p NRestarts --value insider-bot)"
+rm -f "$INSIDER_HOME/bot-broken"   # 運用者が /etc/insider.env を直して、GitHub の job を re-run する
+add_release "$aaa" GOOD
+run_release "$aaa"
+assert_eq "成功する" 0 "$status"
+assert_eq "bot の NRestarts は 0" 0 "$(systemctl show -p NRestarts --value insider-bot)"
+assert_eq "ログに healthy と出る" yes "$(logged "healthy: $aaa")"
+
+echo "# 同じ commit の再実行が通らないときも、通らないユニットだけを止める"
+fresh_home
+touch "$INSIDER_HOME/bot-broken"   # DISCORD_TOKEN の誤り。bot だけが、どの世代でも起動の直後に落ちる
+add_release "$aaa" GOOD
+run_release "$aaa"
+assert_eq "bot が起動しないので失敗する" 1 "$status"
+assert_eq "戻し先が無いので bot だけを stop する" "restart insider-web;restart insider-bot;stop insider-bot;" "$(systemctl_log)"
+add_release "$aaa" GOOD
+run_release "$aaa"
+assert_eq "env がまだ誤っていれば、再実行も失敗する" 1 "$status"
+assert_eq "再起動を試みてから、bot だけをもう一度 stop する (Web は止めない)" \
+  "restart insider-web;restart insider-bot;stop insider-bot;restart insider-web;restart insider-bot;stop insider-bot;" "$(systemctl_log)"
+assert_eq "Web は動いたまま (is-active)" active "$(systemctl is-active insider-web)"
 
 echo "# チェックサム不一致は何もしない"
 fresh_home
