@@ -119,13 +119,14 @@ healthy() {
 
 # restart の直前に reset-failed する。落ちて自動再起動を待っている間 (auto-restart) に来た restart は NRestarts を
 # 0 に戻さない (systemd 255 で実測)。そのままだと、落ち続ける bot の世代から戻したとき、正常な直前の世代の bot まで
-# 自動再起動したように見えて戻しが失敗する。reset-failed は待ちの最中でも 0 に戻す。
+# 自動再起動したように見えて戻しが失敗する。reset-failed は待ちの最中でも 0 に戻す (読み込まれていないユニットでは
+# 失敗するが、restart は続ける)。
 # systemctl restart 自体の失敗も、ヘルスチェック失敗と同じに扱う。
 # 通った後も BOT_SETTLE 秒待ってもう一度見る (Discord のログイン失敗は起動の数秒後に落ちるため)
 restart_and_check() {
   local service
   for service in "$WEB_SERVICE" "$BOT_SERVICE"; do
-    systemctl reset-failed "$service" || true
+    systemctl reset-failed "$service" 2>/dev/null || true
     if ! systemctl restart "$service"; then
       log "systemctl restart $service failed"
       return 1
