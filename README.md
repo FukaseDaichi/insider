@@ -78,9 +78,13 @@ LINE_BOT_CHANNEL_TOKEN=golden LINE_BOT_CHANNEL_SECRET=golden java -jar <LineBot>
 uv run python -m tests.line_golden http://127.0.0.1:18080/callapi
 ```
 
+### 本番（Oracle Cloud の VM で 24 時間動かす）
+
+Always Free の A1 1 台に Caddy と systemd で載せ、`main` への push で GitHub Actions が配備します（構成は [docs/infra.md](docs/infra.md)）。VM のセットアップは [deploy/setup.md](deploy/setup.md)、画面操作は [deploy/human-steps.md](deploy/human-steps.md)、LINE の切替前検証と切替は [deploy/cutover.md](deploy/cutover.md)。本番の VM が動いている間は、下の Mac での起動を使いません（Discord ボットが 2 か所で動くと質問に 2 回返信します）。
+
 ### 仲間と遊ぶとき（Mac で起動して公開する）
 
-Discord ボットと Web 版をまとめて起動し、Web 版を Tailscale Funnel で公開します（構成の考え方は [docs/infra.md](docs/infra.md)）。
+本番の VM がないあいだ、Discord ボットと Web 版をまとめて起動し、Web 版を Tailscale Funnel で公開します（構成の考え方は [docs/infra.md](docs/infra.md)）。
 
 1. 初回だけ: [Tailscale](https://tailscale.com/download/mac) を入れてログインする
 2. `bash scripts/play.sh` を実行し、表示された `https://….ts.net` を仲間に共有する（初回は Funnel を有効にする案内が出るので従う）
@@ -136,4 +140,5 @@ uv run pytest                                   # 単体テスト
 uv run --env-file .env pytest -m integration    # 実際の Jev を呼ぶテスト
 uv run --env-file .env python scripts/jev_probe.py  # Jev の日本語判定の確認表
 node --test tests/js/*.test.mjs                 # Web 版の画面の単体テスト（Node が必要）
+bash deploy/test/release_test.sh                # VM 上の更新スクリプトのテスト（CI では Linux で走る）
 ```
