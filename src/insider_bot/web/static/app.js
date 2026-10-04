@@ -27,6 +27,8 @@ const NO_SPEECH_HELP =
 
 // トップページでの「入る」などの操作も音の許可に数えるため、ページを開いた時点から見張る
 const sounds = new SoundPlayer();
+// 音のオン／オフは端末ごとの好みなので、名前と同じく localStorage に覚える
+const SOUND_KEY = "odai:sound";
 sounds.unlockOn(document);
 sounds.watchVisibility(document);
 
@@ -607,6 +609,7 @@ class RoomPage {
   bindMenu() {
     const moves = [
       { node: $("invite-open"), wide: $("room-actions"), narrow: $("menu-actions") },
+      { node: $("sound-toggle"), wide: $("room-actions"), narrow: $("menu-actions") },
       { node: $("players-row"), wide: $("players-slot"), narrow: $("menu-players") },
     ];
     watchCompact(matchMedia(COMPACT_LAYOUT), (compact) => {
@@ -619,6 +622,8 @@ class RoomPage {
 
   bindControls() {
     $("invite-open").addEventListener("click", () => this.openInvite());
+    this.setSound(load(SOUND_KEY) !== "off");
+    $("sound-toggle").addEventListener("click", () => this.setSound(!sounds.enabled));
     $("invite-close").addEventListener("click", () => $("invite").close());
     $("invite-copy").addEventListener("click", () => this.copyInvite());
     $("start-open").addEventListener("click", () => {
@@ -669,6 +674,13 @@ class RoomPage {
   closeStartForm() {
     $("start-form").hidden = true;
     $("start-open").hidden = false;
+  }
+
+  setSound(on) {
+    sounds.setEnabled(on);
+    $("sound-toggle").textContent = on ? "🔊 音あり" : "🔇 音なし";
+    $("sound-toggle").setAttribute("aria-pressed", String(on));
+    save(SOUND_KEY, on ? "on" : "off");
   }
 
   setTextMode(on) {

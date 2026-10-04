@@ -209,3 +209,33 @@ test("AudioContext のないブラウザでも例外を出さない", async () =
   target.dispatchEvent(new Event("pointerdown"));
   await player.play("/static/sounds/start-1.m4a");
 });
+
+test("音をオフにしていれば、鳴らさず読み込みもしない", async () => {
+  const { player, target, loads, played, clock } = setup();
+  clock.now = 10_000;
+  target.dispatchEvent(new Event("pointerdown"));
+  player.setEnabled(false);
+  await player.play(START);
+  assert.deepEqual(loads, []);
+  assert.deepEqual(played(), []);
+  assert.equal(player.enabled, false);
+});
+
+test("音をオンに戻せば、また鳴る", async () => {
+  const { player, target, played, clock } = setup();
+  clock.now = 10_000;
+  target.dispatchEvent(new Event("pointerdown"));
+  player.setEnabled(false);
+  player.setEnabled(true);
+  await player.play(START);
+  assert.deepEqual(played(), [{ decoded: `中身:${START}` }]);
+});
+
+test("オフにした瞬間に、鳴りかけの音も止める", async () => {
+  const { player, target, context, clock } = setup();
+  clock.now = 10_000;
+  target.dispatchEvent(new Event("pointerdown"));
+  await player.play(START);
+  player.setEnabled(false);
+  assert.deepEqual(context.stopped, [{ decoded: `中身:${START}` }]);
+});

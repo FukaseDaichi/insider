@@ -1,4 +1,4 @@
-// ゲーム開始の音声を鳴らす。
+// ゲーム開始の音声と返事の声を鳴らす。
 // ブラウザは操作のないページに音を出させないので、タップやキー操作のたびに AudioContext を動かしておき、
 // サーバーから合図が届いたらそれで鳴らす。鳴らせなくてもゲームは遊べるので、失敗は黙って捨てる
 const UNLOCK_EVENTS = ["pointerdown", "pointerup", "touchend", "keydown"];
@@ -33,6 +33,13 @@ export class SoundPlayer {
     this.page = null;
     this.shownAt = -Infinity;
     this.sources = new Set();
+    this.enabled = true;
+  }
+
+  /** 音のオン／オフ。オフにしたら鳴りかけの音も止める（次の合図まで待たせない）。 */
+  setEnabled(on) {
+    this.enabled = on;
+    if (!on) this.stop();
   }
 
   /** 操作のたびに動かし直す。iPhone は音声認識や着信のあと AudioContext を止めるため。 */
@@ -74,7 +81,7 @@ export class SoundPlayer {
 
   async play(src) {
     const context = this.context;
-    if (!context || !this.watching()) return;
+    if (!this.enabled || !context || !this.watching()) return;
     const signaledAt = this.now();
     try {
       // 操作がないと resume は終わらないので待たない。待つと次に触ったときに遅れて鳴ってしまう

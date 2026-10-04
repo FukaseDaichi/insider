@@ -42,6 +42,15 @@ def prepare_question(text: str) -> str:
 WEB_STARTED = "🎮 お題が設定されました！\n質問どうぞ。"
 # ゲーム開始の音声。同じ部屋や通話で遊んでも声が重ならないよう、サーバーが選んで全員に同じものを送る
 START_SOUNDS = tuple(f"/static/sounds/start-{n}.m4a" for n in (1, 2, 3))
+# 返事の声。はい % を 10 刻みの帯に分け、名前は帯の下限（yes-50 は 50〜59）。50 以上が「はい」で画面の ✅/❌ と揃える
+ANSWER_SOUNDS = tuple(
+    f"/static/sounds/{'yes' if band >= 50 else 'no'}-{band}.m4a" for band in range(0, 100, 10)
+)
+
+
+def answer_sound(yes_percent: int) -> str:
+    band = min(max(yes_percent, 0), 99) // 10
+    return ANSWER_SOUNDS[band]
 
 
 class RoomHub:
@@ -145,6 +154,9 @@ class RoomHub:
             log.exception("質問の処理に失敗しました（room=%s）", room.code)
             outcome = Outcome(public=fmt.format_error())
         entry.pending = False
+        if outcome.yes_percent is not None:
+            # 開始の音声と同じく、その場かぎりの合図。全員が同じ声を聞く
+            self._broadcast(room, {"type": "sound", "src": answer_sound(outcome.yes_percent)})
         if outcome.public is not None:
             entry.text = outcome.public
         else:

@@ -6,7 +6,7 @@ import pytest
 from insider_bot.game import GameManager
 from insider_bot.judge import JudgeError, Verdict
 from insider_bot.service import GameService
-from insider_bot.web.hub import START_SOUNDS, RoomHub, prepare_question
+from insider_bot.web.hub import ANSWER_SOUNDS, START_SOUNDS, RoomHub, answer_sound, prepare_question
 from insider_bot.web.rooms import InvalidName, RoomNotFound, RoomRegistry
 from insider_bot.web.server import STATIC_DIR
 from tests.fakes import FakeClock, FakeJudge
@@ -192,6 +192,52 @@ def test_start_sounds_are_served():
     assert len(START_SOUNDS) == 3
     for src in START_SOUNDS:
         assert (STATIC_DIR / src.removeprefix("/static/")).is_file()
+
+# --- 返事の声 ---
+
+
+@pytest.mark.parametrize(
+    ("yes", "src"),
+    [
+        (100, "/static/sounds/yes-90.m4a"),
+        (90, "/static/sounds/yes-90.m4a"),
+        (89, "/static/sounds/yes-80.m4a"),
+        (50, "/static/sounds/yes-50.m4a"),
+        (49, "/static/sounds/no-40.m4a"),
+        (10, "/static/sounds/no-10.m4a"),
+        (9, "/static/sounds/no-0.m4a"),
+        (0, "/static/sounds/no-0.m4a"),
+    ],
+)
+def test_answer_sound_is_chosen_by_ten_percent_band(yes, src):
+    assert answer_sound(yes) == src
+
+
+def test_answer_sounds_are_served():
+    assert len(ANSWER_SOUNDS) == 10
+    for src in ANSWER_SOUNDS:
+        assert (STATIC_DIR / src.removeprefix("/static/")).is_file()
+
+
+async def test_answer_plays_the_band_sound_for_everyone():
+    world, (setter_conn, _), (asker_conn, asker) = await playing()
+    await world.hub.ask(world.room, asker, "果物ですか", world.game_id())
+    for conn in (setter_conn, asker_conn):
+        # 開始の音声の次に、返事の声が届く
+        assert conn.of("sound")[1:] == [{"type": "sound", "src": "/static/sounds/yes-80.m4a"}]
+
+
+async def test_correct_answer_plays_no_sound():
+    world, (setter_conn, _), (_, asker) = await playing(FakeJudge(answers={"りんご？": CORRECT}))
+    await world.hub.ask(world.room, asker, "りんご", world.game_id())
+    assert setter_conn.of("sound")[1:] == []
+
+
+async def test_judge_error_plays_no_sound():
+    world, (setter_conn, _), (_, asker) = await playing(FakeJudge(error=JudgeError("timeout")))
+    await world.hub.ask(world.room, asker, "果物ですか", world.game_id())
+    assert setter_conn.of("sound")[1:] == []
+
 
 @pytest.mark.parametrize(
     ("topic", "hint", "notice"),

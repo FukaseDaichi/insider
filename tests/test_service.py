@@ -101,7 +101,7 @@ async def test_question_without_game_is_ignored():
 async def test_question_gets_public_answer_and_counts():
     service, manager, judge, _ = await started(hint="赤い果物")
     outcome = await service.handle_question(CH, PLAYER, "p", "果物ですか？")
-    assert outcome == Outcome(public="❓ 果物ですか？\n✅ はい　　はい 82% ██████████░░ いいえ 18%")
+    assert outcome == Outcome(public="❓ 果物ですか？\n✅ はい　　はい 82% ██████████░░ いいえ 18%", yes_percent=82)
     assert judge.calls == [("りんご", "赤い果物", "果物ですか？")]
     assert manager.get(CH).question_count == 1
 
@@ -117,7 +117,7 @@ async def test_setter_and_blank_messages_are_ignored():
 async def test_setter_question_is_judged_when_setter_can_ask():
     service, manager, judge, _ = await started()
     outcome = await service.handle_question(CH, SETTER, "出題者", "果物ですか？", setter_can_ask=True)
-    assert outcome == Outcome(public="❓ 果物ですか？\n✅ はい　　はい 82% ██████████░░ いいえ 18%")
+    assert outcome == Outcome(public="❓ 果物ですか？\n✅ はい　　はい 82% ██████████░░ いいえ 18%", yes_percent=82)
     assert manager.get(CH).question_count == 1
 
 
@@ -146,6 +146,7 @@ async def test_correct_answer_ends_game_and_counts_winning_question():
         public="🎉 正解です！お題は「りんご」でした\n正解者: 回答者　質問数: 1　経過時間: 6分32秒"
     )
     assert manager.get(CH) is None
+    assert outcome.yes_percent is None
 
 
 async def test_judge_error_replies_and_does_not_count():

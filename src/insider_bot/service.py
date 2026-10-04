@@ -23,10 +23,15 @@ def is_question(text: str) -> bool:
 
 @dataclass(frozen=True)
 class Outcome:
-    """private は操作した本人だけに見せる本文、public はチャンネルに投稿する本文。"""
+    """private は操作した本人だけに見せる本文、public はチャンネルに投稿する本文。
+
+    yes_percent は「はい／いいえ」の返事のときだけ入る、はい の確からしさ（0〜100）。
+    Web 版が返事の声を選ぶのに使う。正解・ギブアップ・エラーでは None。
+    """
 
     private: str | None = None
     public: str | None = None
+    yes_percent: int | None = None
 
 
 IGNORED = Outcome()
@@ -93,4 +98,4 @@ class GameService:
             if verdict.is_correct:
                 self._manager.end(channel_id)
                 return Outcome(public=fmt.format_correct(game, author_name, self._clock() - game.started_at))
-            return Outcome(public=fmt.format_answer(text, verdict))
+            return Outcome(public=fmt.format_answer(text, verdict), yes_percent=fmt.yes_percent(verdict.yes_prob))
