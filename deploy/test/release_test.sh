@@ -11,6 +11,11 @@
 #   NOSYNC   uv sync が失敗する (current を変えずに終わる)
 #   NOIMPORT 展開後の python が import に失敗する (current を変えずに終わる)
 #   BOTDOWN  Web は 200 ok だが insider-bot が自動再起動している (NRestarts が 0 でない)
+#   BOTLATE  Web は 200 ok で bot も最初の確認では NRestarts が 0 だが、BOT_SETTLE の後の再確認で 1 (起動の数秒後に落ちる)
+# 世代の外にある状態 ($INSIDER_HOME 直下) も偽物が見る:
+#   stopped-<unit>  systemctl stop が作り、restart が消す。ある間は is-active が失敗し、Web の curl も失敗する
+#   env-broken      ある間はどの世代でも curl が失敗する (/etc/insider.env の誤りを模す)
+#   slow-fail       ある間は起動しない世代の curl が 0.5 秒遅れて失敗する (出力側が閉じる時間を作る)
 set -euo pipefail
 
 script="$(cd "$(dirname "$0")/.." && pwd)/insider-release.sh"
@@ -26,16 +31,29 @@ fake_bin="$(mktemp -d)"
 cat > "$fake_bin/systemctl" <<'FAKE'
 #!/usr/bin/env bash
 behavior="$(cat "$INSIDER_HOME/current/BEHAVIOR" 2>/dev/null || true)"
+unit="${*: -1}"
 case "$1" in
   restart|stop)
     echo "$1 $2" >> "$INSIDER_HOME/systemctl.log"
-    [[ "$1" == restart && "$behavior" == NOSTART ]] && exit 1
+    if [[ "$1" == restart ]]; then
+      [[ "$behavior" == NOSTART ]] && exit 1
+      rm -f "$INSIDER_HOME/stopped-$unit" "$INSIDER_HOME/show-count"
+    else
+      : > "$INSIDER_HOME/stopped-$unit"
+    fi
     exit 0 ;;
   is-active)
+    [[ -e "$INSIDER_HOME/stopped-$unit" ]] && exit 3
     exit 0 ;;
   show)
     # show -p NRestarts --value <unit>
-    [[ "$behavior" == BOTDOWN ]] && echo 1 || echo 0
+    case "$behavior" in
+      BOTDOWN) echo 1 ;;
+      BOTLATE)
+        # restart の後の最初の 1 回は 0、それ以降は 1 (起動の数秒後に落ちて自動再起動した)
+        if [[ -e "$INSIDER_HOME/show-count" ]]; then echo 1; else : > "$INSIDER_HOME/show-count"; echo 0; fi ;;
+      *) echo 0 ;;
+    esac
     exit 0 ;;
 esac
 FAKE
@@ -50,12 +68,14 @@ while [[ $# -gt 0 ]]; do
     *) shift ;;
   esac
 done
+# 世代の外の状態: Web が止まっている間と、/etc/insider.env が誤っている間は、どの世代でも繋がらない
+if [[ -e "$INSIDER_HOME/stopped-insider-web" || -e "$INSIDER_HOME/env-broken" ]]; then exit 7; fi
 behavior="$(cat "$INSIDER_HOME/current/BEHAVIOR" 2>/dev/null || true)"
 case "$behavior" in
-  GOOD|BOTDOWN) printf ok > "$out"; printf 200; exit 0 ;;
+  GOOD|BOTDOWN|BOTLATE) printf ok > "$out"; printf 200; exit 0 ;;
   HALFUP)       printf ok > "$out"; printf 503; exit 0 ;;
   FLAKY)        printf ok > "$out"; printf 200; exit 7 ;;
-  *)            exit 7 ;;
+  *)            [[ -e "$INSIDER_HOME/slow-fail" ]] && sleep 0.5; exit 7 ;;
 esac
 FAKE
 cat > "$fake_bin/uv" <<'FAKE'
@@ -68,6 +88,7 @@ echo "$*" >> "$INSIDER_HOME/uv-args.log"
 mkdir -p .venv/bin
 cat > .venv/bin/python <<'PY'
 #!/usr/bin/env bash
+echo "$*" >> "$INSIDER_HOME/python-args.log"
 [[ "$(cat "$(dirname "$0")/../../BEHAVIOR" 2>/dev/null)" == NOIMPORT ]] && exit 1
 exit 0
 PY
@@ -133,6 +154,7 @@ botdown="$(rep40 6)"   # Web は上がるが bot が自動再起動している
 exc="$(rep40 2)"       # 保持数を超えても current / previous が残ることの検証
 brk="$(rep40 3)"       # current のリンク先が失われた後の配備
 flaky="$(rep40 4)"     # 本文も 200 も正常だが curl 自体が失敗する
+botlate="$(rep40 8)"   # Web は上がり、bot も最初の確認は通るが、BOT_SETTLE の後に自動再起動している
 
 released() { echo "$INSIDER_HOME/releases/$1"; }
 current() { readlink "$INSIDER_HOME/current" 2>/dev/null || echo none; }
@@ -166,6 +188,8 @@ assert_eq "uv sync は展開中のディレクトリで 1 回" "$INSIDER_HOME/re
 assert_eq "uv sync は --locked --no-dev --no-editable" "sync --locked --no-dev --no-editable" "$(cat "$INSIDER_HOME/uv-args.log")"
 assert_eq "展開中のディレクトリは残らない" 0 "$(staging_count)"
 assert_eq "web と bot を 1 回ずつ再起動する" "restart insider-web;restart insider-bot;" "$(systemctl_log)"
+assert_eq "起動する 2 つのエントリ (python -m insider_bot と python -m insider_bot.web) を import で確かめる" \
+  "-c import insider_bot.__main__, insider_bot.web.__main__" "$(cat "$INSIDER_HOME/python-args.log")"
 
 echo "# 2 回目の配備"
 add_release "$bbb" GOOD
@@ -213,14 +237,27 @@ run_release "$botdown"
 assert_eq "job は失敗する" 1 "$status"
 assert_eq "current が bbb に戻る" "$(released "$bbb")" "$(current)"
 
+echo "# Web が上がり bot も最初の確認は通っても、BOT_SETTLE の後に自動再起動していれば戻す"
+add_release "$botlate" BOTLATE
+run_release "$botlate"
+assert_eq "job は失敗する (最初の確認だけで健康と見なさない)" 1 "$status"
+assert_eq "current が bbb に戻る" "$(released "$bbb")" "$(current)"
+
 echo "# uv sync の失敗は current も previous も変えず、再起動もしない"
+# previous が current と違う状態 (aaa → bbb) から始める。失敗する前に current を previous へ昇格させる実装を見逃さないため
+fresh_home
+add_release "$aaa" GOOD
+run_release "$aaa"
+add_release "$bbb" GOOD
+run_release "$bbb"
 before_log="$(systemctl_log)"
-before_previous="$(previous)"  # 直前の戻しで previous も bbb を指している (戻しは previous を動かさない)
+before_previous="$(previous)"
+assert_eq "前提: previous が aaa、current が bbb" "$(released "$aaa") $(released "$bbb")" "$before_previous $(current)"
 add_release "$nosync" NOSYNC
 run_release "$nosync"
 assert_eq "job は失敗する" 1 "$status"
 assert_eq "current は bbb のまま" "$(released "$bbb")" "$(current)"
-assert_eq "previous も変わらない" "$before_previous" "$(previous)"
+assert_eq "previous も変わらない (aaa のまま)" "$(released "$aaa")" "$(previous)"
 assert_eq "restart は呼ばれない" "$before_log" "$(systemctl_log)"
 assert_eq "失敗した世代は releases に残らない" no "$(exists "$(released "$nosync")")"
 assert_eq "展開中のディレクトリも残らない" 0 "$(staging_count)"
@@ -229,11 +266,12 @@ assert_eq "incoming は片付く" 0 "$(incoming_count)"
 echo "# 展開後に import できない世代は current も previous も変えず、再起動もしない"
 before_log="$(systemctl_log)"
 before_previous="$(previous)"
+assert_eq "前提: previous が aaa、current が bbb" "$(released "$aaa") $(released "$bbb")" "$before_previous $(current)"
 add_release "$noimport" NOIMPORT
 run_release "$noimport"
 assert_eq "job は失敗する" 1 "$status"
 assert_eq "current は bbb のまま" "$(released "$bbb")" "$(current)"
-assert_eq "previous も変わらない" "$before_previous" "$(previous)"
+assert_eq "previous も変わらない (aaa のまま)" "$(released "$aaa")" "$(previous)"
 assert_eq "restart は呼ばれない" "$before_log" "$(systemctl_log)"
 assert_eq "失敗した世代は releases に残らない" no "$(exists "$(released "$noimport")")"
 
@@ -317,6 +355,66 @@ add_release "$flaky" FLAKY
 run_release "$flaky"
 assert_eq "job は失敗する" 1 "$status"
 assert_eq "current が aaa に戻る" "$(released "$aaa")" "$(current)"
+
+echo "# ロックは root 所有のスクリプト自身で取り、insider の領域にファイルを作らない (シンボリックリンクで root に切り詰めさせない)"
+fresh_home
+victim="$(mktemp)"
+printf keep > "$victim"
+ln -s "$victim" "$INSIDER_HOME/release.lock"   # insider が /opt/insider に置ける罠。昔の release.lock を狙う
+add_release "$aaa" GOOD
+run_release "$aaa"
+assert_eq "成功する" 0 "$status"
+assert_eq "リンク先のファイルは切り詰められない" keep "$(cat "$victim")"
+rm -f "$victim"
+fresh_home
+add_release "$aaa" GOOD
+run_release "$aaa"
+assert_eq "release.lock を作らない" no "$(exists "$INSIDER_HOME/release.lock")"
+
+echo "# 停止で終わった配備と同じ commit を再実行したら、稼働中とは見なさず再起動して確かめる"
+fresh_home
+touch "$INSIDER_HOME/env-broken"   # /etc/insider.env の誤りを模す。世代の外にあるので、どの世代も起動しない
+add_release "$aaa" GOOD
+run_release "$aaa"
+assert_eq "起動しないので失敗する" 1 "$status"
+assert_eq "戻し先が無いので両方を stop する" "restart insider-web;restart insider-bot;stop insider-web;stop insider-bot;" "$(systemctl_log)"
+assert_eq "current は aaa のまま" "$(released "$aaa")" "$(current)"
+before_uv="$(uv_log)"
+add_release "$aaa" GOOD
+run_release "$aaa"
+assert_eq "env がまだ誤っていれば、再実行も失敗する (成功にしない)" 1 "$status"
+assert_eq "再起動を試みてから、もう一度両方を stop する" \
+  "restart insider-web;restart insider-bot;stop insider-web;stop insider-bot;restart insider-web;restart insider-bot;stop insider-web;stop insider-bot;" "$(systemctl_log)"
+rm -f "$INSIDER_HOME/env-broken"   # 運用者が env を直して、GitHub の job を re-run する
+before_log="$(systemctl_log)"
+add_release "$aaa" GOOD
+run_release "$aaa"
+assert_eq "直したあとの再実行は成功する" 0 "$status"
+assert_eq "両方を再起動する" "${before_log}restart insider-web;restart insider-bot;" "$(systemctl_log)"
+assert_eq "current は aaa のまま" "$(released "$aaa")" "$(current)"
+assert_eq "previous は作られない" none "$(previous)"
+assert_eq "uv sync を呼ばない" "$before_uv" "$(uv_log)"
+assert_eq "incoming は片付く" 0 "$(incoming_count)"
+assert_eq "ログに already running と出ない" no "$(grep -q 'already running' "$INSIDER_HOME/out.log" && echo yes || echo no)"
+assert_eq "ログに healthy と出る" yes "$(grep -q "healthy: $aaa" "$INSIDER_HOME/out.log" && echo yes || echo no)"
+
+echo "# 昇格の後に ssh が切れても、戻しまで完走する (出力先が閉じても途中で死なない)"
+fresh_home
+add_release "$aaa" GOOD
+run_release "$aaa"
+add_release "$bbb" GOOD
+run_release "$bbb"
+add_release "$ccc" BROKEN
+touch "$INSIDER_HOME/slow-fail"   # 昇格のログを読んだ側が閉じる時間を作る
+set +e
+"$script" "$ccc" 2>&1 | { while IFS= read -r line; do [[ "$line" == *"restart insider-web"* ]] && break; done; }
+script_status="${PIPESTATUS[0]}"
+set -e
+assert_eq "出力先が閉じても、失敗として 1 で終わる" 1 "$script_status"
+assert_eq "current が bbb に戻る" "$(released "$bbb")" "$(current)"
+assert_eq "戻しの restart まで完走する (aaa, bbb, ccc, 戻しの 4 回 × 2 ユニット)" \
+  8 "$(systemctl_log | tr ';' '\n' | grep -c '^restart ')"
+assert_eq "stop は呼ばない" 0 "$(systemctl_log | tr ';' '\n' | grep -c '^stop ' || true)"
 
 if [[ "$failures" -ne 0 ]]; then
   echo "$failures failure(s)"

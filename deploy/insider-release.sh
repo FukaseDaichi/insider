@@ -11,9 +11,15 @@
 # 展開と uv sync は releases/.staging-<sha>/ で済ませてから releases/<sha>/ へ mv する。uv sync の失敗で
 # current を壊さないため。稼働中の世代と同じ SHA が届いたら何もせず成功で終わる (稼働中の世代を触らない)。
 # プロジェクトは --no-editable で入れる。編集可能インストールは .pth に展開中の絶対パスを書くので、mv の後に import できなくなる。
-# GitHub Actions の runner が途中で消えても VM 上で完走するように、flock で排他し 1 本にまとめている。
+# ssh が途中で切れても (GitHub Actions の runner が消えても) VM 上で完走する。HUP と PIPE を無視し、log の書き込みの失敗も無視する。
+# 昇格した後に死ぬと、壊れた世代が Restart=always で動いたまま、戻しも停止もされない。
+# 同時に 2 本走らないように flock で排他する。ロックは root 所有のこのスクリプト自身を読み取りで開いて取る。
+# insider が書ける /opt/insider の中に root がファイルを作ると、insider がシンボリックリンクを置いて root に任意のファイルを切り詰めさせられる。
 # 本番は Linux。Mac では sha256sum と flock がないので shasum に切り替え、排他なしで動く (テスト用)。
 set -euo pipefail
+
+# ssh が切れたときの SIGHUP と、閉じた出力へ書いたときの SIGPIPE で死なない (無視は子プロセスにも引き継がれる)
+trap '' HUP PIPE
 
 HOME_DIR="${INSIDER_HOME:-/opt/insider}"
 APP_USER="${INSIDER_APP_USER:-insider}"
@@ -32,7 +38,8 @@ RELEASES="$HOME_DIR/releases"
 CURRENT="$HOME_DIR/current"
 PREVIOUS="$HOME_DIR/previous"
 
-log() { echo "[release] $*"; }
+# 出力先 (ssh) が閉じていると echo の書き込みが失敗する。set -e で死なないように握りつぶす
+log() { echo "[release] $*" 2>/dev/null || true; }
 
 sha="${1:?usage: $0 <commit-sha>}"
 # sudoers は引数を制限できないので、受け取る形をここで固定する。GITHUB_SHA は常に 40 桁の小文字 hex。
@@ -135,7 +142,9 @@ prune() {
   done
 }
 
-exec 9>"$HOME_DIR/release.lock"
+# root 所有のこのスクリプト自身を読み取りで開いてロックする (flock は読み取り専用の fd にも掛かる)。
+# ロック用のファイルを /opt/insider の中に作らない: そこは insider が書けるので、シンボリックリンクで root に任意のファイルを切り詰めさせられる
+exec 9<"$0"
 if command -v flock >/dev/null 2>&1; then
   flock 9
 fi
@@ -148,12 +157,27 @@ if ! (cd "$incoming_dir" && run_as_app "${CHECKSUM[@]}" "$ARCHIVE.sha256"); then
   exit 1
 fi
 
-# 稼働中の世代と同じ commit なら何もしない (同じ commit の workflow を re-run したとき)。稼働中の世代は触らない
+# 稼働中の世代と同じ commit (同じ commit の workflow を re-run したとき)。稼働中の世代は触らない。
+# ただし current が指していても動いているとは限らない (前の配備が停止で終わった後がそう。env を直して re-run する)。
+# 健康なら何もせず成功。そうでなければ同じ世代を再起動して確かめ、それでも通らなければ停止して失敗する
 if [[ -L "$CURRENT" && -e "$CURRENT" && "$(readlink "$CURRENT")" == "$release_dir" ]]; then
-  log "already running $sha; nothing to do"
   run_as_app rm -rf "$incoming_dir"
+  if check_health; then
+    log "already running $sha; nothing to do"
+    prune
+    exit 0
+  fi
+  log "$sha is current but not healthy; restarting"
+  if restart_and_check; then
+    log "healthy: $sha"
+    prune
+    exit 0
+  fi
+  log "health check failed for $sha"
+  log "stopping $WEB_SERVICE and $BOT_SERVICE: no healthy release"
+  stop_all
   prune
-  exit 0
+  exit 1
 fi
 
 # 展開と依存の取得は .staging-<sha> で済ませる。失敗しても current は変わらない
@@ -176,8 +200,10 @@ fi
 run_as_app rm -rf "$release_dir"
 run_as_app mv "$staging_dir" "$release_dir"
 
-# 移動した後の場所で import できることを見る (編集可能インストールの .pth の問題を含め、起動前に捕まえる)
-if ! run_as_app "$release_dir/.venv/bin/python" -c 'import insider_bot.web.server, insider_bot.bot'; then
+# 移動した後の場所で、起動する 2 つのエントリ (python -m insider_bot と python -m insider_bot.web) が import できることを見る。
+# 編集可能インストールの .pth の問題や、wheel に入らなかったサブパッケージを、再起動の前に捕まえる。
+# どちらの __main__ も main() は if __name__ == "__main__" の中なので、import しても起動はしない
+if ! run_as_app "$release_dir/.venv/bin/python" -c 'import insider_bot.__main__, insider_bot.web.__main__'; then
   log "import check failed for $sha"
   run_as_app rm -rf "$release_dir"
   prune
