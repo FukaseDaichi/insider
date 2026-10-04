@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # 本番は uv が .python-version の Python を取得・固定する。CI も同じ uv に任せる
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: uv sync --locked
+
+      - name: Test (pytest)
+        run: uv run pytest -q
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Test (Web の画面)
+        run: node --test tests/js/*.test.mjs
+
+      # 本番と同じ Linux で、更新スクリプトを偽の systemctl / curl / uv で確かめる
+      - name: Test the release script
+        run: bash deploy/test/release_test.sh
+
+      # deploy job と VM 上の更新スクリプトはこのファイル名に依存する。
+      # tar の中身はこの SHA のリポジトリそのもの (.venv は VM 上の uv sync が作る)
+      - name: Package release
+        run: |
+          mkdir -p dist
+          git archive --format=tar.gz -o dist/insider.tar.gz "$GITHUB_SHA"
+          (cd dist && sha256sum insider.tar.gz > insider.tar.gz.sha256)
+
+      - name: Upload release
+        uses: actions/upload-artifact@v7
+        with:
+          name: insider-release
+          path: dist/
+          retention-days: 7
+
+  deploy:
+    name: Deploy to OCI
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # 連続 push で並走させない。実行中の job は cancel しない (VM 側の更新を途中で打ち切らせない)。
+    # GitHub は group 内の順序を保証しないので、排他を取った後に main の最新 SHA を再確認する
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - name: Confirm this commit is still the head of main
+        id: head
+        run: |
+          # 既定のシェルは bash -e で pipefail が付かないため、明示しないと git ls-remote の失敗が
+          # cut の 0 に隠れ、head が空 = skip=true になる。それでは job が緑のまま何も配備されない
+          set -o pipefail
+          head="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" refs/heads/main | cut -f1)"
+          [[ "$head" =~ ^[0-9a-f]{40}$ ]] || { echo "could not resolve main head" >&2; exit 1; }
+          if [ "$head" != "$GITHUB_SHA" ]; then
+            echo "main is now $head; skipping deploy of $GITHUB_SHA"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download release
+        if: steps.head.outputs.skip != 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: insider-release
+          path: dist
+
+      # ホスト鍵を固定する。固定しないと DNS や経路を乗っ取られたときに tar を偽の VM へ送り込まれる
+      - name: Configure SSH
+        if: steps.head.outputs.skip != 'true'
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          for name in DEPLOY_SSH_KEY DEPLOY_HOST_KEY DEPLOY_HOST; do
+            if [ -z "${!name}" ]; then
+              echo "$name secret is not set" >&2
+              exit 1
+            fi
+          done
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_HOST_KEY" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Upload release to the VM
+        if: steps.head.outputs.skip != 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          # 稼働中の世代 (releases/) ではなく incoming/ へ置く。同じ commit の re-run でも本番を上書きしない
+          target="insider@${DEPLOY_HOST}"
+          ssh -o StrictHostKeyChecking=yes "$target" "rm -rf /opt/insider/incoming/${GITHUB_SHA} && mkdir -p /opt/insider/incoming/${GITHUB_SHA}"
+          scp -o StrictHostKeyChecking=yes dist/insider.tar.gz dist/insider.tar.gz.sha256 "$target:/opt/insider/incoming/${GITHUB_SHA}/"
+
+      # 検証 → 展開 → uv sync → 昇格 → 再起動 → ヘルスチェック → 復旧 → 世代管理は VM 上の 1 本が flock 付きで完走する。
+      # この step の終了コードがそのまま job の成否になる
+      - name: Release on the VM
+        if: steps.head.outputs.skip != 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: ssh -o StrictHostKeyChecking=yes "insider@${DEPLOY_HOST}" "sudo /usr/local/bin/insider-release.sh ${GITHUB_SHA}"
