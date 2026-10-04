@@ -28,6 +28,7 @@ const NO_SPEECH_HELP =
 // トップページでの「入る」などの操作も音の許可に数えるため、ページを開いた時点から見張る
 const sounds = new SoundPlayer();
 sounds.unlockOn(document);
+sounds.watchVisibility(document);
 
 function load(key) {
   try {
