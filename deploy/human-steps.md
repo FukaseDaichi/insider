@@ -38,7 +38,7 @@
 Phase 1  準備          ホスト名を決める / Oracle アカウントを作る / 鍵と資格情報   ← VM が取れなくても進められる
 Phase 2  VM を作る      A1 インスタンス + 通信の開放                              ← ここが取れるまで Heroku のまま
 Phase 3  DNS を向ける    A レコード
-Phase 4  配備           GitHub Secrets → 初回配備                                （setup.md §7〜§11）
+Phase 4  配備           VM の設定 → GitHub Secrets → 初回配備                    （setup.md §1〜§11）
 Phase 5  監視の下地      Monitoring 確認 + メール通知 + 外形監視
 Phase 6  切替           LINE の Webhook URL だけ                                 ← 戻せる最後の地点
 Phase 7  1 か月の様子見
@@ -134,6 +134,8 @@ OCI コンソール → **Networking** → **Virtual cloud networks** → 作ら
 
 # Phase 4: 配備
 
+先に setup.md §1〜§9 を上から実行する（SSH と OS の初期設定、iptables、`insider` ユーザー、uv、デプロイ鍵、ファイルの配置、`/etc/insider.env`、Caddy）。§9 の証明書の取得は Phase 3 の A レコードを使う。4-1 は setup.md §10、4-2 は §11 にあたる。
+
 ## 4-1. GitHub Secrets を 3 つ登録する
 
 GitHub のリポジトリ → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**。コマンドなら setup.md §10 の `gh secret set`。
@@ -142,13 +144,13 @@ GitHub のリポジトリ → **Settings** → **Secrets and variables** → **A
 | --- | --- |
 | `DEPLOY_HOST` | VM の公開 IP |
 | `DEPLOY_SSH_KEY` | `~/.ssh/insider-deploy` の**中身をそのまま全部**（`-----BEGIN` から `-----END` の行まで） |
-| `DEPLOY_HOST_KEY` | `ssh-keyscan -t ed25519 <IP>` の出力 1 行（`<IP> ssh-ed25519 AAAA...`） |
+| `DEPLOY_HOST_KEY` | `ssh-keyscan -t ed25519 <IP>` の出力 1 行（`<IP> ssh-ed25519 AAAA...`）。鍵の部分（`ssh-ed25519 AAAA...`）が VM の `/etc/ssh/ssh_host_ed25519_key.pub` と一致することを確かめてから登録する（setup.md §10。keyscan の結果は経路上で差し替えられ得る） |
 
 LINE・Discord・TypeSafe の値は GitHub に置かない（VM の `/etc/insider.env` だけ）。
 
 ## 4-2. 初回配備
 
-setup.md §11。`main` への空コミットを push し、Actions の `deploy` job が緑になることを見る。
+setup.md §11。`main` への空コミットを push し、Actions の `deploy` job が緑になることを見る。緑でもログに `Deploy secrets are not set; skipping deploy` が出ていれば配備されていない（4-1 の Secrets がリポジトリに登録されていない）。
 
 ---
 

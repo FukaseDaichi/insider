@@ -186,6 +186,26 @@ VM 上で壊れた世代を直接置いて更新スクリプトを呼ぶ。稼�
 
 期待: `rolling back to ...` のログ、`exit=1`、`current` が元の commit の世代を指し、`/healthz` が `ok`。restart から戻しの判断まで 60 秒強で終わる。後始末: `sudo rm -rf /opt/insider/releases/0000000000000000000000000000000000000000`。偽 SHA が 40 桁の hex なのは、更新スクリプトが revision の形を検証していて、それ以外は何もせず終了コード 2 で拒否するため。
 
+続けて、bot の起動だけを壊した世代でも同じことを確かめる。落ちて自動再起動を繰り返す bot の世代から戻したとき、直前の世代の bot を健康と判定できること（`NRestarts` を引き継がないこと）を本物の systemd で確かめるのはここだけなので、飛ばさない。偽 SHA は上と別の値にする。
+
+```bash
+[VM] sudo -u insider bash -c '
+  set -e
+  fake=1111111111111111111111111111111111111111
+  work=$(mktemp -d)
+  tar -C /opt/insider/current --exclude=.venv --exclude=insider.tar.gz.sha256 -czf - . | tar -xzf - -C "$work"
+  printf "if __name__ == \"__main__\":\n    raise SystemExit(\"broken bot for the cutover test\")\n" > "$work/src/insider_bot/__main__.py"
+  mkdir -p /opt/insider/incoming/$fake
+  tar -C "$work" -czf /opt/insider/incoming/$fake/insider.tar.gz .
+  (cd /opt/insider/incoming/$fake && sha256sum insider.tar.gz > insider.tar.gz.sha256)
+  rm -rf "$work"'
+[VM] sudo /usr/local/bin/insider-release.sh 1111111111111111111111111111111111111111; echo "exit=$?"
+[VM] readlink /opt/insider/current; curl -s http://127.0.0.1:8080/healthz; echo
+[VM] systemctl is-active insider-bot; systemctl show -p NRestarts --value insider-bot
+```
+
+期待: `not healthy` の行が bot で落ちたことを示し（`web http=200` で、bot が `active` でないか `NRestarts` が 0 でない）、続いて `rolling back to ...` のログ、`exit=1`、`current` が元の commit の世代を指し、`/healthz` が `ok`、`insider-bot` が `active`、`NRestarts` が `0`。後始末: `sudo rm -rf /opt/insider/releases/1111111111111111111111111111111111111111`。
+
 ### 13. 古い commit の run を re-run すると deploy が skip する
 
 GitHub Actions で `main` の 1 つ前の commit の run を `gh run rerun <run-id>` し、deploy job のログに `skipping deploy of` が出て成功終了することを確認する。
@@ -211,7 +231,7 @@ GitHub Actions で `main` の 1 つ前の commit の run を `gh run rerun <run-
 | 6. レート制限（作成系と全体それぞれの 400 / 429 の件数、elapsed） | | |
 | 6. 本文上限の応答コード | 413 / 502 | |
 | 9. MemoryUtilization | %（tmpfs / プロセス のどちらか） | |
-| 12. 自動復旧 | rolling back / exit=1 | |
+| 12. 自動復旧（Web を壊す／bot を壊す） | それぞれ rolling back / exit=1。bot は戻した後の NRestarts | |
 
 ## B. カットオーバー
 

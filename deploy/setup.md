@@ -203,9 +203,17 @@ LINE・Discord・TypeSafe の資格情報は GitHub に置かない。
 [Mac] curl -s https://<host>/healthz; echo
 ```
 
-期待: deploy job が成功し、2 つの `status` が `active (running)`、`/healthz` が `ok`。初回は `uv sync` が依存を取ってくるので 1〜2 分かかる。以降の再起動は更新スクリプトが行い、VM 再起動時は §7 の `enable` により自動起動する。
+期待: deploy job が成功し、2 つの `status` が `active (running)`、`/healthz` が `ok`。job のログに `Deploy secrets are not set; skipping deploy` が出ていたら、配備は行われていない（§10 の Secrets がリポジトリに登録されていない）。初回は `uv sync` が依存を取ってくるので 1〜2 分かかる。以降の再起動は更新スクリプトが行い、VM 再起動時は §7 の `enable` により自動起動する。
 
 ブラウザで `https://<host>/` を開き、お題当ての画面が出ることと、`https://<host>/village/new` で配役ツールが出ることを見る。
+
+deploy job が失敗したら、job のログの `not healthy` の行で Web と bot のどちらが通らなかったかを見て、VM の journal で原因を確かめる。多くは `/etc/insider.env` の値の誤りなので、直してから失敗した job だけを再実行する。更新スクリプトは、同じ commit の世代が健康でなければ再起動して確かめる（`<run-id>` は `gh run list` で見る）:
+
+```bash
+[VM]  sudo journalctl -u insider-web -u insider-bot -n 50 --no-pager
+[VM]  sudoedit /etc/insider.env
+[Mac] gh run rerun --failed <run-id>
+```
 
 ## 12. Monitoring プラグインの確認
 
@@ -224,7 +232,17 @@ OCI コンソール → Compute → Instances → 対象インスタンス → *
 | OS | unattended-upgrades が自動で当てる。カーネル更新後は `sudo reboot`（再起動後に insider-web・insider-bot・caddy が自動で上がることを §11 の `/healthz` で確認） |
 | Python と依存 | `uv.lock` と `.python-version` を手元で更新して push すれば、配備の `uv sync` が反映する。VM で手で入れ替えるものはない |
 | uv 本体 | `sudo -u insider -H /opt/insider/.local/bin/uv self update` |
-| Caddy | `sudo caddy upgrade`（組み込みモジュールを維持したまま最新へ）→ `caddy list-modules | grep rate_limit` → `sudo systemctl restart caddy` |
+| Caddy | 下のコマンド。組み込みモジュールを維持したまま最新へ上げ、レート制限のモジュールが残っていることを見てから再起動する |
+
+Caddy の更新:
+
+```bash
+[VM] sudo caddy upgrade
+[VM] caddy list-modules | grep rate_limit
+[VM] sudo systemctl restart caddy
+```
+
+期待: `http.handlers.rate_limit` が出る。出なければ再起動せず、§9 の `add-package` をやり直す（モジュールなしで再起動すると Caddyfile の `rate_limit` を読めずに起動しない）。
 
 ## 15. VM が失われたときの再作成
 
