@@ -43,6 +43,18 @@ class FakeJudge:
         return self.answers.get(question, self.default)
 
 
+class FirstRandom:
+    """毎回先頭の候補を選ぶ。画像の選択を何度呼んでも同じ結果にする。"""
+
+    def randrange(self, n: int) -> int:
+        if n <= 0:
+            raise ValueError("候補がありません")
+        return 0
+
+    def shuffle(self, seq: list) -> None:
+        return None
+
+
 class FixedRandom:
     """randrange が与えた値を順に返す乱数。shuffle は並びを変えない。
 

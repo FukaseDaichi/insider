@@ -15,7 +15,7 @@ from insider_bot.village.service import VillageService
 from insider_bot.village.words import parse_dictionary
 from insider_bot.web.replyjson import replies_json
 from insider_bot.web.village_api import VillageApp, add_village_routes
-from tests.fakes import FixedRandom
+from tests.fakes import FirstRandom, FixedRandom
 
 OWNER = "owner-token-0123456789"
 MEMBER = "member-token-012345678"
@@ -38,7 +38,7 @@ async def serve(page, *draws):
         VillageRegistry(random.Random(1)),
         SpecialVillageRegistry(random.Random(2)),
         DICTIONARY,
-        Illustrations("", FixedRandom(0)),
+        Illustrations("", FirstRandom()),
         rng,
     )
     app = web.Application()
@@ -105,7 +105,7 @@ async def test_topic_then_size_then_the_status(page):
         assert body["village"]["has_topic"] is True
         body = await call(client, "size", size=3)
         assert body["village"]["size"] == 3
-        assert body["replies"][0]["image"] == "/static/roles/GM.png"
+        assert body["replies"][0]["image"] == "/static/roles/GM.png?v=20261004"
         assert body["replies"][0]["title"] == f"{number}村"
         # オーナーが自分の村番号で入ると配布状況
         status = await call(client, "join", number=number)
@@ -141,7 +141,7 @@ async def test_random_village_size_returns_the_owners_role(page):
         await call(client, "create", kind="random")
         body = await call(client, "size", size=3)
         assert body["replies"][0]["text"].endswith("人』に設定しました。\n皆さんに村番号を伝えてください。")
-        assert body["replies"][1]["image"] == "/static/roles/INSIDER.png"
+        assert body["replies"][1]["image"] == "/static/roles/INSIDER.png?v=20261004"
 
 
 # --- 逆村と Werewords ---
@@ -187,7 +187,7 @@ async def test_participants_join_with_their_own_token(page):
         await call(client, "size", size=2)
         body = await call(client, "join", token=MEMBER, number=number)
         assert body["replies"][0]["text"] == "あなたの役職はインサイダーです。お題は『すいか』です。"
-        assert body["replies"][0]["image"] == "/static/roles/INSIDER.png"
+        assert body["replies"][0]["image"] == "/static/roles/INSIDER.png?v=20261004"
         # 参加者には自分の村がない
         assert body["village"] is None
         # 再表示しても同じ役職

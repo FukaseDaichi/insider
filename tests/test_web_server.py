@@ -9,11 +9,12 @@ from aiohttp.test_utils import TestClient, TestServer
 
 from insider_bot.game import GameManager
 from insider_bot.service import GameService
+from insider_bot.village.illust import Illustrations
 from insider_bot.web.hub import RoomHub
 from insider_bot.web.rooms import CODE_ALPHABET, RoomRegistry
-from insider_bot.web.server import WsConnection, create_app
+from insider_bot.web.server import STATIC_DIR, WsConnection, create_app
 from insider_bot.web.village_setup import build_village
-from tests.fakes import FakeClock, FakeJudge
+from tests.fakes import FakeClock, FakeJudge, FixedRandom
 
 
 @pytest.fixture
@@ -94,6 +95,20 @@ async def test_vendor_files_are_cached_but_app_files_are_revalidated(static_dir)
         app = await client.get("/static/app.js")
         assert vendor.headers["Cache-Control"] == "public, max-age=604800"
         assert app.headers["Cache-Control"] == "no-cache"
+
+
+async def test_all_regenerated_role_images_are_served_by_the_real_app():
+    illust = Illustrations("", FixedRandom(*(list(range(5)) * 4)))
+    urls = [illust.url_for(role) for role in ("INSIDER", "VILLAGERS", "GM", "GOD") for _ in range(5)]
+    assert len(set(urls)) == 20
+    async with serve(None, village=build_village("")) as client:
+        for url in urls:
+            response = await client.get(url)
+            assert response.status == 200, url
+            assert response.content_type == "image/png", url
+            assert response.headers["Cache-Control"] == "no-cache", url
+            filename = url.split("?", 1)[0].removeprefix("/static/")
+            assert await response.read() == (STATIC_DIR / filename).read_bytes(), url
 
 
 async def test_create_room_returns_code(static_dir):
@@ -283,7 +298,7 @@ async def test_village_routes_exist_only_when_the_village_is_given(static_dir):
     (static_dir / "village.html").write_text("<!doctype html><title>配役</title>", encoding="utf-8")
     async with serve(static_dir) as client:
         assert (await client.get("/village")).status == 404
-    async with serve(static_dir, village=build_village("", None)) as client:
+    async with serve(static_dir, village=build_village("")) as client:
         response = await client.get("/v/1234")
         assert response.status == 200
         assert response.headers["Cache-Control"] == "no-cache"
@@ -292,7 +307,7 @@ async def test_village_routes_exist_only_when_the_village_is_given(static_dir):
 
 
 async def test_the_largest_special_village_fits_the_request_size_limit(static_dir):
-    async with serve(static_dir, village=build_village("", None)) as client:
+    async with serve(static_dir, village=build_village("")) as client:
         # 100 通×5,000 文字の日本語は UTF-8 で約 1.5MB。aiohttp の既定の上限（1MiB）では 413 になる。
         # ブラウザの JSON.stringify と同じく、日本語を \uXXXX にエスケープせずに送る
         body = json.dumps({"messages": ["あ" * 5000] * 100}, ensure_ascii=False).encode()
@@ -301,7 +316,7 @@ async def test_the_largest_special_village_fits_the_request_size_limit(static_di
 
 
 async def test_the_real_village_page_is_served_and_the_special_form_link_leads_to_it():
-    village = build_village("", None)
+    village = build_village("")
     async with serve(None, village=village) as client:
         response = await client.get("/village")
         assert response.status == 200

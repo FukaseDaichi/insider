@@ -7,7 +7,7 @@ from insider_bot.village.registry import SpecialVillageRegistry, VillageRegistry
 from insider_bot.village.reply import Image, MessageAction, PostbackAction, Text
 from insider_bot.village.service import VillageService
 from insider_bot.village.words import UNSPECIFIED_RANK, parse_dictionary
-from tests.fakes import FixedRandom
+from tests.fakes import FirstRandom, FixedRandom
 
 OWNER = "line:owner"
 MEMBER = "line:member"
@@ -19,7 +19,7 @@ def make(*draws: int):
     villages = VillageRegistry(random.Random(1))
     specials = SpecialVillageRegistry(random.Random(2))
     rng = FixedRandom(*draws) if draws else random.Random(3)
-    service = VillageService(villages, specials, DICTIONARY, Illustrations("https://game.example.com", FixedRandom(0)), rng)
+    service = VillageService(villages, specials, DICTIONARY, Illustrations("https://game.example.com", FirstRandom()), rng)
     return CommandHandler(service, FORM_URL), service, villages, specials
 
 

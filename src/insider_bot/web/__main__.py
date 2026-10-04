@@ -14,7 +14,7 @@ from insider_bot.service import GameService
 from insider_bot.web.hub import RoomHub
 from insider_bot.web.rooms import RoomRegistry
 from insider_bot.web.server import create_app
-from insider_bot.web.village_setup import build_village, catalog_refresh
+from insider_bot.web.village_setup import build_village
 
 
 async def make_app(config: WebConfig) -> web.Application:
@@ -22,10 +22,8 @@ async def make_app(config: WebConfig) -> web.Application:
     manager = GameManager()
     service = GameService(manager, JevJudge(client, config.correct_threshold, config.jev_timeout_seconds))
     registry = RoomRegistry(on_remove=lambda room: manager.end(room.room_id))
-    village = build_village(config.public_base_url, config.illustration_catalog_url)
+    village = build_village(config.public_base_url)
     app = create_app(RoomHub(registry, service, manager), village=village)
-    if config.illustration_catalog_url is not None:
-        app.cleanup_ctx.append(catalog_refresh(village.service.illust))
 
     async def close_client(_app: web.Application) -> None:
         await client.aclose()

@@ -2,10 +2,10 @@ from insider_bot.village import messages, texts
 from insider_bot.village.illust import Illustrations
 from insider_bot.village.model import SpecialVillage, Village
 from insider_bot.village.reply import Buttons, Confirm, Image, MessageAction, PostbackAction, Text
-from tests.fakes import FixedRandom
+from tests.fakes import FirstRandom, FixedRandom
 
 BASE = "https://game.example.com"
-ILLUST = Illustrations(BASE, FixedRandom(0))
+ILLUST = Illustrations(BASE, FirstRandom())
 
 
 def village_with(size: int, insider_at: int, topic: str = "すいか", number: int = 1234, god_at: int | None = None) -> Village:
@@ -32,7 +32,7 @@ def test_insider_reply_has_image_button_and_text_overflow():
         Buttons(
             text,
             (PostbackAction("入室状況確認", "1234"),),
-            image=f"{BASE}/static/roles/INSIDER.png",
+            image=f"{BASE}/static/roles/INSIDER.png?v=20261004",
             overflow=(Text(text), Text("あなたは1番目の参加者です。\n　入室状況：1/2人")),
         )
     ]
@@ -43,7 +43,7 @@ def test_villager_reply_has_image_button_without_overflow():
     village.join("user")
     reply = messages.role_reply(village, "user", ILLUST)
     assert reply == [
-        Buttons("あなたの役職は村人です。", (PostbackAction("入室状況確認", "1234"),), image=f"{BASE}/static/roles/VILLAGERS.png")
+        Buttons("あなたの役職は村人です。", (PostbackAction("入室状況確認", "1234"),), image=f"{BASE}/static/roles/VILLAGERS.png?v=20261004")
     ]
 
 
@@ -57,7 +57,7 @@ def test_game_master_reply_has_three_tiers():
         Buttons(
             text,
             (PostbackAction("入室状況確認", "1234"),),
-            image=f"{BASE}/static/roles/GM.png",
+            image=f"{BASE}/static/roles/GM.png?v=20261004",
             overflow=(Buttons(text, (PostbackAction("入室状況確認", "1234"),), overflow=(Text(text), status)),),
         )
     ]
@@ -166,12 +166,12 @@ def test_size_set_reply_uses_god_or_gm_image():
         Buttons(
             text,
             (MessageAction("確認", "1234"),),
-            image=f"{BASE}/static/roles/GM.png",
+            image=f"{BASE}/static/roles/GM.png?v=20261004",
             title="1234村",
             alt_text=text + "配布状況の確認は村番号を入力してください。",
         )
     ]
-    assert messages.size_set_reply(village, god_mode=True, illust=ILLUST)[0].image == f"{BASE}/static/roles/GOD.png"
+    assert messages.size_set_reply(village, god_mode=True, illust=ILLUST)[0].image == f"{BASE}/static/roles/GOD.png?v=20261004"
 
 
 def test_random_size_set_reply_includes_the_owners_role():

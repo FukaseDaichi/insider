@@ -6,7 +6,7 @@ from insider_bot.village.model import Role
 from insider_bot.village.registry import SpecialVillageRegistry, VillageRegistry
 from insider_bot.village.service import OwnedVillage, VillageService
 from insider_bot.village.words import BEGINNER_RANK, parse_dictionary
-from tests.fakes import FixedRandom
+from tests.fakes import FirstRandom, FixedRandom
 
 OWNER = "line:owner"
 BASE = "https://game.example.com"
@@ -18,7 +18,7 @@ def make(*draws: int):
     villages = VillageRegistry(random.Random(1))
     specials = SpecialVillageRegistry(random.Random(2))
     rng = FixedRandom(*draws) if draws else random.Random(3)
-    illust = Illustrations(BASE, FixedRandom(0))
+    illust = Illustrations(BASE, FirstRandom())
     return VillageService(villages, specials, DICTIONARY, illust, rng), villages, specials, illust
 
 

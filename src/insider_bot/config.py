@@ -30,8 +30,6 @@ class WebConfig:
     port: int
     # 役職画像と特殊村フォームの URL を組み立てる公開 URL（末尾の / なし）。空ならサイト内の絶対パス
     public_base_url: str = ""
-    # 役職画像の外部カタログ（Google Apps Script のデプロイ URL）。None なら取りに行かない
-    illustration_catalog_url: str | None = None
 
 
 def _get(env: Mapping[str, str], name: str) -> str:
@@ -97,16 +95,6 @@ def _public_base_url(env: Mapping[str, str]) -> str:
     return raw.rstrip("/")
 
 
-def _catalog_url(env: Mapping[str, str]) -> str | None:
-    raw = _get(env, "ILLUSTRATION_CATALOG_URL")
-    if not raw:
-        return None
-    parsed = urlsplit(raw)
-    if parsed.scheme != "https" or not parsed.netloc:
-        raise ConfigError(f"ILLUSTRATION_CATALOG_URL は https:// で始まる URL で指定してください（現在: {raw!r}）")
-    return raw
-
-
 def load_web_config(env: Mapping[str, str] | None = None) -> WebConfig:
     env = os.environ if env is None else env
     _require(env, ("TYPESAFE_API_KEY",))
@@ -127,5 +115,4 @@ def load_web_config(env: Mapping[str, str] | None = None) -> WebConfig:
         host=_get(env, "WEB_HOST") or "127.0.0.1",
         port=port,
         public_base_url=_public_base_url(env),
-        illustration_catalog_url=_catalog_url(env),
     )

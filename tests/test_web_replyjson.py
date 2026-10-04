@@ -5,12 +5,12 @@ from insider_bot.village.illust import Illustrations
 from insider_bot.village.model import Village
 from insider_bot.village.reply import Buttons, Image, MessageAction, PostbackAction, Text, UriAction
 from insider_bot.web.replyjson import action_json, replies_json, reply_json
-from tests.fakes import FixedRandom
+from tests.fakes import FirstRandom, FixedRandom
 
 
 def test_text_and_image():
     assert reply_json(Text("本文\n2 行目")) == {"type": "text", "text": "本文\n2 行目"}
-    assert reply_json(Image("/static/roles/GM.png")) == {"type": "image", "url": "/static/roles/GM.png"}
+    assert reply_json(Image("/static/roles/GM.png?v=20261004")) == {"type": "image", "url": "/static/roles/GM.png?v=20261004"}
 
 
 def test_actions():
@@ -23,7 +23,7 @@ def test_buttons_drop_overflow_and_alt_text_because_the_web_has_no_length_limit(
     buttons = Buttons(
         "本文",
         (PostbackAction("入室状況確認", "1234"),),
-        image="/static/roles/INSIDER.png",
+        image="/static/roles/INSIDER.png?v=20261004",
         title="1234村",
         alt_text="代替",
         overflow=(Text("本文"),),
@@ -31,7 +31,7 @@ def test_buttons_drop_overflow_and_alt_text_because_the_web_has_no_length_limit(
     assert reply_json(buttons) == {
         "type": "buttons",
         "text": "本文",
-        "image": "/static/roles/INSIDER.png",
+        "image": "/static/roles/INSIDER.png?v=20261004",
         "title": "1234村",
         "actions": [{"type": "postback", "label": "入室状況確認", "data": "1234"}],
     }
@@ -61,12 +61,12 @@ def test_the_web_draws_only_the_body_of_the_same_reply_model():
     assert village.configure(2, FixedRandom(0, 1))
     village.join("a")
     village.join("gm")
-    reply = messages.role_reply(village, "gm", Illustrations("", FixedRandom(0)))
+    reply = messages.role_reply(village, "gm", Illustrations("", FirstRandom()))
     assert replies_json(reply) == [
         {
             "type": "buttons",
             "text": "役職はＧＭです。\n2/2人にお題を配りました。お題は『すいか』です。",
-            "image": "/static/roles/GM.png",
+            "image": "/static/roles/GM.png?v=20261004",
             "title": None,
             "actions": [{"type": "postback", "label": "入室状況確認", "data": "1234"}],
         }

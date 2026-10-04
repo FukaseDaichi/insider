@@ -49,6 +49,8 @@ Web 版の `/village`（トップページの「インサイダーの配役」�
 2. 参加者は `/village` で村番号を入れるか QR を読み取り、自分の役職を見る（同じブラウザなら、もう一度開いても同じ役職）
 3. 「特殊村を作る」では、1 行 1 通で入れたメッセージを、参加した人に 1 通ずつ配れる
 
+役職画像は神・GM・村人・インサイダー各5枚を同梱し、表示するたびに同じ役職の5枚から等確率で選びます。画像URLにはバージョンを付け、画像を更新した際に旧画像のキャッシュが使われないようにします。
+
 ### 仲間と遊ぶとき（Mac で起動して公開する）
 
 Discord ボットと Web 版をまとめて起動し、Web 版を Tailscale Funnel で公開します（構成の考え方は [docs/infra.md](docs/infra.md)）。
@@ -96,7 +98,6 @@ uv run --env-file .env python -m insider_bot
 | `WEB_HOST` | | 127.0.0.1 | Web 版が待ち受けるアドレス |
 | `WEB_PORT` | | 8080 | Web 版が待ち受けるポート |
 | `PUBLIC_BASE_URL` | | — | Web 版の公開 URL（例 `https://game.example.com`）。配役ツールの役職画像と特殊村フォームの URL に使う。未設定ならサイト内のパス |
-| `ILLUSTRATION_CATALOG_URL` | | — | 役職画像の外部カタログ（Google Apps Script のデプロイ URL）。設定すると 5 分ごとに取り直す |
 
 ## 開発
 

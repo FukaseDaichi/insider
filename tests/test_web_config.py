@@ -60,7 +60,7 @@ def test_web_invalid_values(extra):
 
 def test_web_village_urls_are_unset_by_default():
     config = load_web_config({"TYPESAFE_API_KEY": "ts-key"})
-    assert (config.public_base_url, config.illustration_catalog_url) == ("", None)
+    assert config.public_base_url == ""
 
 
 def test_web_village_urls():
@@ -68,11 +68,9 @@ def test_web_village_urls():
         {
             "TYPESAFE_API_KEY": "ts-key",
             "PUBLIC_BASE_URL": "https://game.example.com/",
-            "ILLUSTRATION_CATALOG_URL": "https://script.google.com/macros/s/x/exec",
         }
     )
     assert config.public_base_url == "https://game.example.com"
-    assert config.illustration_catalog_url == "https://script.google.com/macros/s/x/exec"
 
 
 @pytest.mark.parametrize(
@@ -84,7 +82,8 @@ def test_web_public_base_url_must_be_an_origin(value):
         load_web_config({"TYPESAFE_API_KEY": "ts-key", "PUBLIC_BASE_URL": value})
 
 
-@pytest.mark.parametrize("value", ["http://script.google.com/macros/s/x/exec", "script.google.com/macros/s/x/exec"])
-def test_web_catalog_url_must_be_https(value):
-    with pytest.raises(ConfigError, match="ILLUSTRATION_CATALOG_URL"):
-        load_web_config({"TYPESAFE_API_KEY": "ts-key", "ILLUSTRATION_CATALOG_URL": value})
+@pytest.mark.parametrize("value", ["https://script.google.com/macros/s/x/exec", "http://old.example.com", "obsolete"])
+def test_obsolete_catalog_settings_are_ignored(value):
+    assert load_web_config({"TYPESAFE_API_KEY": "ts-key", "ILLUSTRATION_CATALOG_URL": value}) == load_web_config(
+        {"TYPESAFE_API_KEY": "ts-key"}
+    )
