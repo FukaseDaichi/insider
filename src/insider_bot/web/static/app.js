@@ -32,6 +32,8 @@ const NO_SPEECH_HELP =
 const sounds = new SoundPlayer();
 // 音のオン／オフは端末ごとの好みなので、名前と同じく localStorage に覚える
 const SOUND_KEY = "odai:sound";
+// GM の声をオンにしたとき、聞こえるかをその場で確かめる短い声（返事の「はい」）
+const SAMPLE_SOUND = "/static/sounds/yes-90.m4a";
 sounds.unlockOn(document);
 sounds.watchVisibility(document);
 
@@ -682,7 +684,12 @@ class RoomPage {
   bindControls() {
     $("invite-open").addEventListener("click", () => this.openInvite());
     this.setSound(load(SOUND_KEY) !== "off");
-    $("sound-toggle").addEventListener("click", () => this.setSound(!sounds.enabled));
+    $("sound-toggle").addEventListener("click", () => {
+      const on = !sounds.enabled;
+      this.setSound(on);
+      // 保存済みの設定を戻すときではなく、自分でオンにしたときだけ鳴らす
+      if (on) sounds.play(SAMPLE_SOUND);
+    });
     $("invite-close").addEventListener("click", () => $("invite").close());
     $("invite-copy").addEventListener("click", () => this.copyInvite());
     $("start-open").addEventListener("click", () => {
@@ -737,8 +744,8 @@ class RoomPage {
 
   setSound(on) {
     sounds.setEnabled(on);
-    $("sound-toggle").textContent = on ? "🔊 音あり" : "🔇 音なし";
-    $("sound-toggle").setAttribute("aria-pressed", String(on));
+    $("sound-toggle").setAttribute("aria-checked", String(on));
+    $("sound-state").textContent = on ? "オン" : "オフ";
     save(SOUND_KEY, on ? "on" : "off");
   }
 

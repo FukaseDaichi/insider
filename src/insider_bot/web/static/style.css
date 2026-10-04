@@ -2796,10 +2796,117 @@ body:has(.room:not([hidden])) .site-header {
   letter-spacing: 3px;
   margin-left: 8px;
 }
-.menu-actions .secondary {
-  width: 100%;
-  min-height: 48px;
-  justify-content: center;
+/* 招待と GM の声。広い画面ではヘッダーの丸いボタン、スマホ幅ではメニューの大きなタイル（コントロールセンター風）。
+   GM の声はスイッチで、オンのあいだボタン全体が黄緑に光る */
+.control:active {
+  transform: scale(0.97);
+}
+.control-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #33363f;
+  color: var(--accent);
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+.control-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.control-text {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.control-sub {
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+#sound-toggle[aria-checked="true"] .sound-off,
+#sound-toggle[aria-checked="false"] .sound-on {
+  display: none;
+}
+#sound-toggle[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1d2215;
+}
+#sound-toggle[aria-checked="true"] .control-icon {
+  background: #1d2215;
+  color: var(--accent);
+}
+#sound-toggle[aria-checked="false"] .control-icon {
+  color: var(--muted);
+}
+/* ヘッダー: 丸いボタン。招待の「QR・URL」は省く */
+.room-actions:has(*) {
+  display: flex;
+  gap: 8px;
+}
+.room-actions .control {
+  gap: 8px;
+  padding: 7px 14px 7px 8px;
+}
+.room-actions #invite-open .control-sub {
+  display: none;
+}
+/* スマホのメニュー: 大きなタイルを 2 枚並べる */
+.menu-actions:has(*) {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.menu-actions .control {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 118px;
+  padding: 14px;
+  border-color: #44464f;
+  border-radius: 18px;
+  background: #2e3039;
+  text-align: left;
+}
+.menu-actions .control-icon {
+  width: 40px;
+  height: 40px;
+}
+.menu-actions .control-icon svg {
+  width: 22px;
+  height: 22px;
+}
+.menu-actions .control-text {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.menu-actions .control-label {
+  font-size: 15px;
+  font-weight: 700;
+}
+.menu-actions .control-sub {
+  font-size: 12px;
+}
+.menu-note {
+  margin: 10px 2px 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+  /* 2 行になるとき、最後の 1 文字だけが次の行に残らないよう長さをそろえる */
+  text-wrap: balance;
 }
 .menu-players {
   margin: 22px 0;
