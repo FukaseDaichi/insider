@@ -1,6 +1,7 @@
 // 画面全体: トップページ、名前の入力、ルーム画面（WebSocket の接続と再接続）
 import { parseAnswer } from "./answer.js";
 import { AskWatch } from "./askwatch.js";
+import { fireCrackers } from "./confetti.js";
 import { HOST_NAME, hostLines } from "./host.js";
 import { placeChrome, watchCompact } from "./layout.js";
 import { isWeak, numberQuestions, questionNote, resultOf } from "./log.js";
@@ -14,6 +15,8 @@ const NAME_KEY = "odai:name";
 const tokenKey = (code) => `odai:token:${code}`;
 const RETRY_DELAYS_MS = [1000, 2000, 4000, 8000, 10000];
 const NOTICE_MS = 5000;
+// 正解のクラッカーは、テロップが着地するころに鳴らす（style.css の .celebrate-telop の animation）
+const CRACKER_DELAY_MS = 650;
 const LOG_LIMIT = 300;
 // この幅以下では、参加者などの固定情報を上部のメニューにしまって会話を広く見せる
 const COMPACT_LAYOUT = "(max-width: 900px)";
@@ -171,11 +174,60 @@ function renderNote(note) {
   return box;
 }
 
-// 正解・ギブアップは、お題の公開が主役の大きなカード
+// 正解は、GM がバラエティ番組のテロップで発表する。
+// 後ろで集中線が回り、「正解！！」のテロップが横から飛び込み、お題の帯と内訳が続く
+function renderCelebration(result) {
+  const lines = document.createElement("span");
+  lines.className = "celebrate-lines";
+  lines.setAttribute("aria-hidden", "true");
+
+  const avatar = document.createElement("figure");
+  avatar.className = "celebrate-avatar";
+  avatar.setAttribute("aria-hidden", "true");
+  const face = document.createElement("span");
+  face.className = "celebrate-face";
+  const img = document.createElement("img");
+  img.src = "/static/host-correct.png";
+  img.alt = "";
+  img.width = 160;
+  img.height = 160;
+  face.append(img);
+  avatar.append(face);
+
+  const body = document.createElement("div");
+  body.className = "celebrate-body";
+  // テロップは 1 文字ずつ跳ねるよう、何文字目かを CSS に渡す
+  const telop = document.createElement("strong");
+  telop.className = "celebrate-telop";
+  [..."正解！！"].forEach((char, index) => {
+    const span = document.createElement("span");
+    span.style.setProperty("--i", String(index));
+    span.textContent = char;
+    telop.append(span);
+  });
+  const band = document.createElement("p");
+  band.className = "celebrate-band";
+  band.textContent = `お題は「${result.topic}」`;
+  body.append(telop, band);
+  if (result.meta) {
+    // 内訳は「正解者」「質問数」「経過時間」の項目ごとに折り返す（「1」と「秒」の間で切れないように）
+    const meta = document.createElement("p");
+    meta.className = "celebrate-meta";
+    for (const part of result.meta.split(/　(?=質問数: |経過時間: )/u)) {
+      const span = document.createElement("span");
+      span.textContent = part;
+      meta.append(span);
+    }
+    body.append(meta);
+  }
+  return [lines, avatar, body];
+}
+
+// ギブアップは、お題の公開が主役の大きなカード
 function renderResult(result) {
   const label = document.createElement("span");
   label.className = "result-label";
-  label.textContent = result.kind === "correct" ? "🎉 正解" : "🏳️ ギブアップ";
+  label.textContent = "🏳️ ギブアップ";
   const title = document.createElement("strong");
   title.className = "result-title";
   title.textContent = result.title;
@@ -353,6 +405,9 @@ class RoomPage {
         break;
       case "entry":
         this.upsertEntry(message.entry);
+        // 判定中の質問が正解に変わった、その場かぎりの合図。snapshot（再接続・途中参加）では鳴らさない
+        if (!message.entry.pending && resultOf(message.entry.text)?.kind === "correct")
+          setTimeout(() => fireCrackers(), CRACKER_DELAY_MS);
         break;
       case "notice":
         this.notice(message.text);
@@ -528,8 +583,12 @@ class RoomPage {
       item.className = "entry host";
       item.dataset.kind = "host";
       item.replaceChildren(...renderHost(host));
+    } else if (result?.kind === "correct") {
+      item.className = "entry celebrate";
+      item.dataset.kind = "result";
+      item.replaceChildren(...renderCelebration(result));
     } else if (result) {
-      item.className = `entry result ${result.kind}`;
+      item.className = "entry result giveup";
       item.dataset.kind = "result";
       item.replaceChildren(...renderResult(result));
     } else {

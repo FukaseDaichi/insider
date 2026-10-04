@@ -16,21 +16,19 @@ export function questionNote(text) {
   };
 }
 
-// 正解（🎉）とギブアップ（🏳️）は、お題の公開が主役の大きなカードにする。
-// 1 行目を見出し、残りを内訳として分け、先頭の絵文字は出さない
-const RESULT_PREFIXES = [
-  ["🎉 ", "correct"],
-  ["🏳️ ", "giveup"],
-];
+// 正解は GM がテロップでお題を発表するカードにするので、お題と内訳（最後の行）を取り出す。
+// お題に「」や改行が入っても切れないよう、お題は最後の「」でした」までとみなす
+const CORRECT = /^🎉 正解です！お題は「([\s\S]*)」でした\n(.*)$/u;
+// ギブアップは、お題の公開が主役の大きなカード。1 行目を見出し、残りを内訳として分け、先頭の絵文字は出さない
+const GIVEUP_PREFIX = "🏳️ ";
 
 export function resultOf(text) {
-  for (const [prefix, kind] of RESULT_PREFIXES) {
-    if (!text.startsWith(prefix)) continue;
-    const [title, ...rest] = text.slice(prefix.length).split("\n");
-    const meta = rest.map((line) => line.trim()).filter(Boolean);
-    return { kind, title: title.trim(), meta: meta.length ? meta.join("　") : null };
-  }
-  return null;
+  const correct = CORRECT.exec(text);
+  if (correct) return { kind: "correct", topic: correct[1], meta: correct[2].trim() };
+  if (!text.startsWith(GIVEUP_PREFIX)) return null;
+  const [title, ...rest] = text.slice(GIVEUP_PREFIX.length).split("\n");
+  const meta = rest.map((line) => line.trim()).filter(Boolean);
+  return { kind: "giveup", title: title.trim(), meta: meta.length ? meta.join("　") : null };
 }
 
 // 質問番号はゲームごとに 1 から。開始の案内（host）で数え直し、質問（question）だけに付ける

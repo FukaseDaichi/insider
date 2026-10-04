@@ -3330,3 +3330,247 @@ body:has(.room:not([hidden])) .site-header {
     filter: drop-shadow(0 0 10px #dfef7840) drop-shadow(0 10px 22px #0009);
   }
 }
+
+/* 正解は、案内役「GM」がバラエティ番組のテロップで発表する。
+   後ろで集中線が回り、黄色に黒縁と赤い影の「正解！！」が横から飛び込み、お題の帯と内訳が続く。
+   集中線は 1 周して止める（履歴に何枚も並んだとき、回り続けるぶんスマホが重くなるため）。
+   動きを止める設定では animation が消えるので、どの要素も animation なしの姿を完成形にしておく */
+@property --celebrate-spin {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.entry.celebrate {
+  --size: 120px;
+  --pad: 20px;
+  --telop: 48px;
+  --band: 18px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 12px 0 4px;
+  padding: 22px 24px 22px var(--pad);
+  border: 1px solid #3c4228;
+  border-radius: 22px;
+  background:
+    radial-gradient(90% 120% at 12% 50%, #2b3122 0%, transparent 55%),
+    linear-gradient(120deg, #15161d, #1a1b24 55%, #141520);
+  overflow: hidden;
+}
+/* 集中線の中心はアバターの中心。アバターのまわりは線を消して顔を見せる */
+.celebrate-lines {
+  --center: calc(var(--pad) + var(--size) / 2) 50%;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    from var(--celebrate-spin) at var(--center),
+    #dfef7833 0 1.5deg,
+    transparent 1.5deg 7deg
+  );
+  -webkit-mask: radial-gradient(
+    circle at var(--center),
+    transparent calc(var(--size) * 0.55),
+    #000 calc(var(--size) * 2)
+  );
+  mask: radial-gradient(
+    circle at var(--center),
+    transparent calc(var(--size) * 0.55),
+    #000 calc(var(--size) * 2)
+  );
+  animation:
+    celebrate-fade 0.4s 0.1s both,
+    celebrate-spin 10s cubic-bezier(0.2, 0.6, 0.3, 1) both;
+}
+.celebrate-avatar {
+  position: relative;
+  width: var(--size);
+  height: var(--size);
+  flex-shrink: 0;
+  margin: 0;
+  padding: 3px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 150deg,
+    #b9a6ea,
+    var(--accent) 30%,
+    var(--accent) 60%,
+    #b9a6ea 85%,
+    #b9a6ea
+  );
+  box-shadow:
+    0 0 0 6px #dfef781a,
+    0 0 32px #dfef7870,
+    0 0 70px #9b7fd650;
+  animation: celebrate-hop 1.6s ease-out both;
+}
+.celebrate-face {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #14161d;
+  box-shadow: inset 0 0 0 2px #0e0f14;
+}
+.celebrate-face img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* 両手を上げた上半身の絵なので、顔に少しだけ寄せる */
+  transform: scale(1.1);
+  transform-origin: 50% 40%;
+}
+.celebrate-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+.celebrate-telop {
+  display: inline-block;
+  font-size: var(--telop);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  color: #ffe14d;
+  transform: skewX(-8deg);
+  /* 黒い縁取りを 8 方向の影で描き、最後に赤い影を落とす */
+  text-shadow:
+    0.06em 0 0 #1d1d16,
+    -0.06em 0 0 #1d1d16,
+    0 0.06em 0 #1d1d16,
+    0 -0.06em 0 #1d1d16,
+    0.045em 0.045em 0 #1d1d16,
+    -0.045em 0.045em 0 #1d1d16,
+    0.045em -0.045em 0 #1d1d16,
+    -0.045em -0.045em 0 #1d1d16,
+    0.13em 0.13em 0 #c93b26;
+  animation: celebrate-telop 0.55s 0.3s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+.celebrate-telop span {
+  display: inline-block;
+  animation: celebrate-jump 0.5s calc(0.85s + var(--i, 0) * 0.07s) ease-out both;
+}
+.celebrate-band {
+  max-width: 100%;
+  margin: 12px 0 0;
+  padding: 6px 18px;
+  background: #fffdf3;
+  color: #1d2215;
+  font-size: var(--band);
+  font-weight: 900;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  animation: celebrate-band 0.45s 0.8s ease-out both;
+}
+.celebrate-meta {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1em;
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  animation: celebrate-fade 0.4s 1.1s both;
+}
+/* 正解のクラッカーの紙吹雪（confetti.js）。画面全体に重ね、タップは下へ通す */
+.confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+@keyframes celebrate-spin {
+  to {
+    --celebrate-spin: 360deg;
+  }
+}
+@keyframes celebrate-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* 登場で弾み、そのあと 2 回跳ねて喜ぶ */
+@keyframes celebrate-hop {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotate(-25deg);
+  }
+  22% {
+    opacity: 1;
+    transform: scale(1.12) rotate(4deg);
+  }
+  34% {
+    transform: none;
+  }
+  50% {
+    transform: translateY(-14%) rotate(-6deg);
+  }
+  62% {
+    transform: none;
+  }
+  76% {
+    transform: translateY(-7%) rotate(4deg);
+  }
+  88%,
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes celebrate-telop {
+  0% {
+    opacity: 0;
+    transform: translateX(140%) skewX(-30deg);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(-5%) skewX(-4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: skewX(-8deg);
+  }
+}
+@keyframes celebrate-jump {
+  0%,
+  100% {
+    transform: none;
+  }
+  40% {
+    transform: translateY(-0.22em);
+  }
+}
+@keyframes celebrate-band {
+  from {
+    clip-path: polygon(10px 0, 10px 0, 0 100%, 0 100%);
+  }
+  to {
+    clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  }
+}
+/* スマホ: 開始の吹き出しと同じく、アバターと文字を画面幅に連動して縮める */
+@media (max-width: 900px) {
+  .entry.celebrate {
+    --size: clamp(56px, 18vw, 88px);
+    --pad: 12px;
+    /* 「正解！！」（4 文字）が 320px でも 1 行に収まる大きさ */
+    --telop: clamp(28px, 9vw, 44px);
+    --band: clamp(13px, 4.2vw, 17px);
+    gap: 10px;
+    padding: 18px 14px 16px var(--pad);
+    border-radius: 16px;
+  }
+}
