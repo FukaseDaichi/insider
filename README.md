@@ -80,7 +80,7 @@ uv run python -m tests.line_golden http://127.0.0.1:18080/callapi
 
 ### 本番（Oracle Cloud の VM で 24 時間動かす）
 
-Always Free の A1 1 台に Caddy と systemd で載せ、`main` への push で GitHub Actions が配備します（構成は [docs/infra.md](docs/infra.md)）。VM のセットアップは [deploy/setup.md](deploy/setup.md)、画面操作は [deploy/human-steps.md](deploy/human-steps.md)、LINE の切替前検証と切替は [deploy/cutover.md](deploy/cutover.md)。本番の VM が動いている間は、下の Mac での起動を使いません（Discord ボットが 2 か所で動くと質問に 2 回返信します）。
+Always Free の A1 1 台に Caddy と systemd で載せ、`main` への push で GitHub Actions が配備します（構成は [docs/infra.md](docs/infra.md)）。VM のセットアップは [deploy/setup.md](deploy/setup.md)、画面操作は [deploy/human-steps.md](deploy/human-steps.md)、LINE の切替前検証と切替は [deploy/cutover.md](deploy/cutover.md)。GitHub Secrets（`DEPLOY_HOST`、`DEPLOY_SSH_KEY`、`DEPLOY_HOST_KEY`）が 3 つとも未登録のあいだ、deploy job は配備を飛ばして成功で終わります（一部だけなら失敗します）。本番の VM が動いている間は、下の Mac での起動を使いません（Discord ボットが 2 か所で動くと質問に 2 回返信します）。
 
 ### 仲間と遊ぶとき（Mac で起動して公開する）
 
