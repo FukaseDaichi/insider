@@ -2874,6 +2874,7 @@ body:has(.room:not([hidden])) .site-header {
 /* ゲーム開始の案内は、案内役「GM」がアバター付きの吹き出しで喋る。
    吹き出しは角を斜めに落とし、大きなしっぽでアバターを指す。外側がグラデーションの枠、
    内側が暗い本体で、同じ多角形の clip-path を 2 枚重ねて縁取りにしている。
+   内側は枠の padding（--edge）だけ内へずれた座標なので、枠の x = --tail の辺は内側では x = --tail に置くと縁が --edge の太さになる。
    寸法は --size（アバター）と吹き出しの変数に集め、スマホでは画面幅に応じて縮める。 */
 .entry.host {
   --size: 120px;
@@ -3095,10 +3096,10 @@ body:has(.room:not([hidden])) .site-header {
     100% 0,
     100% calc(100% - var(--cut) - 1px),
     calc(100% - var(--cut) - 1px) 100%,
-    calc(var(--tail) - var(--edge)) 100%,
-    calc(var(--tail) - var(--edge)) calc(var(--tail-bottom) - 1.2%),
+    var(--tail) 100%,
+    var(--tail) calc(var(--tail-bottom) - 1.2%),
     calc(var(--edge) * 1.6) var(--tail-mid),
-    calc(var(--tail) - var(--edge)) calc(var(--tail-top) + 1.2%)
+    var(--tail) calc(var(--tail-top) + 1.2%)
   );
 }
 /* 話者タグは上辺に乗ったタブ。左の斜めが角のカットと平行になる */
