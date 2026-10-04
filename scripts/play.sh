@@ -11,10 +11,11 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-# Mac のアプリ版は CLI を PATH に入れないことがあるので、アプリの中も探す
-TAILSCALE="$(command -v tailscale || true)"
-if [ -z "$TAILSCALE" ] && [ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]; then
-  TAILSCALE=/Applications/Tailscale.app/Contents/MacOS/Tailscale
+# Mac のアプリ版はアプリの中の本体を直接使う。PATH に入る tailscale は本体を exec せずに子として起動する
+# スクリプトで、止めても本体が残って公開が終わらないため
+TAILSCALE=/Applications/Tailscale.app/Contents/MacOS/Tailscale
+if [ ! -x "$TAILSCALE" ]; then
+  TAILSCALE="$(command -v tailscale || true)"
 fi
 if [ -z "$TAILSCALE" ]; then
   echo "Tailscale が見つかりません。https://tailscale.com/download/mac から入れて、ログインしてください" >&2
@@ -27,6 +28,15 @@ PORT="${PORT:-8080}"
 if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   echo "ポート $PORT はすでに使われています。前に起動したものが残っていないか確かめてください" >&2
   exit 1
+fi
+
+# 前回の公開の設定が残っていると「listener already exists for port 443」で公開できない。
+# tailscale serve・funnel が 1 つも動いていないのに残る前面の公開は古いので消す（--bg の常時公開があれば消さない）
+if ! pgrep -qif 'tailscale (serve|funnel)' \
+  && "$TAILSCALE" serve status --json 2>/dev/null \
+    | jq -e '(.Foreground // {}) != {} and del(.Foreground) == {}' >/dev/null 2>&1; then
+  echo "== 前回の公開の設定が残っていたので消します"
+  "$TAILSCALE" serve reset
 fi
 
 bot_pid="" web_pid="" funnel_pid=""
