@@ -138,6 +138,8 @@ function initNew() {
   // 「新しい村を作る」を押したあとは、作りかけの村があっても種類から聞く
   let startingOver = false;
   let invited = null;
+  // ワーワーズにしたあと、配布状況の欄が指す特殊村の番号。「新しい村を作る」までは元の村の配布状況に戻さない
+  let werewords = null;
   let timer = null;
   // 配布状況の欄に最後に描いた返事。中身が同じなら描き直さない（読み上げの繰り返しとフォーカスの喪失を避ける）
   let shownStatus = null;
@@ -150,18 +152,21 @@ function initNew() {
   }
 
   function updateOwnerButtons(owned) {
-    // 中核も同じ条件で断るが、押しても案内文しか返らないボタンは出さない
-    $("reverse-button").hidden = owned.member_count > 0 || owned.mode === "random" || owned.reverse;
-    $("werewords-button").hidden = owned.member_count > 0 || owned.size < 3 || !owned.has_topic;
+    // 中核も同じ条件で断るが、押しても案内文しか返らないボタンは出さない。ワーワーズにしたあとはどちらも出さない
+    const converted = werewords !== null;
+    $("reverse-button").hidden = converted || owned.member_count > 0 || owned.mode === "random" || owned.reverse;
+    $("werewords-button").hidden = converted || owned.member_count > 0 || owned.size < 3 || !owned.has_topic;
   }
 
-  // オーナーが自分の村番号で入ると配布状況が返る。画面が隠れている間は取りに行かない
+  // オーナーが自分の村番号で入ると配布状況が返る。ランダム村のオーナーは入ると役職カードが返るので、
+  // 入室状況（ポストバック）で取る。画面が隠れている間は取りに行かない
   async function refreshStatus() {
     if (village === null || document.visibilityState !== "visible") return;
     const number = village.number;
     let body;
     try {
-      body = await call("join", { number });
+      body =
+        village.mode === "random" ? await call("postback", { data: String(number) }) : await call("join", { number });
     } catch {
       return; // 次の更新で取り直す
     }
@@ -171,6 +176,8 @@ function initNew() {
 
   // 配布状況の返事を欄に描く。変わっていなければ描き直さず、自分の村の要約が付いていれば村とオーナーのボタンを更新する
   function showStatus(body) {
+    // ワーワーズにしたあとに届いた元の村の配布状況は描かない
+    if (werewords !== null) return;
     const serialized = JSON.stringify(body.replies);
     if (serialized !== shownStatus) {
       shownStatus = serialized;
@@ -189,15 +196,25 @@ function initNew() {
     showStatus(body);
   }
 
+  // 配布状況の欄の番号・QR・URL は、ワーワーズにしたあとは作った特殊村のもの。
+  // 神モードでない村ではオーナーも入るので、特殊村に入るリンクを出す
   function startStatus() {
-    $("status-number").textContent = String(village.number);
-    if (invited !== village.number) {
-      invited = village.number;
+    const shown = werewords ?? village.number;
+    $("status-number").textContent = String(shown);
+    if (invited !== shown) {
+      invited = shown;
       $("status-replies").replaceChildren();
       shownStatus = null;
-      showInvite(village.number, { canvas: $("status-qr"), url: $("status-url"), copy: $("status-copy"), message });
+      showInvite(shown, { canvas: $("status-qr"), url: $("status-url"), copy: $("status-copy"), message });
     }
     updateOwnerButtons(village);
+    const joinLink = $("werewords-join");
+    joinLink.hidden = werewords === null || village.mode === "god";
+    if (werewords !== null) {
+      joinLink.href = `/v/${werewords}`;
+      stopStatus();
+      return;
+    }
     if (timer === null) {
       refreshStatus();
       timer = setInterval(refreshStatus, STATUS_REFRESH_MS);
@@ -260,9 +277,15 @@ function initNew() {
   });
 
   $("reverse-button").addEventListener("click", async () => apply(await run(message, () => call("reverse"))));
-  $("werewords-button").addEventListener("click", async () => apply(await run(message, () => call("werewords"))));
+  $("werewords-button").addEventListener("click", async () => {
+    const body = await run(message, () => call("werewords"));
+    // 応答の village は元の村のまま。作った特殊村の番号があれば、配布状況の欄をそちらに切り替える
+    if (body?.special_number !== undefined) werewords = body.special_number;
+    apply(body);
+  });
   $("restart-button").addEventListener("click", () => {
     startingOver = true;
+    werewords = null;
     $("new-replies").replaceChildren();
     show(village);
   });
