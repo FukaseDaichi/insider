@@ -1443,6 +1443,12 @@ textarea:focus {
   color: var(--muted);
 }
 
+/* #scan-open の下に続くリンク。上のボタンとの間隔は縦に並ぶ入力欄やボタンと同じ 12px */
+.entry-link {
+  position: relative;
+  margin-top: 12px;
+}
+
 .scan-icon {
   font-size: 24px;
   color: var(--muted);
@@ -2315,6 +2321,10 @@ dialog .eyebrow {
   .join-arrow {
     position: absolute;
     right: 5px;
+  }
+  /* 枠のあるリンクでは、矢印を枠の内側の余白（18px）に置く */
+  .entry-link .join-arrow {
+    right: 18px;
   }
   .primary.arrow-button {
     min-height: 56px;
