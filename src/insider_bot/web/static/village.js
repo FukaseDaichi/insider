@@ -122,6 +122,8 @@ function initCard(number) {
     if (body === null) return;
     renderReplies($("card-replies"), body.replies, onAction);
     $("card-status").replaceChildren();
+    // 返事は案内文のまま描き、見つからなかったことは画面の言葉で添える
+    if (body.found === false) message.textContent = `村 ${number} は見つかりませんでした。番号を確かめてください`;
   }
 
   $("card-reload").addEventListener("click", join);
@@ -238,7 +240,10 @@ function initNew() {
   $("step-topic").addEventListener("submit", async (event) => {
     event.preventDefault();
     const topic = $("topic-input").value;
-    if (topic === "") return;
+    if (topic.trim() === "") {
+      message.textContent = "お題を入力してください";
+      return;
+    }
     const body = await run(message, () => call("topic", { topic }));
     if (body?.found) $("topic-input").value = "";
     apply(body);
