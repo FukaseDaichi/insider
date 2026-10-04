@@ -34,6 +34,28 @@ export class SoundPlayer {
     this.shownAt = -Infinity;
     this.sources = new Set();
     this.enabled = true;
+    this.wasReady = false;
+    // 鳴らせる／鳴らせないが変わったときに呼ぶ。画面はこれで「タップすると聞こえます」を出し入れする
+    this.onChange = () => {};
+  }
+
+  /** 鳴らせる状態か。ブラウザはタップされるまで音を止めておき、iPhone は電話や音声認識のあとにも止める。 */
+  get ready() {
+    return this.context?.state === "running";
+  }
+
+  /** 声をオンにしたのにブラウザが止めている。タップすれば直る（AudioContext のないブラウザは直らないので含めない）。 */
+  get blocked() {
+    return this.enabled && this.context !== null && !this.ready;
+  }
+
+  /** 部屋を開いた時点で作っておく。操作の前なので止まった状態で作られ、ready で止まっていると分かる。 */
+  prepare() {
+    try {
+      this.ensureContext();
+    } catch {
+      // 音を出せないブラウザでも遊べる
+    }
   }
 
   /** 音のオン／オフ。オフにしたら鳴りかけの音も止める（次の合図まで待たせない）。 */
@@ -51,10 +73,13 @@ export class SoundPlayer {
 
   unlock() {
     try {
-      this.context ??= this.createContext();
-      const context = this.context;
+      const context = this.ensureContext();
       if (!context || context.state === "running") return;
-      context.resume().catch(() => {});
+      // statechange を出さない版のブラウザもあるので、動き出したかは resume の後にも確かめる
+      context
+        .resume()
+        .then(() => this.changed())
+        .catch(() => {});
       // 古い iPhone は、操作の中で一度音を出さないと再生を許さない
       const silence = context.createBufferSource();
       silence.buffer = context.createBuffer(1, 1, 22050);
@@ -63,6 +88,23 @@ export class SoundPlayer {
     } catch {
       // 音を出せないブラウザでも遊べる
     }
+  }
+
+  ensureContext() {
+    if (!this.context) {
+      this.context = this.createContext();
+      // iPhone の "interrupted" のように、ブラウザが自分で止めたり戻したりしたときも知らせる
+      if (this.context) this.context.onstatechange = () => this.changed();
+    }
+    return this.context;
+  }
+
+  // 変わったときだけ知らせる。タップ 1 回で resume を何度も呼ぶため
+  changed() {
+    const ready = this.ready;
+    if (ready === this.wasReady) return;
+    this.wasReady = ready;
+    this.onChange(ready);
   }
 
   /** 画面を見ていない間と、裏から戻った直後に届いた合図は鳴らさない。離れたら鳴りかけの音も止める。 */

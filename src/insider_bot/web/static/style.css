@@ -2721,7 +2721,8 @@ body:has(.room:not([hidden])) .site-header {
   order: 6;
 }
 .room-header .secret,
-.room-header .offline {
+.room-header .offline,
+.room-header .sound-hint {
   order: 7;
   flex-basis: 100%;
   margin: 0;
@@ -2735,6 +2736,29 @@ body:has(.room:not([hidden])) .site-header {
 .offline {
   padding: 8px 12px;
   font-size: 11px;
+}
+/* GM の声がオンなのにブラウザが音を止めている間の帯。警告ではないので赤でなく、GM の声のスイッチと同じ色 */
+.sound-hint {
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-color: var(--accent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  text-align: left;
+}
+.sound-hint svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .menu-button {
   display: none;

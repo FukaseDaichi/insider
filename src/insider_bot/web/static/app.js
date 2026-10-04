@@ -34,6 +34,12 @@ const sounds = new SoundPlayer();
 const SOUND_KEY = "odai:sound";
 // GM の声をオンにしたとき、聞こえるかをその場で確かめる短い声（返事の「はい」）
 const SAMPLE_SOUND = "/static/sounds/yes-90.m4a";
+// ブラウザが音を止めたままこれだけ続いたら「タップすると聞こえます」の帯を出す。
+// 1 秒ごとの見直しで 2 回続けて止まっていたら出す長さ。読み込み直後や押して話すの途中でちらつかせない
+const SOUND_HINT_DELAY_MS = 900;
+// 音が動き出してから帯を消すまでの間。同じタップの click が届く前に帯が消えると、
+// 指の下に詰まってきた別のボタンが押されてしまう
+const SOUND_HINT_SETTLE_MS = 400;
 sounds.unlockOn(document);
 sounds.watchVisibility(document);
 
@@ -332,6 +338,7 @@ class RoomPage {
     this.startedAt = 0;
     this.items = new Map();
     this.noticeTimer = null;
+    this.soundBlockedSince = null;
     this.askWatch = new AskWatch((text) => this.askLost(text));
     this.textMode = !speechSupported;
     this.talk = speechSupported
@@ -367,7 +374,18 @@ class RoomPage {
     this.setTextMode(this.textMode);
     $("offline").textContent = "接続中…";
     this.setConnected(false);
-    setInterval(() => this.renderStatus(), 1000);
+    // 部屋を開いた時点で音を用意しておき、タップ前で止まっている間は帯で知らせる
+    sounds.prepare();
+    sounds.onChange = () =>
+      setTimeout(() => this.renderSoundHint(), SOUND_HINT_SETTLE_MS);
+    document.addEventListener("visibilitychange", () =>
+      this.renderSoundHint(),
+    );
+    setInterval(() => {
+      this.renderStatus();
+      // 状態の変化を知らせない版のブラウザもあるので、時計と一緒に見直す
+      this.renderSoundHint();
+    }, 1000);
     this.connect();
   }
 
@@ -690,6 +708,8 @@ class RoomPage {
       // 保存済みの設定を戻すときではなく、自分でオンにしたときだけ鳴らす
       if (on) sounds.play(SAMPLE_SOUND);
     });
+    // 帯を押したタップで音が動き出すので、聞こえるかをその場で確かめる声を鳴らす
+    $("sound-hint").addEventListener("click", () => sounds.play(SAMPLE_SOUND));
     $("invite-close").addEventListener("click", () => $("invite").close());
     $("invite-copy").addEventListener("click", () => this.copyInvite());
     $("start-open").addEventListener("click", () => {
@@ -747,6 +767,21 @@ class RoomPage {
     $("sound-toggle").setAttribute("aria-checked", String(on));
     $("sound-state").textContent = on ? "オン" : "オフ";
     save(SOUND_KEY, on ? "on" : "off");
+    this.renderSoundHint();
+  }
+
+  // GM の声がオンなのにブラウザが音を止めている間（タップ前・iPhone の電話や音声認識のあと）だけ帯を出す。
+  // 押して話すの最中は出さない。話している途中に帯が出入りすると気が散る（止まったままなら離したあとに出る）
+  renderSoundHint() {
+    const blocked =
+      sounds.blocked &&
+      document.visibilityState === "visible" &&
+      (this.talk?.state ?? "idle") === "idle";
+    if (!blocked) this.soundBlockedSince = null;
+    else this.soundBlockedSince ??= performance.now();
+    $("sound-hint").hidden =
+      !blocked ||
+      performance.now() - this.soundBlockedSince < SOUND_HINT_DELAY_MS;
   }
 
   setTextMode(on) {

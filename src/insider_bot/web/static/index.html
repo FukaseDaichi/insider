@@ -266,6 +266,14 @@
           </div>
           <p id="secret" class="secret" hidden></p>
           <p id="offline" class="offline" role="status" hidden></p>
+          <!-- GM の声がオンなのにブラウザが音を止めている間だけ出す。どこをタップしても声が出るようになる -->
+          <button id="sound-hint" type="button" class="sound-hint" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 9h3.5L13 4.5v15L7.5 15H4z" />
+              <path d="M16.5 9a4.5 4.5 0 0 1 0 6M19 6.5a8 8 0 0 1 0 11" />
+            </svg>
+            タップすると GM の声が聞こえます
+          </button>
         </header>
         <div class="log-heading">
           <span class="eyebrow">CONVERSATION</span

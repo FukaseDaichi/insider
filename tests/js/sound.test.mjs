@@ -7,9 +7,11 @@ const SILENCE = "無音";
 const START = "/static/sounds/start-1.m4a";
 
 class FakeContext {
-  constructor({ resumable = true } = {}) {
+  // firesStateChange: 動き出したときに statechange を出すか（出さない版のブラウザもある）
+  constructor({ resumable = true, firesStateChange = true } = {}) {
     this.state = "suspended";
     this.resumable = resumable;
+    this.firesStateChange = firesStateChange;
     this.resumeCalls = 0;
     this.started = [];
     this.stopped = [];
@@ -18,8 +20,17 @@ class FakeContext {
 
   resume() {
     this.resumeCalls += 1;
-    if (this.resumable) this.state = "running";
+    if (this.resumable) {
+      this.state = "running";
+      if (this.firesStateChange) this.onstatechange?.();
+    }
     return Promise.resolve();
+  }
+
+  // ブラウザが自分で状態を変えたとき（iPhone の電話や音声認識で止まる・戻る）
+  setState(state) {
+    this.state = state;
+    this.onstatechange?.();
   }
 
   decodeAudioData(data) {
@@ -76,9 +87,20 @@ function setup({
   });
   player.unlockOn(target);
   player.watchVisibility(page);
+  const changes = [];
+  player.onChange = (ready) => changes.push(ready);
   const played = () => context.started.filter((buffer) => buffer !== SILENCE);
-  return { player, target, context, loads, played, page, clock };
+  return { player, target, context, loads, played, page, clock, changes };
 }
+
+// 指を離したときに届く一連のイベント。iPhone では pointerup と touchend が操作に数えられる
+function tap(target) {
+  for (const type of ["pointerdown", "pointerup", "touchend"])
+    target.dispatchEvent(new Event(type));
+}
+
+// resume の Promise の続きを走らせる
+const settle = () => new Promise((resolve) => setImmediate(resolve));
 
 test("画面を一度も操作していなければ、鳴らさず読み込みもしない", async () => {
   const { player, loads, played } = setup();
@@ -238,4 +260,80 @@ test("オフにした瞬間に、鳴りかけの音も止める", async () => {
   await player.play(START);
   player.setEnabled(false);
   assert.deepEqual(context.stopped, [{ decoded: `中身:${START}` }]);
+});
+
+test("部屋を開いた時点で準備しても、タップするまでは鳴らせる状態にならない", () => {
+  const { player, target } = setup();
+  player.prepare();
+  assert.equal(player.ready, false);
+  tap(target);
+  assert.equal(player.ready, true);
+});
+
+test("タップで鳴らせるようになったら、そのことを 1 回だけ知らせる", async () => {
+  const { player, target, changes } = setup();
+  player.prepare();
+  tap(target);
+  await settle();
+  assert.deepEqual(changes, [true]);
+});
+
+test("statechange を出さないブラウザでも、タップで鳴らせるようになったら知らせる", async () => {
+  const context = new FakeContext({ firesStateChange: false });
+  const { player, target, changes } = setup({ context });
+  player.prepare();
+  tap(target);
+  await settle();
+  assert.deepEqual(changes, [true]);
+});
+
+test("スクロールのように音を動かせない操作では、鳴らせないまま何も知らせない", async () => {
+  const context = new FakeContext({ resumable: false });
+  const { player, target, changes } = setup({ context });
+  player.prepare();
+  target.dispatchEvent(new Event("pointerdown"));
+  await settle();
+  assert.equal(player.ready, false);
+  assert.deepEqual(changes, []);
+});
+
+test("iPhone が電話などで音を止めたら知らせ、戻ったらまた知らせる", async () => {
+  const { player, target, context, changes } = setup();
+  player.prepare();
+  tap(target);
+  await settle();
+  context.setState("interrupted");
+  assert.equal(player.ready, false);
+  context.setState("running");
+  assert.equal(player.ready, true);
+  assert.deepEqual(changes, [true, false, true]);
+});
+
+test("AudioContext のないブラウザでは、準備しても鳴らせる状態にならない", () => {
+  const player = new SoundPlayer({
+    createContext: () => null,
+    load: () => Promise.resolve("中身"),
+  });
+  player.prepare();
+  assert.equal(player.ready, false);
+});
+
+test("声をオンにしたのにブラウザが音を止めている間だけ、止められていると答える", () => {
+  const { player, target } = setup();
+  player.prepare();
+  assert.equal(player.blocked, true);
+  player.setEnabled(false);
+  assert.equal(player.blocked, false, "オフにしているなら止められていても困らない");
+  player.setEnabled(true);
+  tap(target);
+  assert.equal(player.blocked, false);
+});
+
+test("AudioContext のないブラウザでは、止められているとは答えない（タップしても直らないため）", () => {
+  const player = new SoundPlayer({
+    createContext: () => null,
+    load: () => Promise.resolve("中身"),
+  });
+  player.prepare();
+  assert.equal(player.blocked, false);
 });
