@@ -62,7 +62,7 @@
 | `registry.py` | 採番（4 桁 1000〜9999、5 桁 10000〜99998）、上限（50 件／30 件）で古い村から FIFO で削除、所有者の最新の村の検索 | `VillageRegistry`、`SpecialVillageRegistry` |
 | `words.py` | お題辞書 CSV の読み込み、難易度区間の導出、不正な辞書の破棄 | `WordGetter` |
 | `werewords.py` | 占師・インサイダー・村人の役職列と「欠け」の生成 | `CreateWereWordsLogic`、`CommonSubLogic` |
-| `illust.py` | 役職画像。同梱の既定画像と、任意の外部カタログからの重み付き抽選 | `CommonModule`、`IllustrationCatalogJob` |
+| `illust.py` | 役職画像。同梱の画像からの抽選 | `CommonModule` |
 | `service.py` | 構造化操作: 作成（通常／神／ランダム）、人数設定、お題設定、逆村化、Werewords 変換、参加、入室状況、特殊村の作成と参加 | `VillageService`、`CreateVillage` |
 | `commands.py` | テキストの解釈: 数値の境界、コマンド表、お題の自動取得の候補 | `TextCommandHandler` |
 | `texts.py` | 文言 | `MessageConst` |
@@ -99,9 +99,9 @@ asyncio は 1 スレッドなので Java の `synchronized` は不要。代わ�
 
 ### 役職画像
 
-- 既定画像 4 枚（INSIDER / VILLAGERS / GM / GOD）と友だち追加用の QR 画像を `web/static/roles/` に同梱し、自前のドメインから配信する。LineBot リポジトリの `raw.githubusercontent.com` への依存を断ち、LineBot をアーカイブできるようにする。
+- 役職ごとに 5 枚（INSIDER / VILLAGERS / GM / GOD）と友だち追加用の QR 画像を `web/static/roles/` に同梱し、自前のドメインから配信する。LineBot リポジトリの `raw.githubusercontent.com` への依存を断ち、LineBot をアーカイブできるようにする。
 - LINE はテンプレートの画像を HTTPS で公開された URL でしか受け取れないので、URL は `PUBLIC_BASE_URL` から組み立てる。
-- `ILLUSTRATION_CATALOG_URL` を設定したときだけ、Google Apps Script のカタログを 5 分ごとに取り直して重み付きで抽選する。失敗時は前回分、一度も取れていなければ既定画像。未設定なら取りに行かない。
+- 画像は同梱の 5 枚から等確率で選ぶ。Java の Google Apps Script のカタログ（重み付き抽選）は移さない（M1 の後に廃止した。`ILLUSTRATION_CATALOG_URL` はない）。
 
 ### お題辞書
 
@@ -186,7 +186,7 @@ LineBot で確定済みの前提を引き継ぐ: VM.Standard.A1.Flex 2 OCPU / 12
 | プロセス | Java 1 本 | `insider-web.service`（Web＋LINE）と `insider-bot.service`（Discord） |
 | ランタイム | Temurin 8 を `/opt/java` に手置き | uv が `.python-version` の Python を取得・固定する。apt の Python に依存しない |
 | 公開 | Caddy | Caddy。**Tailscale Funnel は本番で使わない。** Mac でのローカル遊び（`scripts/play.sh`）にだけ残す |
-| 外向き通信 | api.line.me、script.google.com | ＋ api.typesafe.ai（Jev）、Discord ゲートウェイ |
+| 外向き通信 | api.line.me、script.google.com | api.line.me、api.typesafe.ai（Jev）、Discord ゲートウェイ（画像カタログがないので script.google.com は要らない） |
 | アイドル回収対策 | JVM の `-Xms3g -XX:+AlwaysPreTouch` | `memfloor` ユニット（下記） |
 
 ### systemd ユニット
@@ -214,7 +214,7 @@ Always Free の A1 は、7 日間 CPU・ネットワーク・メモリの 3 つ�
 
 ### 秘密情報
 
-`/etc/insider.env` に `DISCORD_TOKEN`、`TYPESAFE_API_KEY`、`LINE_CHANNEL_TOKEN`、`LINE_CHANNEL_SECRET`、`PUBLIC_BASE_URL`、任意で `ILLUSTRATION_CATALOG_URL`、`LINE_API_BASE_URL`（切替前の検証でスタブへ向けるときだけ）。値はパスワードマネージャに保管し、VM の再作成時はそこから復元する。GitHub Secrets には `DEPLOY_HOST`、`DEPLOY_SSH_KEY`、`DEPLOY_HOST_KEY` の 3 つだけを置く。
+`/etc/insider.env` に `DISCORD_TOKEN`、`TYPESAFE_API_KEY`、`LINE_CHANNEL_TOKEN`、`LINE_CHANNEL_SECRET`、`PUBLIC_BASE_URL`、任意で `LINE_API_BASE_URL`（切替前の検証でスタブへ向けるときだけ）。値はパスワードマネージャに保管し、VM の再作成時はそこから復元する。GitHub Secrets には `DEPLOY_HOST`、`DEPLOY_SSH_KEY`、`DEPLOY_HOST_KEY` の 3 つだけを置く。
 
 ## デプロイ
 
@@ -249,7 +249,7 @@ Webhook URL を Heroku のものへ戻すだけ。Heroku は切替後 1 か月�
 - **契約**: `docs/village.md`（Java の `game-spec.md` と `interfaces.md` の LINE 部分の移植）
 - **中核**: Java のテスト（`VillageTest`、`VillageServiceTest`、`VillageRegistryTest`、`WordGetterTest`、`CreateWereWordsLogicTest`、`SpecialVillageTest`）を pytest に移植する。乱数は注入して決定的にする。辞書は実物の `word.csv` が読めることと、壊した辞書が破棄されることの両方を確かめる
 - **経路の一致**: Java の `RouteParityTest` に相当するものとして、テキスト解釈（`commands.handle`）と構造化操作（`service`）が同じ返事モデルを返すことを固定する。LINE レンダラの JSON と Web の JSON が同じ返事モデルから作られることも確かめる
-- **Java との突き合わせ（ゴールデン）**: 切替前に、Heroku で動いている Java の `/callapi` へ同じ入力列（村の作成、お題、人数、参加、各 `@` コマンド、既定応答、お題候補）を送って JSON を採取し、Python の LINE レンダラの出力と比較する。村番号・配役・画像の抽選はランダムなので、それらを正規化して比べる。「全く同じ」を主観ではなく機械で確かめる手段である。ポストバックとスタンプは `/callapi` に入口がないので、Java の `LineEventHandlerPostbackTest` と `StickerReplyEvent` のコードから期待値を起こす
+- **Java との突き合わせ（ゴールデン）**: 切替前に、本番と同じ Java 8 で手元に起動した LineBot の `/callapi` へ同じ入力列（村の作成、お題、人数、参加、各 `@` コマンド、既定応答、お題候補）を送って JSON を採取し、Python の LINE レンダラの出力と比較する。Heroku の本番の `/callapi` は使わない（入力列が村を十数個作るので、上限 50 件の FIFO で遊んでいる人の村を押し出す）。村番号・配役・画像の抽選はランダムなので、それらを正規化して比べる。「全く同じ」を主観ではなく機械で確かめる手段である。M3 では Java を入れずに採取を見送り、比較のテストは skip している。M5 の前に採る。ポストバックとスタンプは `/callapi` に入口がないので、Java の `LineEventHandlerPostbackTest` と `StickerReplyEvent` のコードから期待値を起こす
 - **LINE アダプタ**: 署名検証（正しい署名、不正な署名、本文の改ざん）、イベントの分岐、userId なしの拒否、返信を待たずに 200 を返すこと、返信の失敗がログに留まること、ログに本文が出ないこと
 - **Web**: aiohttp のテストクライアントで `/api/village/*` の各操作と入力不正。node で `reply.js` の描画（既存の `tests/js/` と同じ方式）
 - **切替前検証**: LineBot の `deploy/verify/`（`post_callback.py`、`line_api_stub.py`。どちらも Python）を insider に移し、検証項目を insider 向けに書き直す。Caddy 経由の署名付き `/line/callback`、スタブに届く返信の内容、不正署名の拒否、応答時間、レート制限、`/healthz`、`MemoryUtilization` の実測、再起動と VM 再起動後の自動復帰、デプロイの自動復旧、古い commit の re-run で deploy が skip すること
@@ -273,7 +273,7 @@ Webhook URL を Heroku のものへ戻すだけ。Heroku は切替後 1 か月�
 | M5 | 切替前検証とカットオーバー | M2〜M4 |
 | M6 | 後片付け（Heroku 解約、Netlify 差し替え、LineBot アーカイブ、docs の蒸留） | M5 の 1 か月後 |
 
-M1〜M3 はコードだけで進められ、A1 の在庫に左右されない。M2 と M3 は独立なので並行できる。実装計画は M1、M2、M3、M4〜M6 の 4 本に分ける。
+M1〜M3 は実装済みで、実装計画は削除した。結論は `docs/spec.md`・`docs/village.md`・README にある（本設計書の「村の中核」「LINE アダプタ」「Web の配役ツール」の節より、そちらが正）。M1〜M3 はコードだけで進められ、A1 の在庫に左右されない。M2 と M3 は独立なので並行できる。実装計画は M1、M2、M3、M4〜M6 の 4 本に分ける。
 
 ## 残るリスク
 
