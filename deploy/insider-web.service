@@ -1,22 +1,28 @@
-# deploy/setup.sh がユーザー名とパスを埋め込んで /etc/systemd/system/ に配置する
+# /etc/systemd/system/insider-web.service
 [Unit]
-Description=お題当てゲーム Web 版
+Description=お題当てゲーム Web 版と LINE の webhook (aiohttp)
 Wants=network-online.target
 After=network-online.target
 
 [Service]
 Type=simple
-User=__USER__
-WorkingDirectory=__APP_DIR__
-EnvironmentFile=__APP_DIR__/.env
+User=insider
+Group=insider
+EnvironmentFile=/etc/insider.env
 Environment=PYTHONUNBUFFERED=1
-# git pull で依存が変わっていても restart だけで反映されるようにする
-ExecStartPre=__UV__ sync --frozen --no-dev
-ExecStart=__APP_DIR__/.venv/bin/python -m insider_bot.web
+# 待ち受けは 127.0.0.1:8080 (WEB_HOST / WEB_PORT の既定)。外からは Caddy を経由する
+WorkingDirectory=/opt/insider/current
+ExecStart=/opt/insider/current/.venv/bin/python -m insider_bot.web
+# aiohttp は停止の合図の後に届いた本文を捨て、受信中の要求を最大 60 秒待ってから取り消す。
+# WebSocket はすべて同時に閉じる (close のタイムアウト 10 秒が 1 回分)。そのあと送りかけの LINE の返信
+# (タイムアウト 10 秒) を待つ。60 + 10 + 10 に余裕を足した値
+TimeoutStopSec=90
 Restart=always
-RestartSec=10
-NoNewPrivileges=true
-PrivateTmp=true
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
 
 [Install]
 WantedBy=multi-user.target

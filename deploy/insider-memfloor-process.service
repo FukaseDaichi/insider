@@ -1,0 +1,24 @@
+# /etc/systemd/system/insider-memfloor-process.service
+# insider-memfloor.service (tmpfs) を OCI の MemoryUtilization が使用中に数えなかったときの差し替え。
+# 3GB を確保してページを触り、眠り続けるプロセス。両方を同時に enable しない (床が 6GB になる)。
+# 切り替え: systemctl disable --now insider-memfloor && systemctl enable --now insider-memfloor-process
+[Unit]
+Description=アイドル回収を外すためのメモリ床 (3GB を確保して眠るプロセス)
+After=local-fs.target
+
+[Service]
+Type=simple
+User=insider
+Group=insider
+ExecStart=/usr/bin/python3 /opt/insider/current/deploy/memfloor.py --size-mb 3072
+# 確保の途中で OOM にならないよう、このプロセスだけは先に殺される側にしておく
+OOMScoreAdjust=500
+Restart=always
+RestartSec=30
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target

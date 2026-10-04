@@ -1,0 +1,20 @@
+# /etc/systemd/system/insider-memfloor.service
+# Always Free の A1 は 7 日間 CPU・ネットワーク・メモリの 3 つすべてが 20% 未満だと回収の通知が来る。
+# このシステムが外せるのはメモリ条件だけ。3GB (12GB の 25%) の tmpfs を起動時に埋めて床を保つ。
+# OCI の MemoryUtilization が tmpfs を使用中に数えるかは切替前の検証で実測する (deploy/cutover.md)。
+# 数えなければ insider-memfloor-process.service に差し替える
+[Unit]
+Description=アイドル回収を外すためのメモリ床 (3GB の tmpfs)
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/mkdir -p /run/insider-memfloor
+# size は埋める量より少し大きく (tmpfs のメタデータぶん)。mode=0700 で他のユーザーからは見えない
+ExecStart=/usr/bin/mount -t tmpfs -o size=3100m,mode=0700 insider-memfloor /run/insider-memfloor
+ExecStart=/usr/bin/dd if=/dev/zero of=/run/insider-memfloor/fill bs=1M count=3072 status=none
+ExecStop=/usr/bin/umount /run/insider-memfloor
+
+[Install]
+WantedBy=multi-user.target

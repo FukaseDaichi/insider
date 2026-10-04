@@ -1,22 +1,27 @@
-# deploy/setup.sh がユーザー名とパスを埋め込んで /etc/systemd/system/ に配置する
+# /etc/systemd/system/insider-bot.service
 [Unit]
-Description=お題当てゲーム GM ボット
+Description=お題当てゲーム GM ボット (Discord)
 Wants=network-online.target
 After=network-online.target
 
 [Service]
 Type=simple
-User=__USER__
-WorkingDirectory=__APP_DIR__
-EnvironmentFile=__APP_DIR__/.env
+User=insider
+Group=insider
+EnvironmentFile=/etc/insider.env
 Environment=PYTHONUNBUFFERED=1
-# git pull で依存が変わっていても restart だけで反映されるようにする
-ExecStartPre=__UV__ sync --frozen --no-dev
-ExecStart=__APP_DIR__/.venv/bin/python -m insider_bot
+WorkingDirectory=/opt/insider/current
+ExecStart=/opt/insider/current/.venv/bin/python -m insider_bot
+# __main__ は KeyboardInterrupt で終わるように書いてある。SIGINT なら asyncio.run が主タスクを取り消し、
+# `async with bot` がゲートウェイを閉じてから終わる (SIGTERM だと閉じずに落ちる)
+KillSignal=SIGINT
+TimeoutStopSec=30
 Restart=always
-RestartSec=10
-NoNewPrivileges=true
-PrivateTmp=true
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
 
 [Install]
 WantedBy=multi-user.target

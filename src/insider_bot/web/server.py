@@ -7,7 +7,7 @@ import functools
 import json
 import logging
 import weakref
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterable
 from pathlib import Path
 from typing import Any
 
@@ -192,6 +192,18 @@ async def _cleanup_loop(hub: RoomHub, interval: float) -> None:
         hub.cleanup()
 
 
+async def close_all(sockets: Iterable[Any]) -> None:
+    """停止時にすべての WebSocket を同時に閉じる。
+
+    1 本ずつ待つと、応答しない端末の数だけ close のタイムアウト（10 秒）が積み上がり、
+    systemd の TimeoutStopSec（90 秒）を超えて SIGKILL される。
+    """
+    await asyncio.gather(
+        *(ws.close(code=WSCloseCode.GOING_AWAY, message=b"server shutdown") for ws in list(sockets)),
+        return_exceptions=True,
+    )
+
+
 def create_app(
     hub: RoomHub,
     static_dir: Path = STATIC_DIR,
@@ -221,8 +233,7 @@ def create_app(
         await asyncio.gather(task, return_exceptions=True)
 
     async def close_sockets(app: web.Application) -> None:
-        for ws in list(app[SOCKETS]):
-            await ws.close(code=WSCloseCode.GOING_AWAY, message=b"server shutdown")
+        await close_all(app[SOCKETS])
 
     app.cleanup_ctx.append(run_cleanup)
     app.on_shutdown.append(close_sockets)
