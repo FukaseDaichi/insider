@@ -67,6 +67,8 @@ def test_the_stub_refuses_other_paths():
         request = urllib.request.Request(base + "/v2/bot/message/push", data=b"{}", method="POST")
         with pytest.raises(urllib.error.HTTPError) as error:
             urllib.request.urlopen(request, timeout=5)
+        # HTTPError は応答の本体でもあるので、閉じないと -W error で ResourceWarning になる
+        error.value.close()
     assert error.value.code == 404
 
 
