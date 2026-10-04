@@ -236,8 +236,13 @@ GitHub Actions で `main` の 1 つ前の commit の run を `gh run rerun <run-
 | メモリ指標 | OCI → Instances → 対象 → Metrics → Memory Utilization | **20% を上回っている** |
 | アイドル判定のメール | 自分のメール | **届いていない** |
 | 外形監視の失敗通知 | 自分のメール | **届いていない** |
-| アプリのログ | `[VM] sudo journalctl -u insider-web -u insider-bot --since '-7 days' --no-pager \| grep -E ' (WARNING\|ERROR) '` | 想定外のものがない（LINE の返信の失敗、Jev のタイムアウトの頻発がない） |
-| Discord の接続 | `[VM] sudo journalctl -u insider-bot --since '-7 days' --no-pager \| grep -i 'disconnect\|resum'` | 長期の切断がない（`/healthz` は Discord を含まない） |
+| アプリのログ | 下のコマンド 1 | 想定外のものがない（LINE の返信の失敗、Jev のタイムアウトの頻発がない） |
+| Discord の接続 | 下のコマンド 2 | 長期の切断がない（`/healthz` は Discord を含まない） |
+
+```bash
+[VM] sudo journalctl -u insider-web -u insider-bot --since '-7 days' --no-pager | grep -E 'WARNING|ERROR|CRITICAL'    # 1. アプリのログ
+[VM] sudo journalctl -u insider-bot --since '-7 days' --no-pager | grep -iE 'disconnect|resum'                     # 2. Discord の接続
+```
 
 **Oracle からアイドル判定のメールが届いた場合**: 即削除ではなく、**1 週間後に停止**という猶予付きの通知。その 1 週間のうちに E の「PAYG へ上げる」を判断する。
 
