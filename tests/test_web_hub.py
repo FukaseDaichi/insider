@@ -6,7 +6,15 @@ import pytest
 from insider_bot.game import GameManager
 from insider_bot.judge import JudgeError, Verdict
 from insider_bot.service import GameService
-from insider_bot.web.hub import ANSWER_SOUNDS, START_SOUNDS, RoomHub, answer_sound, prepare_question
+from insider_bot.web.hub import (
+    ANSWER_SOUNDS,
+    CORRECT_SOUND,
+    GIVEUP_SOUND,
+    START_SOUNDS,
+    RoomHub,
+    answer_sound,
+    prepare_question,
+)
 from insider_bot.web.rooms import InvalidName, RoomNotFound, RoomRegistry
 from insider_bot.web.server import STATIC_DIR
 from tests.fakes import FakeClock, FakeJudge
@@ -227,10 +235,17 @@ async def test_answer_plays_the_band_sound_for_everyone():
         assert conn.of("sound")[1:] == [{"type": "sound", "src": "/static/sounds/yes-80.m4a"}]
 
 
-async def test_correct_answer_plays_no_sound():
-    world, (setter_conn, _), (_, asker) = await playing(FakeJudge(answers={"りんご？": CORRECT}))
+async def test_correct_answer_plays_the_correct_sound_for_everyone():
+    world, (setter_conn, _), (asker_conn, asker) = await playing(FakeJudge(answers={"りんご？": CORRECT}))
     await world.hub.ask(world.room, asker, "りんご", world.game_id())
-    assert setter_conn.of("sound")[1:] == []
+    for conn in (setter_conn, asker_conn):
+        # 返事の声は鳴らさず、正解の声だけ
+        assert conn.of("sound")[1:] == [{"type": "sound", "src": "/static/sounds/correct.m4a"}]
+
+
+def test_end_sounds_are_served():
+    for src in (CORRECT_SOUND, GIVEUP_SOUND):
+        assert (STATIC_DIR / src.removeprefix("/static/")).is_file()
 
 
 async def test_judge_error_plays_no_sound():
@@ -422,6 +437,13 @@ async def test_answerer_can_give_up():
     assert setter_conn.last_room()["game"] is None
 
 
+async def test_giveup_plays_the_giveup_sound_for_everyone():
+    world, (setter_conn, _), (asker_conn, asker) = await playing()
+    await world.hub.giveup(world.room, asker)
+    for conn in (setter_conn, asker_conn):
+        assert conn.of("sound")[1:] == [{"type": "sound", "src": "/static/sounds/giveup.m4a"}]
+
+
 async def test_giveup_without_game_notifies_only_that_player():
     world = World()
     conn, player = world.join("はなこ")
@@ -430,6 +452,7 @@ async def test_giveup_without_game_notifies_only_that_player():
     assert conn.notices() == ["進行中のゲームはありません"]
     assert other.notices() == []
     assert conn.entries() == []
+    assert conn.of("sound") == []
 
 
 async def test_notice_reaches_every_tab_of_that_player_only():

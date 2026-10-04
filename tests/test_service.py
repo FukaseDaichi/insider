@@ -143,7 +143,8 @@ async def test_correct_answer_ends_game_and_counts_winning_question():
     clock.advance(392)
     outcome = await service.handle_question(CH, PLAYER, "回答者", "りんご？")
     assert outcome == Outcome(
-        public="🎉 正解です！お題は「りんご」でした\n正解者: 回答者　質問数: 1　経過時間: 6分32秒"
+        public="🎉 正解です！お題は「りんご」でした\n正解者: 回答者　質問数: 1　経過時間: 6分32秒",
+        is_correct=True,
     )
     assert manager.get(CH) is None
     assert outcome.yes_percent is None

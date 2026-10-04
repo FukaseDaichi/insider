@@ -27,11 +27,13 @@ class Outcome:
 
     yes_percent は「はい／いいえ」の返事のときだけ入る、はい の確からしさ（0〜100）。
     Web 版が返事の声を選ぶのに使う。正解・ギブアップ・エラーでは None。
+    is_correct は質問がお題を言い当ててゲームが終わったときだけ True。Web 版が正解の声を鳴らすのに使う。
     """
 
     private: str | None = None
     public: str | None = None
     yes_percent: int | None = None
+    is_correct: bool = False
 
 
 IGNORED = Outcome()
@@ -97,5 +99,7 @@ class GameService:
             game.question_count += 1
             if verdict.is_correct:
                 self._manager.end(channel_id)
-                return Outcome(public=fmt.format_correct(game, author_name, self._clock() - game.started_at))
+                return Outcome(
+                    public=fmt.format_correct(game, author_name, self._clock() - game.started_at), is_correct=True
+                )
             return Outcome(public=fmt.format_answer(text, verdict), yes_percent=fmt.yes_percent(verdict.yes_prob))

@@ -46,6 +46,9 @@ START_SOUNDS = tuple(f"/static/sounds/start-{n}.m4a" for n in (1, 2, 3))
 ANSWER_SOUNDS = tuple(
     f"/static/sounds/{'yes' if band >= 50 else 'no'}-{band}.m4a" for band in range(0, 100, 10)
 )
+# ゲームの終わりの声。正解は言い当てた質問の返事の代わりに、ギブアップはお題の公開と一緒に鳴らす
+CORRECT_SOUND = "/static/sounds/correct.m4a"
+GIVEUP_SOUND = "/static/sounds/giveup.m4a"
 
 
 def answer_sound(yes_percent: int) -> str:
@@ -118,6 +121,8 @@ class RoomHub:
 
     async def giveup(self, room: Room, player: Player) -> None:
         outcome = await self._service.giveup(room.room_id)
+        if outcome.public is not None:
+            self._broadcast(room, {"type": "sound", "src": GIVEUP_SOUND})
         self._apply(room, player, outcome, author=player.name)
 
     def ask(self, room: Room, player: Player, text: str, game_id: object) -> asyncio.Task[None]:
@@ -154,9 +159,11 @@ class RoomHub:
             log.exception("質問の処理に失敗しました（room=%s）", room.code)
             outcome = Outcome(public=fmt.format_error())
         entry.pending = False
+        # 開始の音声と同じく、その場かぎりの合図。全員が同じ声を聞く
         if outcome.yes_percent is not None:
-            # 開始の音声と同じく、その場かぎりの合図。全員が同じ声を聞く
             self._broadcast(room, {"type": "sound", "src": answer_sound(outcome.yes_percent)})
+        elif outcome.is_correct:
+            self._broadcast(room, {"type": "sound", "src": CORRECT_SOUND})
         if outcome.public is not None:
             entry.text = outcome.public
         else:
