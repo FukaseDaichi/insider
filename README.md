@@ -58,14 +58,14 @@ Web 版のプロセスが LINE Bot の webhook も受けます。`LINE_CHANNEL_S
 1. LINE Developers のチャネルで、Webhook URL を `https://<公開 URL>/line/callback` にし、Webhook の利用をオンにする（応答メッセージはオフ）
 2. コンソールの「検証」で成功を確かめる
 
-LINE へ送らずに確かめるときは、返信 API のスタブを起動し、Web 版を `LINE_API_BASE_URL=http://127.0.0.1:18080` を足して起動してから、署名付きの webhook を送ります。返信の中身はスタブの端末に出ます。
+LINE へ送らずに確かめるときは、返信 API のスタブを起動し、Web 版を `LINE_API_BASE_URL=http://127.0.0.1:18080` を足して起動してから、署名付きの webhook を送ります。署名のチャネルシークレットは `.env` の `LINE_CHANNEL_SECRET`（Web 版と同じ値）から読みます。返信の中身はスタブの端末に出ます。
 
 ```bash
 uv run python deploy/verify/line_api_stub.py 18080
 ```
 
 ```bash
-LINE_CHANNEL_SECRET=<Web 版と同じ値> uv run python deploy/verify/post_callback.py http://127.0.0.1:8080/line/callback text U0000 お題
+uv run --env-file .env python deploy/verify/post_callback.py http://127.0.0.1:8080/line/callback text U0000 お題
 ```
 
 LINE の返信が Java の LineBot と同じかは `tests/test_line_golden.py` が確かめます。比べる JSON（`tests/golden/line_callapi.json`）は、Java の LineBot を手元で動かして採ります（`<LineBot>` は LineBot のリポジトリ。Java は本番と同じ 8 を使う）。まだ採っていないあいだは比較を飛ばします（skip）。`tests/line_golden.py` の手順を変えたら採り直します。
