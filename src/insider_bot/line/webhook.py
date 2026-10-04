@@ -1,9 +1,10 @@
-"""LINE の webhook（POST /line/callback）。署名を確かめ、イベントごとに村の中核を 1 回呼んで返信する。
+"""LINE の webhook（POST /line/callback）。署名を確かめ、イベントごとに村の中核を高々 1 回呼んで返信する。
 
 - 本文を bytes のまま読んで署名を確かめてから JSON として読む。署名が合わない・読めない本文は 400。
 - 返信は待たない。LINE は webhook に 2 秒以内の応答を求め、返信 API の所要時間はこちらで制御できないので、
   送信はタスクに任せて 200 を先に返す。送信の失敗は WARNING に残すだけで再試行しない
   （replyToken は 1 回限りで短命。利用者はもう一度送れば同じ応答を受け取れる）。
+- 1 つのイベントの処理が失敗しても、残りのイベントを処理して 200 を返す（失敗したイベントには返信しない）。
 - イベントの本文はログに出さない。LINE のユーザー ID とお題（ゲームの答え）が入っているので、
   記録するのはイベントの種別と処理の結果まで。
 
@@ -110,13 +111,20 @@ class LineWebhook:
             return
         kind = _kind(event)
         token = event.get("replyToken")
-        # 返信先のないイベントでは中核を呼ばない（村を作っても番号を伝えられない）
-        replies = self.replies_for(event) if isinstance(token, str) and token else None
-        if replies is None:
+        try:
+            # 返信先のないイベントでは中核を呼ばない（村を作っても番号を伝えられない）
+            replies = self.replies_for(event) if isinstance(token, str) and token else None
+            line_messages = None if replies is None else render(replies)
+        except Exception as error:
+            # 1 つの失敗で残りのイベントを落とさない（Java も、イベントごとに例外を捕まえて 200 を返す）。
+            # 例外の文には入力が入り得るので、種類だけを残す
+            log.error("LINE: %s イベントの処理に失敗しました（%s）", kind, type(error).__name__)
+            return
+        if line_messages is None:
             log.debug("LINE: %s イベントには返信しません", kind)
             return
         log.debug("LINE: %s イベントに返信します", kind)
-        task = asyncio.create_task(self._send(kind, token, render(replies)))
+        task = asyncio.create_task(self._send(kind, token, line_messages))
         self._pending.add(task)
         task.add_done_callback(self._pending.discard)
 
@@ -149,9 +157,12 @@ class LineWebhook:
             log.warning("LINE: %s イベントへの返信を送れませんでした（%s）", kind, _describe(error))
 
     async def drain(self) -> None:
-        """送信中の返信を待つ。停止の前に呼び、送りかけの返信を落とさない。"""
-        if self._pending:
-            await asyncio.gather(*self._pending, return_exceptions=True)
+        """送信中の返信を待つ。停止の前に呼び、送りかけの返信を落とさない。
+
+        待っているあいだに実行中のハンドラーが始めた返信も、なくなるまで待つ。
+        """
+        while self._pending:
+            await asyncio.gather(*list(self._pending), return_exceptions=True)
 
 
 def add_line_routes(app: web.Application, webhook: LineWebhook) -> None:

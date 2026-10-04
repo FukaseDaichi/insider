@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 from aiohttp.test_utils import TestClient, TestServer
@@ -22,21 +23,27 @@ def web_config(line=None):
     )
 
 
-def fake_line_client(created):
-    """LINE へは送らず、返信を記録するクライアント。作られたものを created に積む。"""
+def fake_line_client(created, gate=None):
+    """LINE へは送らず、返信を記録するクライアント。作られたものを created に積む。gate を渡すと、set されるまで送信中のまま止まる。"""
 
     class FakeLineClient:
         def __init__(self, channel_token, api_base_url):
             self.args = (channel_token, api_base_url)
             self.sent = []
             self.closed = False
+            # 送信と閉じるの順番
+            self.events = []
             created.append(self)
 
         async def reply(self, reply_token, line_messages):
+            if gate is not None:
+                await gate.wait()
             self.sent.append((reply_token, line_messages))
+            self.events.append("sent")
 
         async def aclose(self):
             self.closed = True
+            self.events.append("closed")
 
     return FakeLineClient
 
@@ -73,3 +80,27 @@ async def test_a_village_made_on_line_can_be_joined_from_the_web(monkeypatch):
     assert line_client.args == ("token", "https://api.line.me")
     assert [token for token, _ in line_client.sent] == ["t1", "t2", "t3"]
     assert line_client.closed
+
+
+async def test_the_line_client_is_closed_only_after_the_replies_in_flight_are_sent(monkeypatch):
+    created = []
+    gate = asyncio.Event()
+    monkeypatch.setattr("insider_bot.web.__main__.LineReplyClient", fake_line_client(created, gate))
+    app = await make_app(web_config(LineConfig("secret", "token")))
+    # on_shutdown の待ちのあとに返信が始まる場合を、片付けの処理だけを直接呼んで再現する
+    (close_line,) = (fn for fn in app.on_cleanup if fn.__name__ == "close_line")
+    async with TestClient(TestServer(app)) as client:
+        try:
+            body = json.dumps({"events": [text_event("お題", "t1")]}, ensure_ascii=False).encode()
+            headers = {"X-Line-Signature": sign("secret", body)}
+            response = await client.post("/line/callback", data=body, headers=headers)
+            assert response.status == 200
+            closing = asyncio.create_task(close_line(app))
+            # close_line が最初の中断まで進む。返信が済むまで閉じない
+            await asyncio.sleep(0)
+            assert not created[0].closed
+            gate.set()
+            await closing
+            assert created[0].events == ["sent", "closed"]
+        finally:
+            gate.set()

@@ -25,6 +25,7 @@ SECRET = "channel-secret"
 BASE = "https://game.example.com"
 OWNER = "U0123456789abcdef0123456789abcdef"
 MEMBER = "Ufedcba9876543210fedcba9876543210"
+SECRET_TOPIC = "ひみつのおだい"
 DICTIONARY = parse_dictionary(["a,1", "b,2", "c,3", "d,4", "e,5"])
 # 役職画像は毎回 5 枚から選ぶので、1 枚目に固定する（スタンプ応答の期待値と同じ画像になる）
 ILLUST = Illustrations(BASE, FirstRandom())
@@ -59,13 +60,34 @@ class RecordingSender:
         self.sent.append((reply_token, line_messages))
 
 
+class GatedSender:
+    """返信先の replyToken ごとに、set されるまで送信中のまま止める。"""
+
+    def __init__(self, gates: dict[str, asyncio.Event]) -> None:
+        self.sent: list[str] = []
+        self.gates = gates
+
+    async def reply(self, reply_token, line_messages):
+        await self.gates[reply_token].wait()
+        self.sent.append(reply_token)
+
+
+class FailingCommands(CommandHandler):
+    """特定のテキストだけ、中核が例外を上げる。例外の文に入力が入る場合を再現する。"""
+
+    def handle(self, user_id, text):
+        if text == SECRET_TOPIC:
+            raise ValueError(f"boom {text}")
+        return super().handle(user_id, text)
+
+
 @contextlib.asynccontextmanager
-async def serve(sender, *draws):
+async def serve(sender, *draws, commands=CommandHandler):
     """配役の乱数だけを固定し（draws）、採番は本物の乱数に任せる。"""
     villages = CountingRegistry()
     rng = FixedRandom(*draws) if draws else random.Random(3)
     service = VillageService(villages, SpecialVillageRegistry(random.Random(2)), DICTIONARY, ILLUST, rng)
-    webhook = LineWebhook(SECRET, CommandHandler(service, f"{BASE}/village/special"), ILLUST, sender, BASE)
+    webhook = LineWebhook(SECRET, commands(service, f"{BASE}/village/special"), ILLUST, sender, BASE)
     app = web.Application()
     add_line_routes(app, webhook)
     async with TestClient(TestServer(app)) as client:
@@ -301,7 +323,7 @@ async def test_the_webhook_answers_before_the_reply_is_sent():
 async def test_a_failed_reply_is_only_logged(caplog, error):
     with caplog.at_level(logging.DEBUG):
         async with serve(RecordingSender(error=error)) as (client, webhook, _):
-            response = await post(client, text_event("お題"), text_event("ひみつのおだい", token="token-2"))
+            response = await post(client, text_event("お題"), text_event(SECRET_TOPIC, token="token-2"))
             assert response.status == 200
             await webhook.drain()
     warnings = [record.getMessage() for record in caplog.records if record.levelno == logging.WARNING]
@@ -335,3 +357,52 @@ async def test_replies_in_flight_are_sent_before_the_app_stops():
         asyncio.get_running_loop().call_later(0.05, gate.set)
     # serve を抜けるとアプリが止まる。止まる前に、送りかけの返信を待つ
     assert len(sender.sent) == 1
+
+
+async def test_drain_also_waits_for_a_reply_dispatched_while_it_is_draining():
+    first, second = asyncio.Event(), asyncio.Event()
+    sender = GatedSender({"t1": first, "t2": second})
+    async with serve(sender) as (client, webhook, _):
+        try:
+            assert (await post(client, text_event("500", token="t1"))).status == 200
+            draining = asyncio.create_task(webhook.drain())
+            # draining の最初の中断（t1 の返信待ち）まで進める。create_task で積んだ順に実行される
+            await asyncio.sleep(0)
+            # 止める途中でも、実行中のハンドラーは新しい返信を始め得る
+            assert (await post(client, text_event("500", token="t2"))).status == 200
+            first.set()
+            # t1 が済んでも、あとから始まった t2 を待つ（待たない実装なら、ここですぐ終わる）
+            done, _ = await asyncio.wait({draining}, timeout=0.05)
+            assert not done
+            second.set()
+            await asyncio.wait_for(draining, timeout=2)
+            assert sender.sent == ["t1", "t2"]
+        finally:
+            # 失敗しても、アプリを止めるときの待ちが残らないようにする
+            first.set()
+            second.set()
+
+
+async def test_an_event_that_fails_does_not_stop_the_other_events(caplog):
+    sender = RecordingSender()
+    with caplog.at_level(logging.DEBUG):
+        async with serve(sender, commands=FailingCommands) as (client, webhook, _):
+            response = await post(
+                client,
+                text_event("500", token="t1"),
+                text_event(SECRET_TOPIC, token="t2"),
+                text_event("500", token="t3"),
+            )
+            assert response.status == 200
+            await webhook.drain()
+    # 失敗した 2 つ目は返信しない。前後は順に答える
+    assert [token for token, _ in sender.sent] == ["t1", "t3"]
+    errors = [record for record in caplog.records if record.levelno >= logging.ERROR]
+    assert len(errors) == 1
+    assert "message/text" in errors[0].getMessage()
+    assert "処理に失敗しました" in errors[0].getMessage()
+    assert "ValueError" in errors[0].getMessage()
+    assert errors[0].exc_info is None
+    # 例外の文（入力が入る）とユーザー ID はログに出さない
+    assert SECRET_TOPIC not in caplog.text
+    assert OWNER not in caplog.text

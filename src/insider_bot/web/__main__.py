@@ -38,6 +38,8 @@ async def make_app(config: WebConfig) -> web.Application:
         log.info("LINE の webhook を %s で受け付けます（返信先 %s）", CALLBACK_PATH, config.line.api_base_url)
 
         async def close_line(_app: web.Application) -> None:
+            # 止める途中に実行中のハンドラーが始めた返信は、on_shutdown の待ちのあとに送りかける。閉じる前にもう一度待つ
+            await webhook.drain()
             await sender.aclose()
 
         app.on_cleanup.append(close_line)
