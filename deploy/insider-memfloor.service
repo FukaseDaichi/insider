@@ -10,6 +10,9 @@ After=local-fs.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
+# 前の起動が mount の後で失敗すると (dd の失敗など) ExecStop は走らず tmpfs が残る。もう一度 start したときに
+# 2 枚目を重ねないよう、先に外す。残っていなければ umount は失敗するので、先頭の - で失敗を無視する
+ExecStartPre=-/usr/bin/umount /run/insider-memfloor
 ExecStart=/usr/bin/mkdir -p /run/insider-memfloor
 # size は埋める量より少し大きく (tmpfs のメタデータぶん)。mode=0700 で他のユーザーからは見えない
 ExecStart=/usr/bin/mount -t tmpfs -o size=3100m,mode=0700 insider-memfloor /run/insider-memfloor
