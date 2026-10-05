@@ -246,6 +246,7 @@ GitHub Actions で `main` の 1 つ前の commit の run を `gh run rerun <run-
    3. `@わーわーず` で Werewords も一通り
    4. **Web（`https://<host>/village/new`）で特殊村を作る → LINE からその番号で参加 → `@配布`**。Web と LINE の村の共有を本物の LINE で確かめる唯一の経路なので飛ばさない
 5. 切替日と Heroku 解約予定日（切替日＋1 か月）を human-steps.md の記録表に書く
+6. [docs/infra.md](../docs/infra.md) を現状に合わせる: 「結論」の表の「現在」を Oracle Cloud にし、memfloor の節に A-9 で決めた方式（tmpfs かプロセスか）を記す。A-6 で全体の 300 回／分が窮屈だったなら `deploy/Caddyfile` の値を直し、infra.md も合わせる
 
 ## C. 1 か月の様子見
 
