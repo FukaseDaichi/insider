@@ -99,9 +99,51 @@ OCI コンソール → **Compute** → **Instances** → **Create instance**
 | Add SSH keys | **Paste public keys** に `~/.ssh/id_ed25519.pub` など**普段使いの公開鍵**を貼る（デプロイ鍵ではない） |
 | Boot volume | **Specify a custom boot volume size** にチェック → **50** GB |
 
-`Out of host capacity` が出たら時間を置いて何度でも試す。取れるまで Heroku のまま運用し、一定期間試して取れなければ保留とする。
+`Out of host capacity` が出たら時間を置いて何度でも試す。取れるまで Heroku のまま運用し、一定期間試して取れなければ保留とする。手で押し直すより、下の 2-1b で機械に繰り返させる方が早い。
 
 作れたら **公開 IP** を記録表に書く。
+
+## 2-1b. 空きが出るまで自動で繰り返す（コンソールで取れないとき）
+
+`scripts/oci-launch-a1.sh` が、2-1 と同じ値で数分おきに作成を試し、作れたら公開 IP を表示して終わる。準備が 3 つ要る。
+
+**(1) OCI CLI を入れる**（Mac）
+
+```bash
+uv tool install oci-cli
+```
+
+**(2) API キーを作る**（コンソール）
+
+右上のプロフィールアイコン → **My profile** → 左の **API keys** → **Add API key** → **Generate API key pair** → **Download private key** → **Add**。閉じる前に表示される **Configuration file preview** を控える（`[DEFAULT]` から `region=` までの数行）。
+
+ターミナルで鍵を置き、控えた内容を `~/.oci/config` に書く。`key_file=` の行だけ鍵の実際の場所に直す:
+
+```bash
+mkdir -p ~/.oci && mv ~/Downloads/*.pem ~/.oci/oci_api_key.pem && chmod 700 ~/.oci && chmod 600 ~/.oci/oci_api_key.pem
+```
+
+```bash
+nano ~/.oci/config
+```
+
+`key_file=~/.oci/oci_api_key.pem` にして保存。確かめる:
+
+```bash
+oci iam region list --query 'data[0].name' --raw-output
+```
+
+**(3) VCN と公開サブネットを先に作る**（コンソール）
+
+**Networking** → **Virtual cloud networks** → **Actions** → **Start VCN Wizard** → **Create VCN with Internet Connectivity**。名前は何でもよい（例 `insider`）。他は既定のまま。コンソールのインスタンス作成で失敗した回数だけ `vcn-<日付>` が残っていることがあるので、1 つだけ残して他は **Terminate** する（スクリプトは公開サブネットが 1 つだけのときに自動で選ぶ。複数あるなら `SUBNET_OCID=ocid1.subnet…` で指定する）。
+
+**回す**
+
+```bash
+bash scripts/oci-launch-a1.sh
+```
+
+既定は 120 秒おき。`INTERVAL=60` のように環境変数で変えられる。Ctrl+C で止まる。回している間は Mac をスリープさせない。記録は `~/.oci/launch-a1.log`。作れたら公開 IP が出るので記録表に書き、2-2 へ進む。公開 IP の割り当て（`--assign-public-ip`）はスクリプトが済ませる。
 
 ## 2-2. 通信を開ける（security list）
 
