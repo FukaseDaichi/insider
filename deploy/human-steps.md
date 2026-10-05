@@ -27,7 +27,7 @@
 | 項目 | 値 | いつ決まるか |
 | --- | --- | --- |
 | VM の公開 IP | | Phase 2 |
-| ホスト名 `<host>` | | Phase 1 |
+| ホスト名 `<host>` | `insidergame.fyi`（Cloudflare Registrar、2026-10-05 取得、年 $5.20、2027-10-05 まで。サブドメインは使わずルートをそのまま使う） | Phase 1 |
 | 切替日 | | Phase 6 |
 | Heroku 解約予定日 | 切替日 + 1 か月 | Phase 6 |
 | memfloor の方式（tmpfs / プロセス） | | Phase 5 |
@@ -53,7 +53,7 @@ Phase 8  後片付け        Heroku + Netlify + LineBot のアーカイブ
 
 ## 1-1. ホスト名を決める
 
-既にあるドメインに短い名前を 1 つ足す（例 `insider.<domain>`）。Web 版の URL も LINE の webhook も同じホスト名を使う。記録表に書く。
+ドメインを 1 つ取り、ルートをそのままホスト名にする（取得済み: `insidergame.fyi`。既にあるドメインに `insider.<domain>` のような短い名前を足してもよい）。Web 版の URL も LINE の webhook も同じホスト名を使う。記録表に書く。
 
 ## 1-2. Oracle Cloud のアカウントを作る
 
@@ -123,7 +123,7 @@ OCI コンソール → **Networking** → **Virtual cloud networks** → 作ら
 | 項目 | 値 |
 | --- | --- |
 | タイプ | **A** |
-| 名前 / ホスト | `<host>` の短い名前の部分（例 `insider`） |
+| 名前 / ホスト | `@`（ルートの `insidergame.fyi` をそのまま使うため。サブドメインにするならその短い名前） |
 | 値 / IP アドレス | Phase 2 で記録した**公開 IP** |
 | TTL | 既定のまま |
 | Proxy（Cloudflare の場合） | **OFF（DNS only）**。Caddy が自分で TLS を終端する |
