@@ -141,7 +141,7 @@ PUBLIC_BASE_URL=https://<host>
 
 期待: `-rw------- 1 root root` と `5`（5 行とも値がある）。切替前の検証中だけ、これに `LINE_API_BASE_URL=http://127.0.0.1:18080` を足す（[cutover.md](cutover.md)）。
 
-**Discord ボットはここで動き出すと Heroku とは無関係に本物の Discord に接続する。** Discord 版はこれまで Mac でだけ動かしていたので二重起動にはならないが、VM が動いている間は `scripts/play.sh` を使わない（2 か所で動くと質問に 2 回返信する）。
+**Discord ボットはここで動き出すと Heroku とは無関係に本物の Discord に接続する。** VM が動いている間は Mac で `scripts/play.sh` を使わない（2 か所で動くと質問に 2 回返信する）。Mac の `.env` に `PRODUCTION_URL=https://<host>` を書いておくと、play.sh は本番の `/healthz` が `ok` の間は起動を断る。
 
 ## 9. Caddy とレート制限モジュール
 

@@ -11,6 +11,17 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
+# 本番の VM が動いている間は起動しない。Discord ボットが 2 か所で動くと質問に 2 回返信するため。
+# VM では Web とボットが一緒に動くので、本番の /healthz が ok なら本番のボットも動いていると見なす。
+# 届かないときは起動を続ける（本番が止まっているときに Mac で遊べるように）
+PRODUCTION_URL="$(sed -n 's/^PRODUCTION_URL=//p' .env | tail -n 1)"
+PRODUCTION_URL="${PRODUCTION_URL%/}"
+if [ -n "$PRODUCTION_URL" ] && [ "$(curl -fs --max-time 5 "$PRODUCTION_URL/healthz" 2>/dev/null || true)" = ok ]; then
+  echo "本番の VM（${PRODUCTION_URL}）で動いているので起動しません。Discord ボットが 2 か所で動くと質問に 2 回返信します" >&2
+  echo "遊ぶときは本番の ${PRODUCTION_URL} を使ってください。どうしても Mac で動かすなら、先に VM で sudo systemctl stop insider-bot insider-web を実行します（LINE も止まります）" >&2
+  exit 1
+fi
+
 # Mac のアプリ版はアプリの中の本体を直接使う。PATH に入る tailscale は本体を exec せずに子として起動する
 # スクリプトで、止めても本体が残って公開が終わらないため
 TAILSCALE=/Applications/Tailscale.app/Contents/MacOS/Tailscale
