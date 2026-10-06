@@ -1,13 +1,13 @@
 # インフラ構成
 
-本番の構成は Oracle Cloud Always Free の VM 1 台で 24 時間動かすもので、配備の一式は `deploy/` にある。VM を確保して LINE の webhook を切り替えるまでは、仲間と遊ぶときだけ手元の Mac で起動する。手順は [deploy/setup.md](../deploy/setup.md)（VM）、[deploy/human-steps.md](../deploy/human-steps.md)（画面操作）、[README](../README.md)（Mac）。
+本番の構成は Oracle Cloud の VM 1 台で 24 時間動かすもので、配備の一式は `deploy/` にある。2026-10-06 に VM を確保して LINE の webhook を切り替えた。手元の Mac での起動（`scripts/play.sh`）は、本番が止まっているときの予備で、本番が動いている間は起動を断る。手順は [deploy/setup.md](../deploy/setup.md)（VM）、[deploy/human-steps.md](../deploy/human-steps.md)（画面操作）、[README](../README.md)（Mac）。
 
 ## 結論
 
 | | 構成 | 費用 |
 |---|---|---|
-| 現在 | 遊ぶときだけ手元の Mac で起動する（`scripts/play.sh`）。Tailscale Funnel で公開 | 0 円（電気代のみ） |
-| 本番（VM を確保して切り替えた後） | Oracle Cloud の Always Free の A1 1 台。Caddy と systemd。`deploy/` の一式で配備する | 0 円の見込み（アイドル回収への対策を持つ） |
+| 現在（2026-10-06〜） | Oracle Cloud の A1 1 台（`insider`、150.230.219.180、`https://insidergame.fyi`）。Caddy と systemd。`deploy/` の一式で配備する。アカウントは Pay As You Go（A1 の確保が通らず上げた。無料枠の範囲で請求 $0、予算 $1 で通知） | 0 円の見込み（アイドル回収への対策を持つ） |
+| 予備 | 本番が止まっているときだけ手元の Mac で起動する（`scripts/play.sh`）。Tailscale Funnel で公開 | 0 円（電気代のみ） |
 | 採らない | Google Cloud、AWS、スリープする無料枠 | 下記 |
 
 どの構成でも、TypeSafe（Jev）の利用料は別にかかる。
@@ -43,7 +43,7 @@
 
 Always Free の A1 は、7 日間 CPU・ネットワーク・メモリの 3 つすべてが 20% 未満だと回収の通知が来る。このシステムの CPU とネットワークは届かないので、外せるのはメモリ条件だけ。`deploy/insider-memfloor.service` が起動時に 3GB（12GB の 25%）の tmpfs を確保して埋める。コードに依存せず、アプリの大きさと無関係に床を保てる。
 
-- OCI の `MemoryUtilization` が tmpfs を「使用中」に数えなければ、`deploy/insider-memfloor-process.service`（`deploy/memfloor.py` が 3GB を確保してページを触り、眠り続ける）に差し替える。両方を同時に有効にしない。どちらを使っているかは切替前の検証で決め、ここに記す。
+- OCI の `MemoryUtilization` が tmpfs を「使用中」に数えなければ、`deploy/insider-memfloor-process.service`（`deploy/memfloor.py` が 3GB を確保してページを触り、眠り続ける）に差し替える。両方を同時に有効にしない。**2026-10-06 の切替前検証で tmpfs 方式のまま**と決めた。OCI の `MemoryUtilization` は memfloor 起動前 4.5%、起動後 30.4% で、tmpfs を使用中に数えている。
 - これは設計上の成立であって保証ではない。回収の通知が届いたら、猶予の 1 週間のうちに PAYG へ上げ、OCI Budget で $1 超過のメール通知を設定する。
 
 ### 監視

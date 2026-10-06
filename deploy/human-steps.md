@@ -28,8 +28,8 @@
 | --- | --- | --- |
 | VM の公開 IP | `150.230.219.180`（2026-10-06 20:24 作成。インスタンス `insider`、A1.Flex 2 OCPU・12 GB、VCN `insider` / サブネット `insider-public`。scripts/oci-launch-a1.sh の 375 回目で取れた） | Phase 2 |
 | ホスト名 `<host>` | `insidergame.fyi`（Cloudflare Registrar、2026-10-05 取得、年 $5.20、2027-10-05 まで。サブドメインは使わずルートをそのまま使う） | Phase 1 |
-| 切替日 | | Phase 6 |
-| Heroku 解約予定日 | 切替日 + 1 か月 | Phase 6 |
+| 切替日 | 2026-10-06 22:33（LINE Developers の Webhook URL を `https://insidergame.fyi/line/callback` に更新。検証の要求が VM に届いて 200） | Phase 6 |
+| Heroku 解約予定日 | 2026-11-06 以降（切替日 + 1 か月。Phase 7 の様子見で問題がなければ） | Phase 6 |
 | memfloor の方式（tmpfs / プロセス） | **tmpfs**（既定の insider-memfloor のまま）。2026-10-06 の 5-1 で、OCI の MemoryUtilization が memfloor 起動前 4.5% → 起動後 30.4% と出て、tmpfs が使用中に数えられていると確認 | Phase 5 |
 | PAYG へ上げた日と理由 | 2026-10-06。A1 が Out of host capacity で 1 晩（173 回）取れなかったため、確保が通りやすい有料アカウントにした。予算 `insider-budget`（月 $1、100% でメール）も同日作成 | 別枠 |
 
