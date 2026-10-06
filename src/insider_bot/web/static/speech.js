@@ -26,19 +26,23 @@ const UNAVAILABLE_ERRORS = {
 };
 
 /**
- * result イベントの結果の一覧を、確定した文字と未確定の文字に分ける。
+ * result イベントの結果の一覧を、ここまでに聞き取った 1 本の文字にする。
  * 一覧には聞き始めからの結果がすべて入っているので、毎回はじめから読み直す。
  * resultIndex（どこから新しいか）は、スマホのブラウザによって 0 のまま進まないので使わない。
- * stop() は全区間の確定を保証しないので、呼び出し側は「確定分＋未確定の末尾」を送る。
+ * PC の Chrome や Safari は区切りごとに別の文を並べるが、Android の Chrome は continuous だと
+ * 「聞き始めからの文全体」を途中経過のたびに足していく（確定扱いのことが多い）。
+ * そこで、前までの文で始まる項目は累積の途中経過として置き換え、前までの文の先頭だけの項目は
+ * 古い途中経過として捨て、それ以外を新しい区切りとして足す。確定か未確定かは見ない。
+ * stop() は全区間の確定を保証しないので、未確定の末尾も含めて送る。
  */
 export function readResults(results) {
-  let finals = "";
-  let interim = "";
+  let text = "";
   for (let i = 0; i < results.length; i++) {
-    if (results[i].isFinal) finals += results[i][0].transcript;
-    else interim += results[i][0].transcript;
+    const piece = results[i][0].transcript;
+    if (piece.startsWith(text)) text = piece;
+    else if (!text.startsWith(piece)) text += piece;
   }
-  return { finals, interim };
+  return text;
 }
 
 export class PushToTalk {
@@ -51,10 +55,9 @@ export class PushToTalk {
     this.keyHeld = false;
     this.everStarted = false;
     this.recognition = null;
-    // earlier は聞き直す前までに聞き取った分。finals / interim は今の聞き取りの分
+    // earlier は聞き直す前までに聞き取った分。current は今の聞き取りの分
     this.earlier = "";
-    this.finals = "";
-    this.interim = "";
+    this.current = "";
     this.error = null;
     this.holdTimer = null;
     this.stopTimer = null;
@@ -80,14 +83,13 @@ export class PushToTalk {
   }
 
   text() {
-    return (this.earlier + this.finals + this.interim).trim();
+    return (this.earlier + this.current).trim();
   }
 
   press() {
     if (this.state !== "idle") return;
     this.earlier = "";
-    this.finals = "";
-    this.interim = "";
+    this.current = "";
     this.error = null;
     this.outside = false;
     this.state = "starting";
@@ -114,9 +116,7 @@ export class PushToTalk {
       }
     };
     recognition.onresult = (event) => {
-      ({ finals: this.finals, interim: this.interim } = readResults(
-        event.results,
-      ));
+      this.current = readResults(event.results);
       this.handlers.onTranscript(this.text());
     };
     recognition.onerror = (event) => {
@@ -157,9 +157,8 @@ export class PushToTalk {
       return;
     }
     // 押している間に勝手に終わった（Android などで無音が続くと起きる）。聞き取った分を残して聞き直す
-    this.earlier += this.finals + this.interim;
-    this.finals = "";
-    this.interim = "";
+    this.earlier += this.current;
+    this.current = "";
     this.listen();
   }
 
