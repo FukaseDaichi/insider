@@ -46,13 +46,14 @@ OCI の Ubuntu イメージは security list とは別に OS 側の iptables が
 
 ```bash
 [VM] sudo DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent
-[VM] sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
-[VM] sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+[VM] pos=$(sudo iptables -L INPUT -n --line-numbers | awk '$2=="REJECT"{print $1; exit}')
+[VM] sudo iptables -I INPUT "$pos" -m state --state NEW -p tcp --dport 80 -j ACCEPT
+[VM] sudo iptables -I INPUT "$pos" -m state --state NEW -p tcp --dport 443 -j ACCEPT
 [VM] sudo netfilter-persistent save
 [VM] sudo iptables -L INPUT -n --line-numbers | head -12
 ```
 
-期待: 80 と 443 の ACCEPT が `REJECT` 行より **上**にある。§11 の後に `sudo reboot` して、再起動後も `sudo iptables -L INPUT -n` に 2 行が残っていることを一度確かめる。
+期待: 80 と 443 の ACCEPT が `REJECT` 行より **上**にある。挿入位置は `REJECT` の行番号から取る（イメージによって既定のルール数が違い、2026-10 の Ubuntu 24.04 では REJECT が 5 行目で、固定の 6 だと下に入ってしまった）。§11 の後に `sudo reboot` して、再起動後も `sudo iptables -L INPUT -n` に 2 行が残っていることを一度確かめる。
 
 ## 4. insider ユーザーと配置先
 
@@ -69,10 +70,10 @@ uv は insider ユーザーの `~/.local/bin` に入る。`.python-version`（3.
 ```bash
 [VM] curl -LsSf https://astral.sh/uv/install.sh | sudo -u insider -H sh
 [VM] sudo -u insider -H /opt/insider/.local/bin/uv --version
-[VM] sudo -u insider -H /opt/insider/.local/bin/uv python install 3.13
+[VM] cd / && sudo -u insider -H /opt/insider/.local/bin/uv python install 3.13
 ```
 
-期待: `uv 0.x.y` と、`Installed Python 3.13.x`。初回配備の `uv sync` が Python の取得で待たされないよう先に入れておく。
+期待: `uv 0.x.y` と、`Installed Python 3.13.x`。`cd /` は、uv が作業ディレクトリの `uv.toml` を探しに行き、`/home/ubuntu` だと insider ユーザーに読めず `Permission denied` になるため。初回配備の `uv sync` が Python の取得で待たされないよう先に入れておく。
 
 ## 6. デプロイ鍵を insider に登録する
 
