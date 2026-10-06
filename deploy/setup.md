@@ -138,9 +138,10 @@ PUBLIC_BASE_URL=https://<host>
 
 ```bash
 [VM] ls -l /etc/insider.env && sudo grep -c '=.' /etc/insider.env
+[VM] sudo bash -c 'set -a; . /etc/insider.env; set +a; echo "token ${#LINE_CHANNEL_TOKEN} 文字, secret ${#LINE_CHANNEL_SECRET} 文字"; curl -s -o /dev/null -w "bot/info %{http_code}\n" -H "Authorization: Bearer $LINE_CHANNEL_TOKEN" https://api.line.me/v2/bot/info'
 ```
 
-期待: `-rw------- 1 root root` と `5`（5 行とも値がある）。切替前の検証中だけ、これに `LINE_API_BASE_URL=http://127.0.0.1:18080` を足す（[cutover.md](cutover.md)）。
+期待: `-rw------- 1 root root` と `5`（5 行とも値がある）、`token 172 文字, secret 32 文字`、`bot/info 200`。**401 なら貼り付けで文字が欠けている**（2026-10-06 の切替で 171 文字のまま進め、切替直後の返信が全部 401 になった。webhook 自体は署名が合えば 200 を返すので、返信の失敗は journal の WARNING でしか分からない）。切替前の検証中だけ、これに `LINE_API_BASE_URL=http://127.0.0.1:18080` を足す（[cutover.md](cutover.md)）。
 
 **Discord ボットはここで動き出すと Heroku とは無関係に本物の Discord に接続する。** VM が動いている間は Mac で `scripts/play.sh` を使わない（2 か所で動くと質問に 2 回返信する）。Mac の `.env` に `PRODUCTION_URL=https://<host>` を書いておくと、play.sh は本番の `/healthz` が `ok` の間は起動を断る。
 
