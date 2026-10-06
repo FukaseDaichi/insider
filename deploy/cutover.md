@@ -229,7 +229,7 @@ GitHub Actions で `main` の 1 つ前の commit の run を `gh run rerun <run-
 | 0. ゴールデン比較 | PASS（98 手順）。採取時の差は参加者への「入室状況：k/n人」の k だけで、入った順で変わり配役の抽選に左右されるため、席番号と同じく伏せた（tests/line_golden.py） | 2026-10-06 |
 | 4. `/line/callback` の所要時間（10 回の最大） | 97 ms（75〜97 ms） | 2026-10-06 |
 | 6. レート制限（作成系と全体それぞれの 400 / 429 の件数、elapsed） | 作成系 40 回: 400 × 30・429 × 10（1 秒）。全体 310 回: 400 × 290・429 × 20（3 秒。直前の作成系 40 回がスライディングウィンドウに残っていた分だけ 429 が多い）。ブラウザの配役ツールで 429 は出ず、Caddyfile の値は変えない | 2026-10-06 |
-| 6. 本文上限の応答コード | クライアントには 413。ただし aiohttp にも届いていて、Caddy が本文を打ち切った時点で `_read_body` が `ConnectionResetError` の Traceback を ERROR で記録し 500 を返していた（村は作られない）。手順書の「aiohttp に届いていない」は成り立たなかった | 2026-10-06 |
+| 6. 本文上限の応答コード | クライアントには 413。ただし aiohttp にも届いていて、Caddy が本文を打ち切った時点で `_read_body` が `ConnectionResetError` の Traceback を ERROR で記録し 500 を返していた（村は作られない）。手順書の「aiohttp に届いていない」は成り立たなかった。`_read_body` で ConnectionResetError を 400 にする修正を配備し、再測で aiohttp 側が 400・Traceback なしを確認 | 2026-10-06 |
 | 9. MemoryUtilization | 30.4%（tmpfs。memfloor 起動前は 4.5%） | 2026-10-06 |
 | 12. 自動復旧（Web を壊す／bot を壊す） | Web: `not healthy within 60s: web http=000` → rolling back → exit=1 → /healthz ok。bot: `web http=200; bot activating NRestarts=11` → rolling back → exit=1 → ok、bot active、NRestarts 0 | 2026-10-06 |
 
