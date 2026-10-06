@@ -941,14 +941,31 @@ kbd {
   text-decoration: none;
 }
 
+/* iPhone 向けの注記なので、スマホ幅でだけ出す */
 .rules-note {
+  display: none;
   margin: 0 0 20px;
   font-size: 13px;
   color: var(--muted);
 }
 
+@media (max-width: 900px) {
+  .rules-note {
+    display: block;
+  }
+}
+
 .rules-note a {
   color: var(--accent);
+  text-underline-offset: 3px;
+}
+
+/* 文中で折り返すリンクに四角い輪を描くと崩れるので、フォーカスは下線を太くして示す */
+.rules-note a:focus-visible {
+  outline: none;
+  text-decoration-thickness: 2px;
+  background: #dfef7820;
+  border-radius: 3px;
 }
 
 dialog.sheet {
