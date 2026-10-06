@@ -531,6 +531,7 @@ body:has(.room:not([hidden])) {
   min-height: 0;
   position: relative;
   display: flex;
+  border-bottom: 1px solid var(--line);
 }
 
 .log {
@@ -778,8 +779,11 @@ body:has(.room:not([hidden])) {
 
 .controls {
   flex-shrink: 0;
-  padding: 17px 0 max(20px, env(safe-area-inset-bottom));
-  border-top: 1px solid var(--line);
+  /* フォーカスの輪（outline 3px + 隙間 5px）は要素の 8px 外に出る。overflow-y: auto は横も auto になり、
+     余白の外へ出た輪を切ってしまうので、8px の余白を内側に持ち、同じ分だけ外へ張り出して見た目の幅は変えない。
+     上の線は張り出した分だけ長くならないよう .conversation の下に引く */
+  margin: 0 -8px;
+  padding: 17px 8px max(20px, env(safe-area-inset-bottom));
   max-height: 55%;
   overflow-y: auto;
 }
