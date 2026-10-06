@@ -26,7 +26,7 @@
 
 | 項目 | 値 | いつ決まるか |
 | --- | --- | --- |
-| VM の公開 IP | | Phase 2 |
+| VM の公開 IP | `150.230.219.180`（2026-10-06 20:24 作成。インスタンス `insider`、A1.Flex 2 OCPU・12 GB、VCN `insider` / サブネット `insider-public`。scripts/oci-launch-a1.sh の 375 回目で取れた） | Phase 2 |
 | ホスト名 `<host>` | `insidergame.fyi`（Cloudflare Registrar、2026-10-05 取得、年 $5.20、2027-10-05 まで。サブドメインは使わずルートをそのまま使う） | Phase 1 |
 | 切替日 | | Phase 6 |
 | Heroku 解約予定日 | 切替日 + 1 か月 | Phase 6 |

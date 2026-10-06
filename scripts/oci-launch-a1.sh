@@ -107,7 +107,16 @@ while :; do
 done
 
 echo "== 起動を待つ"
-"$OCI" compute instance get --instance-id "$INSTANCE" --wait-for-state RUNNING --max-wait-seconds 600 >/dev/null
+# --wait-for-state は RUNNING になっていても 2 で終わることがあるので、状態を自分で見る
+for _ in $(seq 1 60); do
+  state="$("$OCI" compute instance get --instance-id "$INSTANCE" --query 'data."lifecycle-state"' --raw-output 2>/dev/null || true)"
+  [ "$state" = "RUNNING" ] && break
+  sleep 10
+done
+if [ "${state:-}" != "RUNNING" ]; then
+  log "10 分待っても RUNNING になりません（今は ${state:-不明}）。コンソールで状態を見てください: $INSTANCE"
+  exit 1
+fi
 IP="$("$OCI" compute instance list-vnics --instance-id "$INSTANCE" --query 'data[0]."public-ip"' --raw-output)"
 log "起動しました。公開 IP: $IP"
 echo
