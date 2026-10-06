@@ -19,13 +19,28 @@
     <script type="module" src="/static/village.js"></script>
   </head>
   <body>
+    <!-- 印の ✳（index.html と同じ）。文字の ✳ は iPhone だと緑の絵文字で描かれるので SVG にする -->
+    <svg hidden aria-hidden="true" focusable="false">
+      <symbol id="star-mark" viewBox="0 0 24 24">
+        <g fill="currentColor">
+          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" />
+          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(45 12 12)" />
+          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(90 12 12)" />
+          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(135 12 12)" />
+          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(180 12 12)" />
+          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(225 12 12)" />
+          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(270 12 12)" />
+          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(315 12 12)" />
+        </g>
+      </symbol>
+    </svg>
     <a class="skip-link" href="#main">コンテンツへ</a>
     <header class="site-header">
       <a class="brand" href="/" aria-label="INSIDER ホーム"
         ><span class="brand-mark" aria-hidden="true"></span>INSIDER<span
           class="brand-dot"
           aria-hidden="true"
-          >✳</span
+          ><svg class="star" aria-hidden="true"><use href="#star-mark" /></svg></span
         ></a
       >
       <span class="header-caption">インサイダーの配役</span>

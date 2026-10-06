@@ -173,6 +173,15 @@ button:disabled {
   letter-spacing: 0;
 }
 
+/* 印の ✳（index.html の #star-mark）。置いた場所の文字の大きさと色で描く */
+.star {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  fill: currentColor;
+}
+
 .brand-mark {
   width: 27px;
   height: 17px;
@@ -2671,6 +2680,27 @@ body:has(.room:not([hidden])) .site-header {
 .room-title .eyebrow,
 .log-heading {
   display: none;
+}
+/* ルームではサイトヘッダーを出さないので、バー左端の印からトップへ戻れるようにする */
+.room-home {
+  order: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 16px;
+  transition:
+    background 0.2s,
+    transform 0.3s;
+}
+.room-home:hover {
+  background: var(--line);
+  transform: rotate(45deg);
 }
 .room-title > div:first-child {
   order: 1;

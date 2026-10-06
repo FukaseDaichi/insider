@@ -18,13 +18,28 @@
     <script type="module" src="/static/app.js"></script>
   </head>
   <body>
+    <!-- 印の ✳。文字の ✳ は iPhone だと緑の絵文字で描かれるので、SVG を <use> で使い回す（色と大きさは置いた場所の文字に合わせる） -->
+    <svg hidden aria-hidden="true" focusable="false">
+      <symbol id="star-mark" viewBox="0 0 24 24">
+        <g fill="currentColor">
+          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" />
+          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(45 12 12)" />
+          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(90 12 12)" />
+          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(135 12 12)" />
+          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(180 12 12)" />
+          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(225 12 12)" />
+          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(270 12 12)" />
+          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(315 12 12)" />
+        </g>
+      </symbol>
+    </svg>
     <a class="skip-link" href="#main">コンテンツへ</a>
     <header class="site-header">
       <a class="brand" href="/" aria-label="INSIDER ホーム"
         ><span class="brand-mark" aria-hidden="true"></span>INSIDER<span
           class="brand-dot"
           aria-hidden="true"
-          >✳</span
+          ><svg class="star" aria-hidden="true"><use href="#star-mark" /></svg></span
         ></a
       >
       <span class="header-caption">ひとつの秘密を、みんなの質問で。</span>
@@ -42,7 +57,7 @@
           <h1>
             いい質問が、<br /><span class="headline-last"
               >秘密を<span class="serif-word">ほどく。</span
-              ><span class="headline-star" aria-hidden="true">✳</span></span
+              ><span class="headline-star" aria-hidden="true"><svg class="star" aria-hidden="true"><use href="#star-mark" /></svg></span></span
             >
           </h1>
           <a class="mobile-start" href="#home-name"
@@ -110,7 +125,7 @@
             ><i aria-hidden="true">↗</i>
           </div>
           <div class="mystery-card">
-            <div class="card-top"><span>INSIDER</span><span>✳</span></div>
+            <div class="card-top"><span>INSIDER</span><span><svg class="star" aria-hidden="true"><use href="#star-mark" /></svg></span></div>
             <div class="secret-graphic">
               <span class="graphic-ring ring-a"></span
               ><span class="graphic-ring ring-b"></span
@@ -127,7 +142,7 @@
             <span>ひらめきは、</span><strong>会話のなかに。</strong
             ><span aria-hidden="true">↗</span>
           </div>
-          <span class="art-spark spark-one" aria-hidden="true">✳</span>
+          <span class="art-spark spark-one" aria-hidden="true"><svg class="star" aria-hidden="true"><use href="#star-mark" /></svg></span>
           <div class="clue-pill">
             <span class="signal-dot"></span> それは、食べられますか？<span
               >↗</span
@@ -166,7 +181,7 @@
         </div>
         <footer class="home-footer">
           <span class="footer-brand"
-            >INSIDER<span aria-hidden="true">✳</span></span
+            >INSIDER<span aria-hidden="true"><svg class="star" aria-hidden="true"><use href="#star-mark" /></svg></span></span
           >
           <p>仲間との通話は Discord や Zoom で。</p>
           <span>A LITTLE MYSTERY. A LOT OF CONVERSATION.</span>
@@ -196,6 +211,11 @@
       <section id="room" class="page room" hidden>
         <header class="room-header">
           <div class="room-title">
+            <!-- ルームではサイトヘッダーを出さないので、左端の印からトップへ戻れるようにする -->
+            <a class="room-home" href="/" aria-label="トップページへ戻る"
+              ><svg class="star" aria-hidden="true">
+                <use href="#star-mark" /></svg
+            ></a>
             <div>
               <span class="eyebrow">THE CONVERSATION ROOM</span>
               <h1>ルーム <strong id="room-code"></strong></h1>
