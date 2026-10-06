@@ -265,7 +265,7 @@ GitHub Actions で `main` の 1 つ前の commit の run を `gh run rerun <run-
 [VM] sudo journalctl -u insider-bot --since '-7 days' --no-pager | grep -iE 'disconnect|resum'                     # 2. Discord の接続
 ```
 
-**Oracle からアイドル判定のメールが届いた場合**: 即削除ではなく、**1 週間後に停止**という猶予付きの通知。その 1 週間のうちに E の「PAYG へ上げる」を判断する。
+**Oracle からアイドル判定のメールが届いた場合**: 即削除ではなく、**1 週間後に停止**という猶予付きの通知。アカウントは PAYG に上げてあるので本来は対象外のはずで、届いたら memfloor が効いているか（A-9）を見直す。
 
 ## D. ロールバック（Heroku へ戻す）
 
@@ -286,6 +286,6 @@ GitHub Actions で `main` の 1 つ前の commit の run を `gh run rerun <run-
 
 Heroku は切替後 1 か月維持する。
 
-## E. PAYG へ上げる（アイドル通知が来たとき）
+## E. PAYG（済み）
 
-Always Free のまま回収を避けられないと判断したら、OCI コンソールでアカウントを Pay As You Go に上げる。無料枠の範囲なら請求は $0 のままで、回収の対象から外れる。同時に **Budgets で $1 超過のメール通知**を設定する（[human-steps.md](human-steps.md) の別枠）。上げた日と理由を記録表に書き、[docs/infra.md](../docs/infra.md) の memfloor の節を直す。
+アカウントは Pay As You Go に上げてあり、予算 `insider-budget`（月 $1、100% でメール）も作ってある（human-steps.md の記録表）。無料枠の範囲なら請求は $0 のまま。アイドル回収の対象からも外れる。

@@ -1,12 +1,12 @@
 # インフラ構成
 
-本番の構成は Oracle Cloud の VM 1 台で 24 時間動かすもので、配備の一式は `deploy/` にある。2026-10-06 に VM を確保して LINE の webhook を切り替えた。手元の Mac での起動（`scripts/play.sh`）は、本番が止まっているときの予備で、本番が動いている間は起動を断る。手順は [deploy/setup.md](../deploy/setup.md)（VM）、[deploy/human-steps.md](../deploy/human-steps.md)（画面操作）、[README](../README.md)（Mac）。
+本番は Oracle Cloud の VM 1 台で 24 時間動かし、配備の一式は `deploy/` にある。手元の Mac での起動（`scripts/play.sh`）は、本番が止まっているときの予備で、本番が動いている間は起動を断る。手順は [deploy/setup.md](../deploy/setup.md)（VM）、[deploy/human-steps.md](../deploy/human-steps.md)（画面操作）、[README](../README.md)（Mac）。
 
 ## 結論
 
 | | 構成 | 費用 |
 |---|---|---|
-| 現在（2026-10-06〜） | Oracle Cloud の A1 1 台（`insider`、150.230.219.180、`https://insidergame.fyi`）。Caddy と systemd。`deploy/` の一式で配備する。アカウントは Pay As You Go（A1 の確保が通らず上げた。無料枠の範囲で請求 $0、予算 $1 で通知） | 0 円の見込み（アイドル回収への対策を持つ） |
+| 本番 | Oracle Cloud の A1 1 台（`https://insidergame.fyi`）。Caddy と systemd。`deploy/` の一式で配備する。アカウントは Pay As You Go で、無料枠の範囲なら請求は $0。月 $1 の予算を超えるとメールが届く | 0 円の見込み（アイドル回収への対策を持つ） |
 | 予備 | 本番が止まっているときだけ手元の Mac で起動する（`scripts/play.sh`）。Tailscale Funnel で公開 | 0 円（電気代のみ） |
 | 採らない | Google Cloud、AWS、スリープする無料枠 | 下記 |
 
@@ -41,9 +41,9 @@
 
 ### アイドル回収のメモリ床（memfloor）
 
-Always Free の A1 は、7 日間 CPU・ネットワーク・メモリの 3 つすべてが 20% 未満だと回収の通知が来る。このシステムの CPU とネットワークは届かないので、外せるのはメモリ条件だけ。`deploy/insider-memfloor.service` が起動時に 3GB（12GB の 25%）の tmpfs を確保して埋める。コードに依存せず、アプリの大きさと無関係に床を保てる。
+Always Free のアカウントの A1 は、7 日間 CPU・ネットワーク・メモリの 3 つすべてが 20% 未満だと回収の通知が来る。このシステムの CPU とネットワークは届かないので、外せるのはメモリ条件だけ。アカウントは Pay As You Go なので本来は回収の対象外だが、判定の変更や誤判定に備えて床は保つ。`deploy/insider-memfloor.service` が起動時に 3GB（12GB の 25%）の tmpfs を確保して埋める。コードに依存せず、アプリの大きさと無関係に床を保てる。
 
-- OCI の `MemoryUtilization` が tmpfs を「使用中」に数えなければ、`deploy/insider-memfloor-process.service`（`deploy/memfloor.py` が 3GB を確保してページを触り、眠り続ける）に差し替える。両方を同時に有効にしない。**2026-10-06 の切替前検証で tmpfs 方式のまま**と決めた。OCI の `MemoryUtilization` は memfloor 起動前 4.5%、起動後 30.4% で、tmpfs を使用中に数えている。
+- OCI の `MemoryUtilization` が tmpfs を「使用中」に数えなければ、`deploy/insider-memfloor-process.service`（`deploy/memfloor.py` が 3GB を確保してページを触り、眠り続ける）に差し替える。両方を同時に有効にしない。**本番は tmpfs 方式**。OCI の `MemoryUtilization` は tmpfs を使用中に数え、memfloor なしの約 5% が起動後は約 30% になる。
 - これは設計上の成立であって保証ではない。回収の通知が届いたら、猶予の 1 週間のうちに PAYG へ上げ、OCI Budget で $1 超過のメール通知を設定する。
 
 ### 監視
@@ -54,7 +54,7 @@ Always Free の A1 は、7 日間 CPU・ネットワーク・メモリの 3 つ�
 
 ### 秘密情報
 
-`/etc/insider.env` に `DISCORD_TOKEN`、`TYPESAFE_API_KEY`、`LINE_CHANNEL_TOKEN`、`LINE_CHANNEL_SECRET`、`PUBLIC_BASE_URL`、任意で `LINE_API_BASE_URL`（切替前の検証でスタブへ向けるときだけ）。値はパスワードマネージャに保管する。GitHub Secrets には `DEPLOY_HOST`、`DEPLOY_SSH_KEY`、`DEPLOY_HOST_KEY` の 3 つだけを置く。
+`/etc/insider.env` に `DISCORD_TOKEN`、`TYPESAFE_API_KEY`、`LINE_CHANNEL_TOKEN`、`LINE_CHANNEL_SECRET`、`PUBLIC_BASE_URL`、任意で `LINE_API_BASE_URL`（検証でスタブへ向けるときだけ）。値はパスワードマネージャに保管する。GitHub Secrets には `DEPLOY_HOST`、`DEPLOY_SSH_KEY`、`DEPLOY_HOST_KEY` の 3 つだけを置く。
 
 ### デプロイ
 

@@ -349,11 +349,11 @@ GitHub → LineBot のリポジトリ → **Settings** → **General** → **Dan
 
 ---
 
-# 別枠: PAYG へ上げる（アイドル通知が来たとき）
+# 別枠: PAYG へ上げる（済み。VM を別アカウントで作り直すときの参考）
 
-OCI コンソール → **Billing & Cost Management** → **Upgrade and Manage Payment** → **Upgrade to Pay As You Go**。無料枠の範囲なら請求は $0 のままで、アイドル回収の対象から外れる。
+OCI コンソール → **Billing & Cost Management** → **Upgrade and Manage Payment** → **Upgrade to Pay As You Go**。先に **Payment Method** にカードを登録しないとボタンが押せない。登録時に約 $100 の仮与信が立ち、自動で取り消される。無料枠の範囲なら請求は $0 のままで、アイドル回収の対象から外れる。
 
-同時に予算の通知を作る: **Billing & Cost Management** → **Budgets** → **Create Budget**
+同時に予算の通知を作る（CLI なら `oci budgets budget budget create` と `oci budgets budget alert-rule create`）: **Billing & Cost Management** → **Budgets** → **Create Budget**
 
 | 項目 | 値 |
 | --- | --- |

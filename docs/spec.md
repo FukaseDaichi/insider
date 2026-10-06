@@ -193,5 +193,5 @@ LINE Bot の webhook を Web 版のプロセスで受ける。村の中核は配
 
 ### 検証
 
-- **Java との突き合わせ**: `tests/test_line_golden.py` が、同じ入力の列を Python の中核と LINE のレンダラに通し、Java の LineBot の `/callapi` から採った JSON（`tests/golden/line_callapi.json`）と比べる。JSON は、本番と同じ Java 8 で手元に起動した LineBot から採る。本番（Heroku）の `/callapi` では採らない。入力の列が村を十数個作るので、上限 50 件の FIFO で遊んでいる人の村を押し出すため。村番号・画像の URL・お題候補の語・overflow の席番号・特殊村フォームの URL を伏せ、配役で変わる応答は順不同で比べる。JSON は 2026-10-06 に Java 8 の LineBot 2.7.0 から採取済み（98 手順）。採取時に、参加者への「入室状況：k/n人」の k が入った順で変わり配役の抽選に左右されるとわかったので、席番号と同じく伏せる。JSON がないときは、入力の列が Python で最後まで通ることだけを確かめ、比較は飛ばす（skip）。ポストバックとスタンプは `/callapi` に入口がないので、Java の webhook のコードから起こした期待値でテストする。
-- **切替前の検証の道具**: `deploy/verify/line_api_stub.py` は返信 API のスタブで、届いた返信を表示する（`LINE_API_BASE_URL` をここへ向ける）。`deploy/verify/post_callback.py` は署名付きの webhook を送り、応答コードと所要時間を出す。
+- **Java との突き合わせ**: `tests/test_line_golden.py` が、同じ入力の列を Python の中核と LINE のレンダラに通し、Java の LineBot の `/callapi` から採った JSON（`tests/golden/line_callapi.json`）と比べる。JSON は、本番と同じ Java 8 で手元に起動した LineBot から採る。本番（Heroku）の `/callapi` では採らない。入力の列が村を十数個作るので、上限 50 件の FIFO で遊んでいる人の村を押し出すため。村番号・画像の URL・お題候補の語・overflow の席番号・特殊村フォームの URL を伏せ、配役で変わる応答は順不同で比べる。参加者への「入室状況：k/n人」の k は入った順で、配役の抽選に左右されるので、席番号と同じく伏せる。JSON がないときは、入力の列が Python で最後まで通ることだけを確かめ、比較は飛ばす（skip）。ポストバックとスタンプは `/callapi` に入口がないので、Java の webhook のコードから起こした期待値でテストする。
+- **検証の道具**: `deploy/verify/line_api_stub.py` は返信 API のスタブで、届いた返信を表示する（`LINE_API_BASE_URL` をここへ向ける）。`deploy/verify/post_callback.py` は署名付きの webhook を送り、応答コードと所要時間を出す。

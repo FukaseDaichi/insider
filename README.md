@@ -68,7 +68,7 @@ uv run python deploy/verify/line_api_stub.py 18080
 uv run --env-file .env python deploy/verify/post_callback.py http://127.0.0.1:8080/line/callback text U0000 お題
 ```
 
-LINE の返信が Java の LineBot と同じかは `tests/test_line_golden.py` が確かめます。比べる JSON（`tests/golden/line_callapi.json`）は、Java の LineBot を手元で動かして採ります（`<LineBot>` は LineBot のリポジトリ。Java は本番と同じ 8 を使う）。JSON は 2026-10-06 に Java 8 の LineBot 2.7.0 から採ってあります。`tests/line_golden.py` の手順を変えたら採り直します（採っていない状態では比較を飛ばします）。
+LINE の返信が Java の LineBot と同じかは `tests/test_line_golden.py` が確かめます。比べる JSON（`tests/golden/line_callapi.json`）は、Java の LineBot を手元で動かして採ります（`<LineBot>` は LineBot のリポジトリ。Java は本番と同じ 8 を使う）。JSON はリポジトリに入っています（LineBot 2.7.0 から採取）。`tests/line_golden.py` の手順を変えたら採り直します（JSON がない状態では比較を飛ばします）。
 
 ```bash
 LINE_BOT_CHANNEL_TOKEN=golden LINE_BOT_CHANNEL_SECRET=golden java -jar <LineBot>/insider-game-bot/build/libs/insider-game-bot-2.7.0-SNAPSHOT.jar --server.port=18080
@@ -80,11 +80,11 @@ uv run python -m tests.line_golden http://127.0.0.1:18080/callapi
 
 ### 本番（Oracle Cloud の VM で 24 時間動かす）
 
-Always Free の A1 1 台に Caddy と systemd で載せ、`main` への push で GitHub Actions が配備します（構成は [docs/infra.md](docs/infra.md)）。VM のセットアップは [deploy/setup.md](deploy/setup.md)、画面操作は [deploy/human-steps.md](deploy/human-steps.md)、LINE の切替前検証と切替は [deploy/cutover.md](deploy/cutover.md)。GitHub Secrets（`DEPLOY_HOST`、`DEPLOY_SSH_KEY`、`DEPLOY_HOST_KEY`）が 3 つとも未登録のあいだ、deploy job は配備を飛ばして成功で終わります（一部だけなら失敗します）。本番の VM が動いている間は、下の Mac での起動を使いません（Discord ボットが 2 か所で動くと質問に 2 回返信します）。Mac の `.env` に `PRODUCTION_URL=https://<host>` を書いておくと、`scripts/play.sh` は本番が動いている間は起動を断ります。
+Oracle Cloud の A1 1 台に Caddy と systemd で載せ、`main` への push で GitHub Actions が配備します（構成は [docs/infra.md](docs/infra.md)）。VM のセットアップは [deploy/setup.md](deploy/setup.md)、画面操作は [deploy/human-steps.md](deploy/human-steps.md)、運用の様子見とロールバックは [deploy/cutover.md](deploy/cutover.md)。GitHub Secrets（`DEPLOY_HOST`、`DEPLOY_SSH_KEY`、`DEPLOY_HOST_KEY`）が 3 つとも未登録のあいだ、deploy job は配備を飛ばして成功で終わります（一部だけなら失敗します）。本番の VM が動いている間は、下の Mac での起動を使いません（Discord ボットが 2 か所で動くと質問に 2 回返信します）。Mac の `.env` に `PRODUCTION_URL=https://<host>` を書いておくと、`scripts/play.sh` は本番が動いている間は起動を断ります。
 
-### 仲間と遊ぶとき（Mac で起動して公開する）
+### 本番が止まっているとき（Mac で起動して公開する）
 
-本番の VM がないあいだ、Discord ボットと Web 版をまとめて起動し、Web 版を Tailscale Funnel で公開します（構成の考え方は [docs/infra.md](docs/infra.md)）。
+本番の予備として、Discord ボットと Web 版をまとめて起動し、Web 版を Tailscale Funnel で公開します（構成の考え方は [docs/infra.md](docs/infra.md)）。
 
 1. 初回だけ: [Tailscale](https://tailscale.com/download/mac) を入れてログインする
 2. `bash scripts/play.sh` を実行し、表示された `https://….ts.net` を仲間に共有する（初回は Funnel を有効にする案内が出るので従う）
@@ -131,7 +131,7 @@ uv run --env-file .env python -m insider_bot
 | `PUBLIC_BASE_URL` | | — | Web 版の公開 URL（例 `https://game.example.com`）。配役ツールの役職画像と特殊村フォームの URL に使う。未設定ならサイト内のパス |
 | `LINE_CHANNEL_SECRET` | | — | LINE Bot のチャネルシークレット。`LINE_CHANNEL_TOKEN` と両方設定すると `/line/callback` で webhook を受ける（`PUBLIC_BASE_URL` に https の公開 URL が要る） |
 | `LINE_CHANNEL_TOKEN` | | — | LINE Bot のチャネルアクセストークン（長期） |
-| `LINE_API_BASE_URL` | | `https://api.line.me` | LINE の返信 API の送り先。切替前の検証でスタブへ向けるときだけ変える |
+| `LINE_API_BASE_URL` | | `https://api.line.me` | LINE の返信 API の送り先。検証でスタブへ向けるときだけ変える |
 
 ## 開発
 
