@@ -1,0 +1,2013 @@
+{
+ "callapi": "http://127.0.0.1:18080/callapi",
+ "steps": [
+  {
+   "user": "O",
+   "text": "お題",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "3671村 を新しく作成しました。お題を入力してください。",
+     "template": {
+      "type": "buttons",
+      "text": "3671村 を新しく作成しました。お題を入力してください。\nお題の自動取得もできます。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "お題の自動取得",
+        "data": "0"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "1",
+   "messages": [
+    {
+     "type": "text",
+     "text": "村の人数は2人以上に設定してください。\nもう一度村の人数を設定してください。"
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "すいか",
+   "messages": [
+    {
+     "type": "text",
+     "text": "3671村 のお題を『すいか』に設定しました。\nお題を配りたい人数を入力してください。\n　例：「5」の場合は、「インサイダー１人、村4人」です。"
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "3",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "人数を『3人』に設定しました。\n皆さんに村番号を伝えてください。配布状況の確認は村番号を入力してください。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GM.png",
+      "title": "3671村",
+      "text": "人数を『3人』に設定しました。\n皆さんに村番号を伝えてください。",
+      "actions": [
+       {
+        "type": "message",
+        "label": "確認",
+        "text": "3671"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "A",
+   "text": "3671",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職は村人です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/VILLAGERS.png",
+      "text": "あなたの役職は村人です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "3671"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "B",
+   "text": "3671",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職はインサイダーです。お題は『すいか』です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/INSIDER.png",
+      "text": "あなたの役職はインサイダーです。お題は『すいか』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "3671"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "C",
+   "text": "3671",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職は村人です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/VILLAGERS.png",
+      "text": "あなたの役職は村人です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "3671"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "D",
+   "text": "3671",
+   "messages": [
+    {
+     "type": "text",
+     "text": "村がいっぱいです。"
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "3671",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "3671村：3/3人にお題を配りました。お題は『すいか』です。",
+     "template": {
+      "type": "buttons",
+      "text": "3671村：3/3人にお題を配りました。お題は『すいか』です。",
+      "actions": [
+       {
+        "type": "message",
+        "label": "再確認",
+        "text": "3671"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "めろん",
+   "messages": [
+    {
+     "type": "text",
+     "text": "村が作成されていません"
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "5",
+   "messages": [
+    {
+     "type": "text",
+     "text": "村が作成されていません"
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "@逆村",
+   "messages": [
+    {
+     "type": "text",
+     "text": "村が作成されていません"
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "@わーわーず",
+   "messages": [
+    {
+     "type": "text",
+     "text": "村が作成されていません"
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "神",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "6768村 を新しく作成しました。お題を入力してください。",
+     "template": {
+      "type": "buttons",
+      "text": "6768村 を新しく作成しました。お題を入力してください。\nお題の自動取得もできます。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "お題の自動取得",
+        "data": "0"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "4",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "人数を『4人』に設定しました。\n皆さんに村番号を伝えてください。配布状況の確認は村番号を入力してください。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GOD.png",
+      "title": "6768村",
+      "text": "人数を『4人』に設定しました。\n皆さんに村番号を伝えてください。",
+      "actions": [
+       {
+        "type": "message",
+        "label": "確認",
+        "text": "6768"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "りんご",
+   "messages": [
+    {
+     "type": "text",
+     "text": "6768村 のお題を『りんご』に設定しました。\nお題を配りたい人数を入力してください。\n　例：「5」の場合は、「インサイダー１人、村4人」です。"
+    }
+   ]
+  },
+  {
+   "user": "A",
+   "text": "6768",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "役職はＧＭです。\n1/4人にお題を配りました。お題は『りんご』です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GM.png",
+      "text": "役職はＧＭです。\n1/4人にお題を配りました。お題は『りんご』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "6768"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "B",
+   "text": "6768",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職は村人です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/VILLAGERS.png",
+      "text": "あなたの役職は村人です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "6768"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "C",
+   "text": "6768",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職は村人です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/VILLAGERS.png",
+      "text": "あなたの役職は村人です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "6768"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "D",
+   "text": "6768",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職はインサイダーです。お題は『りんご』です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/INSIDER.png",
+      "text": "あなたの役職はインサイダーです。お題は『りんご』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "6768"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "A",
+   "text": "6768",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "役職はＧＭです。\n4/4人にお題を配りました。お題は『りんご』です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GM.png",
+      "text": "役職はＧＭです。\n4/4人にお題を配りました。お題は『りんご』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "6768"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "B",
+   "text": "6768",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職は村人です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/VILLAGERS.png",
+      "text": "あなたの役職は村人です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "6768"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "C",
+   "text": "6768",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職は村人です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/VILLAGERS.png",
+      "text": "あなたの役職は村人です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "6768"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "D",
+   "text": "6768",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職はインサイダーです。お題は『りんご』です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/INSIDER.png",
+      "text": "あなたの役職はインサイダーです。お題は『りんご』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "6768"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "6768",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "6768村：4/4人にお題を配りました。お題は『りんご』です。",
+     "template": {
+      "type": "buttons",
+      "text": "6768村：4/4人にお題を配りました。お題は『りんご』です。",
+      "actions": [
+       {
+        "type": "message",
+        "label": "再確認",
+        "text": "6768"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "神",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "3554村 を新しく作成しました。お題を入力してください。",
+     "template": {
+      "type": "buttons",
+      "text": "3554村 を新しく作成しました。お題を入力してください。\nお題の自動取得もできます。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "お題の自動取得",
+        "data": "0"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "ぶどう",
+   "messages": [
+    {
+     "type": "text",
+     "text": "3554村 のお題を『ぶどう』に設定しました。\nお題を配りたい人数を入力してください。\n　例：「6」の場合は、「GM１人、インサイダー１人、村4人」です。"
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "2",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "人数を『2人』に設定しました。\n皆さんに村番号を伝えてください。配布状況の確認は村番号を入力してください。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GOD.png",
+      "title": "3554村",
+      "text": "人数を『2人』に設定しました。\n皆さんに村番号を伝えてください。",
+      "actions": [
+       {
+        "type": "message",
+        "label": "確認",
+        "text": "3554"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "お題",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "9781村 を新しく作成しました。お題を入力してください。",
+     "template": {
+      "type": "buttons",
+      "text": "9781村 を新しく作成しました。お題を入力してください。\nお題の自動取得もできます。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "お題の自動取得",
+        "data": "0"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "@逆村",
+   "messages": [
+    {
+     "type": "text",
+     "text": "9781村 を『逆村』に設定しました。\nお題を知らない村人が1人となります。"
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "みかん",
+   "messages": [
+    {
+     "type": "text",
+     "text": "9781村 のお題を『みかん』に設定しました。\nお題を配りたい人数を入力してください。\n　例：「5」の場合は、「インサイダー１人、村4人」です。"
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "3",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "人数を『3人』に設定しました。\n皆さんに村番号を伝えてください。配布状況の確認は村番号を入力してください。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GM.png",
+      "title": "9781村",
+      "text": "人数を『3人』に設定しました。\n皆さんに村番号を伝えてください。",
+      "actions": [
+       {
+        "type": "message",
+        "label": "確認",
+        "text": "9781"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "A",
+   "text": "9781",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職はインサイダーです。お題は『みかん』です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/INSIDER.png",
+      "text": "あなたの役職はインサイダーです。お題は『みかん』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "9781"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "B",
+   "text": "9781",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職は村人です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/VILLAGERS.png",
+      "text": "あなたの役職は村人です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "9781"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "C",
+   "text": "9781",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職はインサイダーです。お題は『みかん』です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/INSIDER.png",
+      "text": "あなたの役職はインサイダーです。お題は『みかん』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "9781"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "お題",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "4799村 を新しく作成しました。お題を入力してください。",
+     "template": {
+      "type": "buttons",
+      "text": "4799村 を新しく作成しました。お題を入力してください。\nお題の自動取得もできます。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "お題の自動取得",
+        "data": "0"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "メロン",
+   "messages": [
+    {
+     "type": "text",
+     "text": "4799村 のお題を『メロン』に設定しました。\nお題を配りたい人数を入力してください。\n　例：「5」の場合は、「インサイダー１人、村4人」です。"
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "3",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "人数を『3人』に設定しました。\n皆さんに村番号を伝えてください。配布状況の確認は村番号を入力してください。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GM.png",
+      "title": "4799村",
+      "text": "人数を『3人』に設定しました。\n皆さんに村番号を伝えてください。",
+      "actions": [
+       {
+        "type": "message",
+        "label": "確認",
+        "text": "4799"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "@わーわーず",
+   "messages": [
+    {
+     "type": "text",
+     "text": "お題を『メロン』として新たにワーワーズの『14056』村を作成しました。参加者へ『14056』を伝え、あなたも入室してください。\n\n■注意\nあなたはGMです。入室時に表示された役職が欠けた役職となります。"
+    }
+   ]
+  },
+  {
+   "user": "A",
+   "text": "14056",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職は村人です",
+     "template": {
+      "type": "buttons",
+      "text": "あなたの役職は村人です",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "14056"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "B",
+   "text": "14056",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職は占師です。お題は「メロン」です。",
+     "template": {
+      "type": "buttons",
+      "text": "あなたの役職は占師です。お題は「メロン」です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "14056"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "C",
+   "text": "14056",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職はインサイダーです。お題は「メロン」です。",
+     "template": {
+      "type": "buttons",
+      "text": "あなたの役職はインサイダーです。お題は「メロン」です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "14056"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "D",
+   "text": "14056",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職は村人です",
+     "template": {
+      "type": "buttons",
+      "text": "あなたの役職は村人です",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "14056"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "神",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "4355村 を新しく作成しました。お題を入力してください。",
+     "template": {
+      "type": "buttons",
+      "text": "4355村 を新しく作成しました。お題を入力してください。\nお題の自動取得もできます。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "お題の自動取得",
+        "data": "0"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "レモン",
+   "messages": [
+    {
+     "type": "text",
+     "text": "4355村 のお題を『レモン』に設定しました。\nお題を配りたい人数を入力してください。\n　例：「6」の場合は、「GM１人、インサイダー１人、村4人」です。"
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "3",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "人数を『3人』に設定しました。\n皆さんに村番号を伝えてください。配布状況の確認は村番号を入力してください。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GOD.png",
+      "title": "4355村",
+      "text": "人数を『3人』に設定しました。\n皆さんに村番号を伝えてください。",
+      "actions": [
+       {
+        "type": "message",
+        "label": "確認",
+        "text": "4355"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "＠わーわーず",
+   "messages": [
+    {
+     "type": "text",
+     "text": "お題を『レモン』として新たにワーワーズの『47632』村を作成しました。参加者へ『47632』を伝えてください。"
+    }
+   ]
+  },
+  {
+   "user": "R",
+   "text": "ランダム",
+   "messages": [
+    {
+     "type": "text",
+     "text": "2327村 を新しく作成しました。人数を設定してください。役職もお題もランダムに配ります。"
+    }
+   ]
+  },
+  {
+   "user": "R",
+   "text": "3",
+   "messages": [
+    {
+     "type": "text",
+     "text": "2327村：人数を『3人』に設定しました。\n皆さんに村番号を伝えてください。"
+    },
+    {
+     "type": "template",
+     "altText": "あなたの役職はインサイダーです。お題は『コロシアム』です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/INSIDER.png",
+      "text": "あなたの役職はインサイダーです。お題は『コロシアム』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "2327"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "お題",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "6966村 を新しく作成しました。お題を入力してください。",
+     "template": {
+      "type": "buttons",
+      "text": "6966村 を新しく作成しました。お題を入力してください。\nお題の自動取得もできます。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "お題の自動取得",
+        "data": "0"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "ああああああああああああああああああああああああああああああああああああ",
+   "messages": [
+    {
+     "type": "text",
+     "text": "6966村 のお題を『ああああああああああああああああああああああああああああああああああああ』に設定しました。\nお題を配りたい人数を入力してください。\n　例：「5」の場合は、「インサイダー１人、村4人」です。"
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "2",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "人数を『2人』に設定しました。\n皆さんに村番号を伝えてください。配布状況の確認は村番号を入力してください。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GM.png",
+      "title": "6966村",
+      "text": "人数を『2人』に設定しました。\n皆さんに村番号を伝えてください。",
+      "actions": [
+       {
+        "type": "message",
+        "label": "確認",
+        "text": "6966"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "A",
+   "text": "6966",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職はインサイダーです。お題は『ああああああああああああああああああああああああああああああああああああ』です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/INSIDER.png",
+      "text": "あなたの役職はインサイダーです。お題は『ああああああああああああああああああああああああああああああああああああ』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "6966"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "B",
+   "text": "6966",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職は村人です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/VILLAGERS.png",
+      "text": "あなたの役職は村人です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "6966"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "お題",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "1675村 を新しく作成しました。お題を入力してください。",
+     "template": {
+      "type": "buttons",
+      "text": "1675村 を新しく作成しました。お題を入力してください。\nお題の自動取得もできます。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "お題の自動取得",
+        "data": "0"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀あ",
+   "messages": [
+    {
+     "type": "text",
+     "text": "1675村 のお題を『😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀あ』に設定しました。\nお題を配りたい人数を入力してください。\n　例：「5」の場合は、「インサイダー１人、村4人」です。"
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "2",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "人数を『2人』に設定しました。\n皆さんに村番号を伝えてください。配布状況の確認は村番号を入力してください。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GM.png",
+      "title": "1675村",
+      "text": "人数を『2人』に設定しました。\n皆さんに村番号を伝えてください。",
+      "actions": [
+       {
+        "type": "message",
+        "label": "確認",
+        "text": "1675"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "A",
+   "text": "1675",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職は村人です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/VILLAGERS.png",
+      "text": "あなたの役職は村人です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "1675"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "B",
+   "text": "1675",
+   "messages": [
+    {
+     "type": "text",
+     "text": "あなたの役職はインサイダーです。お題は『😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀あ』です。"
+    },
+    {
+     "type": "text",
+     "text": "あなたは2番目の参加者です。\n　入室状況：2/2人"
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "神",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "1324村 を新しく作成しました。お題を入力してください。",
+     "template": {
+      "type": "buttons",
+      "text": "1324村 を新しく作成しました。お題を入力してください。\nお題の自動取得もできます。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "お題の自動取得",
+        "data": "0"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "いいいいいいいいいいいいいいいいいいいいいいいいいいいいい",
+   "messages": [
+    {
+     "type": "text",
+     "text": "1324村 のお題を『いいいいいいいいいいいいいいいいいいいいいいいいいいいいい』に設定しました。\nお題を配りたい人数を入力してください。\n　例：「6」の場合は、「GM１人、インサイダー１人、村4人」です。"
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "2",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "人数を『2人』に設定しました。\n皆さんに村番号を伝えてください。配布状況の確認は村番号を入力してください。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GOD.png",
+      "title": "1324村",
+      "text": "人数を『2人』に設定しました。\n皆さんに村番号を伝えてください。",
+      "actions": [
+       {
+        "type": "message",
+        "label": "確認",
+        "text": "1324"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "A",
+   "text": "1324",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職はインサイダーです。お題は『いいいいいいいいいいいいいいいいいいいいいいいいいいいいい』です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/INSIDER.png",
+      "text": "あなたの役職はインサイダーです。お題は『いいいいいいいいいいいいいいいいいいいいいいいいいいいいい』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "1324"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "B",
+   "text": "1324",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "役職はＧＭです。\n2/2人にお題を配りました。お題は『いいいいいいいいいいいいいいいいいいいいいいいいいいいいい』です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GM.png",
+      "text": "役職はＧＭです。\n2/2人にお題を配りました。お題は『いいいいいいいいいいいいいいいいいいいいいいいいいいいいい』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "1324"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "A",
+   "text": "1324",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職はインサイダーです。お題は『いいいいいいいいいいいいいいいいいいいいいいいいいいいいい』です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/INSIDER.png",
+      "text": "あなたの役職はインサイダーです。お題は『いいいいいいいいいいいいいいいいいいいいいいいいいいいいい』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "1324"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "B",
+   "text": "1324",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "役職はＧＭです。\n2/2人にお題を配りました。お題は『いいいいいいいいいいいいいいいいいいいいいいいいいいいいい』です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GM.png",
+      "text": "役職はＧＭです。\n2/2人にお題を配りました。お題は『いいいいいいいいいいいいいいいいいいいいいいいいいいいいい』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "1324"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "神",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "6450村 を新しく作成しました。お題を入力してください。",
+     "template": {
+      "type": "buttons",
+      "text": "6450村 を新しく作成しました。お題を入力してください。\nお題の自動取得もできます。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "お題の自動取得",
+        "data": "0"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "うううううううううううううううううううううううううううううう",
+   "messages": [
+    {
+     "type": "text",
+     "text": "6450村 のお題を『うううううううううううううううううううううううううううううう』に設定しました。\nお題を配りたい人数を入力してください。\n　例：「6」の場合は、「GM１人、インサイダー１人、村4人」です。"
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "2",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "人数を『2人』に設定しました。\n皆さんに村番号を伝えてください。配布状況の確認は村番号を入力してください。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GOD.png",
+      "title": "6450村",
+      "text": "人数を『2人』に設定しました。\n皆さんに村番号を伝えてください。",
+      "actions": [
+       {
+        "type": "message",
+        "label": "確認",
+        "text": "6450"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "A",
+   "text": "6450",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "役職はＧＭです。\n1/2人にお題を配りました。お題は『うううううううううううううううううううううううううううううう』です。",
+     "template": {
+      "type": "buttons",
+      "text": "役職はＧＭです。\n1/2人にお題を配りました。お題は『うううううううううううううううううううううううううううううう』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "6450"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "B",
+   "text": "6450",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職はインサイダーです。お題は『うううううううううううううううううううううううううううううう』です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/INSIDER.png",
+      "text": "あなたの役職はインサイダーです。お題は『うううううううううううううううううううううううううううううう』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "6450"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "A",
+   "text": "6450",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "役職はＧＭです。\n2/2人にお題を配りました。お題は『うううううううううううううううううううううううううううううう』です。",
+     "template": {
+      "type": "buttons",
+      "text": "役職はＧＭです。\n2/2人にお題を配りました。お題は『うううううううううううううううううううううううううううううう』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "6450"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "B",
+   "text": "6450",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "あなたの役職はインサイダーです。お題は『うううううううううううううううううううううううううううううう』です。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/INSIDER.png",
+      "text": "あなたの役職はインサイダーです。お題は『うううううううううううううううううううううううううううううう』です。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "入室状況確認",
+        "data": "6450"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "神",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "7300村 を新しく作成しました。お題を入力してください。",
+     "template": {
+      "type": "buttons",
+      "text": "7300村 を新しく作成しました。お題を入力してください。\nお題の自動取得もできます。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "お題の自動取得",
+        "data": "0"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "ええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええ",
+   "messages": [
+    {
+     "type": "text",
+     "text": "7300村 のお題を『ええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええ』に設定しました。\nお題を配りたい人数を入力してください。\n　例：「6」の場合は、「GM１人、インサイダー１人、村4人」です。"
+    }
+   ]
+  },
+  {
+   "user": "G",
+   "text": "2",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "人数を『2人』に設定しました。\n皆さんに村番号を伝えてください。配布状況の確認は村番号を入力してください。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GOD.png",
+      "title": "7300村",
+      "text": "人数を『2人』に設定しました。\n皆さんに村番号を伝えてください。",
+      "actions": [
+       {
+        "type": "message",
+        "label": "確認",
+        "text": "7300"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "A",
+   "text": "7300",
+   "messages": [
+    {
+     "type": "text",
+     "text": "あなたの役職はインサイダーです。お題は『ええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええ』です。"
+    },
+    {
+     "type": "text",
+     "text": "あなたは1番目の参加者です。\n　入室状況：1/2人"
+    }
+   ]
+  },
+  {
+   "user": "B",
+   "text": "7300",
+   "messages": [
+    {
+     "type": "text",
+     "text": "役職はＧＭです。\n2/2人にお題を配りました。お題は『ええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええ』です。"
+    },
+    {
+     "type": "text",
+     "text": "あなたは2番目の参加者です。\n　入室状況：2/2人"
+    }
+   ]
+  },
+  {
+   "user": "A",
+   "text": "7300",
+   "messages": [
+    {
+     "type": "text",
+     "text": "あなたの役職はインサイダーです。お題は『ええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええ』です。"
+    },
+    {
+     "type": "text",
+     "text": "あなたは1番目の参加者です。\n　入室状況：2/2人"
+    }
+   ]
+  },
+  {
+   "user": "B",
+   "text": "7300",
+   "messages": [
+    {
+     "type": "text",
+     "text": "役職はＧＭです。\n2/2人にお題を配りました。お題は『ええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええええ』です。"
+    },
+    {
+     "type": "text",
+     "text": "あなたは2番目の参加者です。\n　入室状況：2/2人"
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "お題",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "5684村 を新しく作成しました。お題を入力してください。",
+     "template": {
+      "type": "buttons",
+      "text": "5684村 を新しく作成しました。お題を入力してください。\nお題の自動取得もできます。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "お題の自動取得",
+        "data": "0"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "かかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかか",
+   "messages": [
+    {
+     "type": "text",
+     "text": "5684村 のお題を『かかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかか』に設定しました。\nお題を配りたい人数を入力してください。\n　例：「5」の場合は、「インサイダー１人、村4人」です。"
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "2",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "人数を『2人』に設定しました。\n皆さんに村番号を伝えてください。配布状況の確認は村番号を入力してください。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GM.png",
+      "title": "5684村",
+      "text": "人数を『2人』に設定しました。\n皆さんに村番号を伝えてください。",
+      "actions": [
+       {
+        "type": "message",
+        "label": "確認",
+        "text": "5684"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "5684",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "5684村：0/2人にお題を配りました。お題は『かかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかか』です。",
+     "template": {
+      "type": "buttons",
+      "text": "5684村：0/2人にお題を配りました。お題は『かかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかかか』です。",
+      "actions": [
+       {
+        "type": "message",
+        "label": "再確認",
+        "text": "5684"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "お題",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "6331村 を新しく作成しました。お題を入力してください。",
+     "template": {
+      "type": "buttons",
+      "text": "6331村 を新しく作成しました。お題を入力してください。\nお題の自動取得もできます。",
+      "actions": [
+       {
+        "type": "postback",
+        "label": "お題の自動取得",
+        "data": "0"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "ききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききき",
+   "messages": [
+    {
+     "type": "text",
+     "text": "6331村 のお題を『ききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききき』に設定しました。\nお題を配りたい人数を入力してください。\n　例：「5」の場合は、「インサイダー１人、村4人」です。"
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "2",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "人数を『2人』に設定しました。\n皆さんに村番号を伝えてください。配布状況の確認は村番号を入力してください。",
+     "template": {
+      "type": "buttons",
+      "thumbnailImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/GM.png",
+      "title": "6331村",
+      "text": "人数を『2人』に設定しました。\n皆さんに村番号を伝えてください。",
+      "actions": [
+       {
+        "type": "message",
+        "label": "確認",
+        "text": "6331"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "O",
+   "text": "6331",
+   "messages": [
+    {
+     "type": "text",
+     "text": "6331村：0/2人にお題を配りました。お題は『ききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききききき』です。"
+    }
+   ]
+  },
+  {
+   "user": "X",
+   "text": "@取得",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "お題は「召喚」です。確定しますか？",
+     "template": {
+      "type": "buttons",
+      "text": "お題は「召喚」です。確定しますか？",
+      "actions": [
+       {
+        "type": "message",
+        "label": "確定",
+        "text": "召喚"
+       },
+       {
+        "type": "postback",
+        "label": "初心者",
+        "data": "2"
+       },
+       {
+        "type": "postback",
+        "label": "上級者",
+        "data": "3"
+       },
+       {
+        "type": "postback",
+        "label": "変態",
+        "data": "4"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "X",
+   "text": "＠取得",
+   "messages": [
+    {
+     "type": "template",
+     "altText": "お題は「ナイスガイ」です。確定しますか？",
+     "template": {
+      "type": "buttons",
+      "text": "お題は「ナイスガイ」です。確定しますか？",
+      "actions": [
+       {
+        "type": "message",
+        "label": "確定",
+        "text": "ナイスガイ"
+       },
+       {
+        "type": "postback",
+        "label": "初心者",
+        "data": "2"
+       },
+       {
+        "type": "postback",
+        "label": "上級者",
+        "data": "3"
+       },
+       {
+        "type": "postback",
+        "label": "変態",
+        "data": "4"
+       }
+      ],
+      "imageAspectRatio": null,
+      "imageSize": "contain",
+      "imageBackgroundColor": null,
+      "defaultAction": null
+     }
+    }
+   ]
+  },
+  {
+   "user": "X",
+   "text": "@配布",
+   "messages": [
+    {
+     "type": "image",
+     "originalContentUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/966mpnqz.png",
+     "previewImageUrl": "https://raw.githubusercontent.com/ITSVKANRIBU/LineBot/3.0/Image/966mpnqz.png"
+    },
+    {
+     "type": "text",
+     "text": "https://line.me/R/ti/p/%40966mpnqz"
+    },
+    {
+     "type": "text",
+     "text": "お友達ID\n@966mpnqz"
+    }
+   ]
+  },
+  {
+   "user": "X",
+   "text": "@特殊",
+   "messages": [
+    {
+     "type": "text",
+     "text": "https://insidergametool.netlify.app/form.html"
+    }
+   ]
+  },
+  {
+   "user": "X",
+   "text": "500",
+   "messages": [
+    {
+     "type": "text",
+     "text": "村が作成されていません"
+    }
+   ]
+  },
+  {
+   "user": "X",
+   "text": "99999",
+   "messages": [
+    {
+     "type": "text",
+     "text": "村が作成されていません"
+    }
+   ]
+  },
+  {
+   "user": "X",
+   "text": "3",
+   "messages": [
+    {
+     "type": "text",
+     "text": "村が作成されていません"
+    }
+   ]
+  },
+  {
+   "user": "X",
+   "text": "　3　",
+   "messages": [
+    {
+     "type": "text",
+     "text": "村が作成されていません"
+    }
+   ]
+  },
+  {
+   "user": "X",
+   "text": "@逆村",
+   "messages": [
+    {
+     "type": "text",
+     "text": "村が作成されていません"
+    }
+   ]
+  },
+  {
+   "user": "X",
+   "text": "こんにちは",
+   "messages": [
+    {
+     "type": "text",
+     "text": "村が作成されていません"
+    }
+   ]
+  }
+ ]
+}

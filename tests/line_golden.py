@@ -43,6 +43,9 @@ IMAGE_KEYS = ("thumbnailImageUrl", "originalContentUrl", "previewImageUrl")
 _NUMBER = re.compile(r"(?<![0-9])[0-9]{4,5}(?![0-9])")
 _CANDIDATE = re.compile(r"^お題は「(.*)」です。確定しますか？$", re.DOTALL)
 _SEAT = re.compile(r"あなたは[0-9]+番目")
+# 参加者への「入室状況：k/n人」の k は入った順。配役は抽選なので、Java と Python でインサイダーが
+# 何番目に入ったかが変わり、k も変わる。席番号と同じ理由で伏せる（GM への入室状況は check=False で比べない）
+_SEAT_COUNT = re.compile(r"入室状況：[0-9]+/")
 _HIDDEN_CANDIDATE = "お題は「<WORD>」です。確定しますか？"
 
 
@@ -203,7 +206,9 @@ class Normalizer:
             return "<IMAGE>"
         if value in self._form_urls:
             return "<SPECIAL_FORM_URL>"
-        return _NUMBER.sub(self._number, _SEAT.sub("あなたは<SEAT>番目", value))
+        if _SEAT.search(value):
+            value = _SEAT_COUNT.sub("入室状況：<SEAT>/", _SEAT.sub("あなたは<SEAT>番目", value))
+        return _NUMBER.sub(self._number, value)
 
     def _number(self, match: re.Match[str]) -> str:
         return self._numbers.setdefault(match.group(), f"<N{len(self._numbers) + 1}>")

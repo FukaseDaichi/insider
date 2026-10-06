@@ -68,7 +68,7 @@ uv run python deploy/verify/line_api_stub.py 18080
 uv run --env-file .env python deploy/verify/post_callback.py http://127.0.0.1:8080/line/callback text U0000 お題
 ```
 
-LINE の返信が Java の LineBot と同じかは `tests/test_line_golden.py` が確かめます。比べる JSON（`tests/golden/line_callapi.json`）は、Java の LineBot を手元で動かして採ります（`<LineBot>` は LineBot のリポジトリ。Java は本番と同じ 8 を使う）。まだ採っていないあいだは比較を飛ばします（skip）。`tests/line_golden.py` の手順を変えたら採り直します。
+LINE の返信が Java の LineBot と同じかは `tests/test_line_golden.py` が確かめます。比べる JSON（`tests/golden/line_callapi.json`）は、Java の LineBot を手元で動かして採ります（`<LineBot>` は LineBot のリポジトリ。Java は本番と同じ 8 を使う）。JSON は 2026-10-06 に Java 8 の LineBot 2.7.0 から採ってあります。`tests/line_golden.py` の手順を変えたら採り直します（採っていない状態では比較を飛ばします）。
 
 ```bash
 LINE_BOT_CHANNEL_TOKEN=golden LINE_BOT_CHANNEL_SECRET=golden java -jar <LineBot>/insider-game-bot/build/libs/insider-game-bot-2.7.0-SNAPSHOT.jar --server.port=18080
