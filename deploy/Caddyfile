@@ -36,7 +36,8 @@ insider.example.com {
 	# Caddy の 2MB は 2,000,000 バイトなので MiB で書く。
 	# 根拠は特殊村: 1 村 100 通 × 5,000 文字 (UTF-16 単位) が仕様上の最大で、日本語は UTF-8 で 3 バイトなので約 1.5MB。
 	# 超過時の応答は 413 とは限らない。Caddy は Content-Length で事前に弾かず、下流が本文を読んだ時点で打ち切り、
-	# reverse_proxy は読み取りエラーを 502 に丸める。どちらでも aiohttp には届いていない
+	# reverse_proxy は読み取りエラーを 502 に丸める。要求そのものは aiohttp に届いていて、本文の途中で接続が
+	# 切れる（2026-10-06 の切替前検証で確認。aiohttp 側は ConnectionResetError を 400 として扱う）
 	request_body {
 		max_size 2MiB
 	}

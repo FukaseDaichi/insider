@@ -91,6 +91,11 @@ async def _read_body(request: web.Request) -> dict[str, Any]:
     except (ValueError, LookupError, RecursionError):
         # JSON でない・UTF-8 でない・charset が不明・入れ子が深すぎる
         raise BadRequest from None
+    except ConnectionResetError:
+        # 本文を読み切る前に接続が切れた。本番では Caddy が 2MiB を超えた本文をここで打ち切る
+        # （クライアントには Caddy が 413 を返す）。aiohttp の client_max_size は本文を読み終えてから
+        # 数えるので先に効かない。捕まえないと 500 と Traceback が ERROR で残る
+        raise BadRequest from None
     if not isinstance(body, dict):
         raise BadRequest
     # 孤立したサロゲートは UTF-8 にできず、お題に入ると以後の返事が送れなくなる

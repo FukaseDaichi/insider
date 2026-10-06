@@ -341,6 +341,20 @@ async def test_deeply_nested_json_is_rejected(page):
         assert response.status == 400
 
 
+async def test_a_body_cut_off_by_the_proxy_is_a_bad_request():
+    """本番では Caddy が 2MiB を超えた本文を途中で打ち切り、aiohttp には接続切れとして見える。500 と Traceback ではなく 400 にする。"""
+    from insider_bot.web.village_api import BadRequest, _read_body
+
+    class CutOff:
+        content_type = "application/json"
+
+        async def json(self):
+            raise ConnectionResetError("Connection lost")
+
+    with pytest.raises(BadRequest):
+        await _read_body(CutOff())
+
+
 async def test_the_token_and_the_topic_are_not_logged(page, caplog):
     with caplog.at_level(logging.DEBUG):
         async with serve(page, 0) as client:
