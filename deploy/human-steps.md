@@ -30,7 +30,7 @@
 | ホスト名 `<host>` | `insidergame.fyi`（Cloudflare Registrar、2026-10-05 取得、年 $5.20、2027-10-05 まで。サブドメインは使わずルートをそのまま使う） | Phase 1 |
 | 切替日 | | Phase 6 |
 | Heroku 解約予定日 | 切替日 + 1 か月 | Phase 6 |
-| memfloor の方式（tmpfs / プロセス） | | Phase 5 |
+| memfloor の方式（tmpfs / プロセス） | **tmpfs**（既定の insider-memfloor のまま）。2026-10-06 の 5-1 で、OCI の MemoryUtilization が memfloor 起動前 4.5% → 起動後 30.4% と出て、tmpfs が使用中に数えられていると確認 | Phase 5 |
 | PAYG へ上げた日と理由 | 2026-10-06。A1 が Out of host capacity で 1 晩（173 回）取れなかったため、確保が通りやすい有料アカウントにした。予算 `insider-budget`（月 $1、100% でメール）も同日作成 | 別枠 |
 
 ## 全体の流れ
