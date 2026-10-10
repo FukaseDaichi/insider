@@ -10,8 +10,13 @@ from insider_bot.web.hub import (
     ANSWER_SOUNDS,
     CORRECT_SOUND,
     GIVEUP_SOUND,
+    INSIDER_START_SOUND,
     INSIDER_STARTED,
+    INSIDER_TIMEUP_SOUND,
+    INSIDER_VOTE_SOUND,
     INSIDER_VOTING,
+    INSIDER_WIN_SOUND,
+    VILLAGERS_WIN_SOUND,
     START_SOUNDS,
     RoomHub,
     answer_sound,
@@ -696,7 +701,7 @@ async def test_time_up_ends_game_with_everyone_losing():
     assert texts[-2] == "🏳️ 時間切れ！お題は『すいか』でした（質問数: 1）"
     data = t.entries()[-1]["data"]
     assert (data["ending"], data["winner"], data["insider"], data["votes"]) == ("time_up", "none", "はなこ", [])
-    assert t.of("sound")[-1]["src"] == GIVEUP_SOUND
+    assert t.of("sound")[-1]["src"] == INSIDER_TIMEUP_SOUND
 
 
 async def test_time_up_after_correct_or_for_old_game_does_nothing():
@@ -796,3 +801,37 @@ async def test_insider_topic_while_random_start_is_registering_is_refused():
     await task
     assert world.manager.get(world.room.room_id).topic == "すいか"
     assert world.room.insider.phase.value == "asking"
+
+
+# --- インサイダーゲームの声 ---
+
+
+def test_insider_sounds_are_served():
+    for src in (INSIDER_START_SOUND, INSIDER_VOTE_SOUND, INSIDER_TIMEUP_SOUND, VILLAGERS_WIN_SOUND, INSIDER_WIN_SOUND):
+        assert (STATIC_DIR / src.removeprefix("/static/")).is_file()
+
+
+def sounds_of(conn) -> list[str]:
+    return [message["src"] for message in conn.of("sound")]
+
+
+async def test_insider_game_plays_its_own_start_sound():
+    world, people = await insider_playing()
+    assert sounds_of(people[3][0]) == [INSIDER_START_SOUND]
+
+
+async def test_correct_guess_in_insider_game_plays_vote_sound_instead_of_correct():
+    world, people = await insider_playing()
+    (t, tp), (h, hp), _, _ = people
+    await world.hub.ask(world.room, hp, "すいかですか", world.game_id())
+    assert sounds_of(t)[1:] == [INSIDER_VOTE_SOUND]
+
+
+@pytest.mark.parametrize(("votes", "sound"), [((1, 0, 0), VILLAGERS_WIN_SOUND), ((1, 2, 1), INSIDER_WIN_SOUND)])
+async def test_vote_result_plays_winner_sound(votes, sound):
+    world, people = await insider_playing(rng_index=0)  # たろう がインサイダー
+    conns, ids = [c for c, _ in people[:3]], [p.player_id for _, p in people[:3]]
+    await world.hub.ask(world.room, people[1][1], "すいかですか", world.game_id())
+    for voter, target in enumerate(votes):
+        world.hub.vote(world.room, people[voter][1], ids[target])
+    assert sounds_of(conns[0])[-1] == sound

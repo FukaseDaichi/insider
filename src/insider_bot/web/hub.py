@@ -61,6 +61,12 @@ ANSWER_SOUNDS = tuple(
 # ゲームの終わりの声。正解は言い当てた質問の返事の代わりに、ギブアップはお題の公開と一緒に鳴らす
 CORRECT_SOUND = "/static/sounds/correct.m4a"
 GIVEUP_SOUND = "/static/sounds/giveup.m4a"
+# インサイダーゲームの声。開始・当たり（投票へ）・時間切れは、通常の声の代わりに鳴らす。開票では勝った側の声を鳴らす
+INSIDER_START_SOUND = "/static/sounds/insider-start.m4a"
+INSIDER_VOTE_SOUND = "/static/sounds/insider-vote.m4a"
+INSIDER_TIMEUP_SOUND = "/static/sounds/insider-timeup.m4a"
+VILLAGERS_WIN_SOUND = "/static/sounds/villagers-win.m4a"
+INSIDER_WIN_SOUND = "/static/sounds/insider-win.m4a"
 
 
 # インサイダーゲームでは、お題当ての出題者は人ではなく AI の GM。参加者の ID（1 から）と重ならない番兵
@@ -253,7 +259,7 @@ class RoomHub:
         insider.begin(topic, game.game_id, self._clock())
         if insider.minutes is not None:
             self._schedule_time_up(room, game.game_id, insider.minutes * 60)
-        self._broadcast(room, {"type": "sound", "src": self._choose(START_SOUNDS)})
+        self._broadcast(room, {"type": "sound", "src": INSIDER_START_SOUND})
         self._broadcast_entry(room, room.add_entry(None, INSIDER_STARTED))
         self._broadcast_room(room)
 
@@ -318,25 +324,27 @@ class RoomHub:
             log.exception("質問の処理に失敗しました（room=%s）", room.code)
             outcome = Outcome(public=fmt.format_error())
         entry.pending = False
+        # インサイダーゲームのお題が当たったら、投票に進む。判定中に別の回へ替わっていたら触らない
+        opens_voting = (
+            outcome.is_correct
+            and insider is not None
+            and insider is room.insider
+            and insider.phase is Phase.ASKING
+            and insider.game_id == game.game_id
+        )
         # 開始の音声と同じく、その場かぎりの合図。全員が同じ声を聞く
         if outcome.yes_percent is not None:
             self._broadcast(room, {"type": "sound", "src": answer_sound(outcome.yes_percent)})
         elif outcome.is_correct:
-            self._broadcast(room, {"type": "sound", "src": CORRECT_SOUND})
+            # インサイダーゲームでは、正解の声の代わりに投票へ誘う声を鳴らす（続けて鳴らすと重なる）
+            self._broadcast(room, {"type": "sound", "src": INSIDER_VOTE_SOUND if opens_voting else CORRECT_SOUND})
         if outcome.public is not None:
             entry.text = outcome.public
         else:
             # 判定の順番待ちの間に、先の質問の正解やギブアップでゲームが終わった
             entry.text = f"❓ {question}\n— ゲームが終わったため取り消しました"
         self._broadcast_entry(room, entry)
-        # インサイダーゲームのお題が当たったら、投票に進む。判定中に別の回へ替わっていたら触らない
-        if (
-            outcome.is_correct
-            and insider is not None
-            and insider is room.insider
-            and insider.phase is Phase.ASKING
-            and insider.game_id == game.game_id
-        ):
+        if opens_voting:
             self._cancel_timer(room)
             insider.start_voting(player.name)
             self._broadcast_entry(room, room.add_entry(None, INSIDER_VOTING))
@@ -397,7 +405,7 @@ class RoomHub:
         # 判定の順番待ちの間に当たって投票へ進んだら、もうゲームはない
         if outcome.public is None or game is None or room.insider is not insider or insider.phase is not Phase.ASKING:
             return
-        self._broadcast(room, {"type": "sound", "src": GIVEUP_SOUND})
+        self._broadcast(room, {"type": "sound", "src": INSIDER_TIMEUP_SOUND})
         # 🏳️ で始めると、画面はギブアップと同じお題の公開カードで描く
         self._broadcast_entry(
             room, room.add_entry(None, f"🏳️ 時間切れ！お題は『{insider.topic}』でした（質問数: {game.question_count}）")
@@ -417,6 +425,9 @@ class RoomHub:
                 for player_id, count in tally.counts.items()
             ]
             text = f"🕵️ インサイダーは {name} でした。{'村人の勝ち！' if tally.villagers_win else 'インサイダーの勝ち！'}"
+            self._broadcast(
+                room, {"type": "sound", "src": VILLAGERS_WIN_SOUND if tally.villagers_win else INSIDER_WIN_SOUND}
+            )
         else:
             winner = "none"
             text = f"🕵️ インサイダーは {name} でした。全員の負け…"
