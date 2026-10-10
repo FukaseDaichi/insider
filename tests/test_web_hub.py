@@ -110,7 +110,12 @@ def test_join_enqueues_welcome_then_snapshot():
         {"type": "welcome", "token": player.token},
         {
             "type": "snapshot",
-            "room": {"players": [{"name": "はなこ", "online": True}], "game": None, "you": {"is_setter": False}},
+            "room": {
+                "players": [{"id": player.player_id, "name": "はなこ", "online": True}],
+                "game": None,
+                "you": {"id": player.player_id, "is_setter": False},
+                "insider": None,
+            },
             "log": [],
         },
     ]
@@ -129,15 +134,15 @@ def test_join_with_invalid_name_raises():
 
 def test_others_see_arrival_and_departure():
     world = World()
-    first, _ = world.join("たろう")
-    second, _ = world.join("はなこ")
+    first, taro = world.join("たろう")
+    second, hanako = world.join("はなこ")
     assert first.last_room()["players"] == [
-        {"name": "たろう", "online": True},
-        {"name": "はなこ", "online": True},
+        {"id": taro.player_id, "name": "たろう", "online": True},
+        {"id": hanako.player_id, "name": "はなこ", "online": True},
     ]
     assert second.of("room") == []
     world.hub.leave(world.room, second)
-    assert first.last_room()["players"][1] == {"name": "はなこ", "online": False}
+    assert first.last_room()["players"][1] == {"id": hanako.player_id, "name": "はなこ", "online": False}
 
 
 def test_closing_one_of_two_tabs_keeps_player_online():
@@ -146,7 +151,7 @@ def test_closing_one_of_two_tabs_keeps_player_online():
     tab1, player = world.join("はなこ")
     world.join("はなこ", player.token)
     world.hub.leave(world.room, tab1)
-    assert observer.last_room()["players"][1] == {"name": "はなこ", "online": True}
+    assert observer.last_room()["players"][1] == {"id": player.player_id, "name": "はなこ", "online": True}
 
 
 # --- お題を出す ---
@@ -164,13 +169,23 @@ async def test_start_notifies_setter_and_announces_to_everyone():
 async def test_topic_reaches_only_the_setter():
     world, (setter_conn, setter), (asker_conn, _) = await playing()
     late_conn, _ = world.join("じろう")
-    assert setter_conn.last_room()["you"] == {"is_setter": True, "topic": "りんご", "hint": "赤い果物"}
+    assert setter_conn.last_room()["you"] == {
+        "id": setter.player_id,
+        "is_setter": True,
+        "topic": "りんご",
+        "hint": "赤い果物",
+    }
     for conn in (asker_conn, late_conn):
         dumped = json.dumps(conn.messages, ensure_ascii=False)
         assert "りんご" not in dumped
         assert "赤い果物" not in dumped
     again_conn, _ = world.join("たろう", setter.token)
-    assert again_conn.of("snapshot")[0]["room"]["you"] == {"is_setter": True, "topic": "りんご", "hint": "赤い果物"}
+    assert again_conn.of("snapshot")[0]["room"]["you"] == {
+        "id": setter.player_id,
+        "is_setter": True,
+        "topic": "りんご",
+        "hint": "赤い果物",
+    }
 
 
 async def test_header_shows_question_count_and_elapsed_but_not_setter():

@@ -190,3 +190,22 @@ def test_entry_to_message():
     room = registry.create()
     entry = room.add_entry("はなこ", "❓ 果物ですか？\n… 判定中", pending=True)
     assert entry.to_message() == {"id": 1, "author": "はなこ", "text": "❓ 果物ですか？\n… 判定中", "pending": True}
+
+
+def test_entry_kind_and_data_are_sent_only_when_set():
+    room = RoomRegistry().create()
+    plain = room.add_entry(None, "本文")
+    card = room.add_entry(None, "結果", kind="insider_result", data={"winner": "insider"})
+    assert plain.to_message() == {"id": plain.entry_id, "author": None, "text": "本文", "pending": False}
+    assert card.to_message() == {
+        "id": card.entry_id,
+        "author": None,
+        "text": "結果",
+        "pending": False,
+        "kind": "insider_result",
+        "data": {"winner": "insider"},
+    }
+
+
+def test_room_starts_without_insider_round():
+    assert RoomRegistry().create().insider is None

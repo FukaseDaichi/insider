@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from insider_bot.game import Clock
+from insider_bot.web.insider import InsiderRound
 
 # 紛らわしい 0・O・1・I・L を除く
 CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
@@ -51,9 +52,21 @@ class Entry:
     author: str | None
     text: str
     pending: bool = False
+    # 文字の読み解きではなく構造で描く記録（インサイダーゲームの結果）。ほかの記録は None のまま
+    kind: str | None = None
+    data: dict[str, Any] | None = None
 
     def to_message(self) -> dict[str, Any]:
-        return {"id": self.entry_id, "author": self.author, "text": self.text, "pending": self.pending}
+        message: dict[str, Any] = {
+            "id": self.entry_id,
+            "author": self.author,
+            "text": self.text,
+            "pending": self.pending,
+        }
+        if self.kind is not None:
+            message["kind"] = self.kind
+            message["data"] = self.data
+        return message
 
 
 @dataclass(eq=False)
@@ -65,13 +78,22 @@ class Room:
     players: dict[str, Player] = field(default_factory=dict)
     connections: dict[object, Player] = field(default_factory=dict)
     log: list[Entry] = field(default_factory=list)
+    # いまのインサイダーゲーム。終わった回も、次のゲームが始まるまで役職のカードを開き直せるよう残す
+    insider: InsiderRound | None = None
     _entry_ids: itertools.count = field(default_factory=lambda: itertools.count(1), init=False, repr=False)
 
     def is_online(self, player: Player) -> bool:
         return any(owner is player for owner in self.connections.values())
 
-    def add_entry(self, author: str | None, text: str, pending: bool = False) -> Entry:
-        entry = Entry(next(self._entry_ids), author, text, pending)
+    def add_entry(
+        self,
+        author: str | None,
+        text: str,
+        pending: bool = False,
+        kind: str | None = None,
+        data: dict[str, Any] | None = None,
+    ) -> Entry:
+        entry = Entry(next(self._entry_ids), author, text, pending, kind, data)
         self.log.append(entry)
         del self.log[:-LOG_LIMIT]
         return entry

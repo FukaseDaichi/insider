@@ -149,7 +149,8 @@ async def test_reconnect_with_token_restores_setter_and_history(static_dir):
         await setter.close()
         _, again_token, snapshot = await join(client, code, "たろう", token)
         assert again_token == token
-        assert snapshot["room"]["you"] == {"is_setter": True, "topic": "りんご", "hint": "赤い果物"}
+        you = snapshot["room"]["you"]
+        assert (you["is_setter"], you["topic"], you["hint"]) == (True, "りんご", "赤い果物")
         assert any("お題が設定されました" in entry["text"] for entry in snapshot["log"])
 
 

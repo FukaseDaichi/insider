@@ -182,7 +182,7 @@ class RoomHub:
     def _room_state(self, room: Room, player: Player) -> dict[str, Any]:
         game = self._manager.get(room.room_id)
         header = None
-        you: dict[str, Any] = {"is_setter": False}
+        you: dict[str, Any] = {"id": player.player_id, "is_setter": False}
         if game is not None:
             header = {
                 "id": game.game_id,
@@ -191,9 +191,15 @@ class RoomHub:
             }
             if game.setter_id == player.player_id:
                 # お題と補足は出題者の接続にだけ入れる。誰が出題者かはほかの接続に送らない
-                you = {"is_setter": True, "topic": game.topic, "hint": game.hint}
-        players = [{"name": p.name, "online": room.is_online(p)} for p in room.players.values()]
-        return {"players": players, "game": header, "you": you}
+                you = {"id": player.player_id, "is_setter": True, "topic": game.topic, "hint": game.hint}
+        # 名前は重なりうるので、画面は参加者を ID で選ぶ（連番で、秘密ではない）
+        players = [
+            {"id": p.player_id, "name": p.name, "online": room.is_online(p)} for p in room.players.values()
+        ]
+        return {"players": players, "game": header, "you": you, "insider": self._insider_state(room, player)}
+
+    def _insider_state(self, room: Room, player: Player) -> dict[str, Any] | None:
+        return None
 
     def _broadcast_room(self, room: Room, skip: Connection | None = None) -> None:
         for conn, player in list(room.connections.items()):
