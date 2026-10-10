@@ -683,3 +683,81 @@ async def test_close_vote_by_participant_with_tie_lets_insider_win():
     data = t.entries()[-1]["data"]
     assert data["winner"] == "insider"
     assert "インサイダーの勝ち" in t.entries()[-1]["text"]
+
+
+async def test_time_up_ends_game_with_everyone_losing():
+    world, people = await insider_playing(rng_index=1)
+    (t, tp), (h, hp), (j, jp), _ = people
+    game_id = world.game_id()
+    await world.hub.ask(world.room, jp, "果物ですか", game_id)
+    await world.hub.time_up(world.room, game_id)
+    assert world.manager.get(world.room.room_id) is None
+    texts = [entry["text"] for entry in t.entries()]
+    assert texts[-2] == "🏳️ 時間切れ！お題は『すいか』でした（質問数: 1）"
+    data = t.entries()[-1]["data"]
+    assert (data["ending"], data["winner"], data["insider"], data["votes"]) == ("time_up", "none", "はなこ", [])
+    assert t.of("sound")[-1]["src"] == GIVEUP_SOUND
+
+
+async def test_time_up_after_correct_or_for_old_game_does_nothing():
+    world, people = await insider_playing()
+    (t, tp), (h, hp), (j, jp), _ = people
+    game_id = world.game_id()
+    await world.hub.ask(world.room, hp, "すいかですか", game_id)
+    before = list(t.messages)
+    await world.hub.time_up(world.room, game_id)
+    assert t.messages == before
+    assert world.room.insider.phase.value == "voting"
+
+
+async def test_timer_fires_time_up(monkeypatch):
+    world, people = await insider_playing()
+    fired = []
+
+    async def fake_time_up(room, game_id):
+        fired.append(game_id)
+
+    monkeypatch.setattr(world.hub, "time_up", fake_time_up)
+    world.hub._schedule_time_up(world.room, 42, 0.01)
+    await asyncio.sleep(0.05)
+    assert fired == [42]
+
+
+async def test_giveup_is_for_participants_and_reveals_insider():
+    world, people = await insider_playing(rng_index=2)
+    (t, tp), (h, hp), (j, jp), (s, sp) = people
+    await world.hub.giveup(world.room, sp)
+    assert s.notices()[-1] == "インサイダーゲームの参加者だけがギブアップできます"
+    assert world.manager.get(world.room.room_id) is not None
+    await world.hub.giveup(world.room, hp)
+    data = t.entries()[-1]["data"]
+    assert (data["ending"], data["insider"], data["winner"]) == ("giveup", "じろう", "none")
+
+
+async def test_giveup_while_insider_is_choosing_cancels_round():
+    world = World(rng=FixedRandom(0))
+    (t, tp), (h, hp), (j, jp), _ = trio(world)
+    await world.hub.insider_start(world.room, hp, [tp.player_id, hp.player_id, jp.player_id], "insider", None, None)
+    await world.hub.giveup(world.room, jp)
+    data = t.entries()[-1]["data"]
+    assert (data["ending"], data["topic"], data["insider"]) == ("giveup", None, "たろう")
+    assert t.last_room()["insider"]["phase"] == "done"
+
+
+async def test_other_games_are_refused_while_voting():
+    world, people = await insider_playing()
+    (t, tp), (h, hp), (j, jp), _ = people
+    await world.hub.ask(world.room, hp, "すいかですか", world.game_id())
+    await world.hub.start(world.room, tp, "りんご", "")
+    assert t.notices()[-1] == "このルームではゲームが進行中です"
+    await world.hub.insider_start(world.room, tp, [tp.player_id, hp.player_id, jp.player_id], "random", None, None)
+    assert t.notices()[-1] == "このルームではゲームが進行中です"
+
+
+async def test_normal_game_after_done_round_clears_role_card():
+    world, people = await insider_playing()
+    (t, tp), (h, hp), (j, jp), _ = people
+    await world.hub.giveup(world.room, hp)
+    assert t.last_room()["insider"]["phase"] == "done"
+    await world.hub.start(world.room, tp, "りんご", "")
+    assert t.last_room()["insider"] is None
