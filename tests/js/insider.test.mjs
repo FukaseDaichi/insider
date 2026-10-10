@@ -9,6 +9,7 @@ import {
   selectable,
   setupProblem,
   startMessage,
+  voteProgress,
   voteTargets,
 } from "../../src/insider_bot/web/static/insider.js";
 
@@ -98,4 +99,10 @@ test("ゲームのない間の上のバー。お題待ちと投票中はそれ�
   assert.equal(idleStatus({ phase: "done" }), null);
   assert.equal(idleStatus({ phase: "choosing" }), "インサイダーがお題を考えています…");
   assert.equal(idleStatus({ phase: "voting" }), "投票中 — インサイダーは誰？");
+});
+
+test("投票の進み具合。まだ入れていない人の名前を出す", () => {
+  const insider = { participants: [1, 2, 3], voted: [2] };
+  assert.equal(voteProgress(insider, PLAYERS), "投票 1 / 3 人（まだ：たろう・じろう）");
+  assert.equal(voteProgress({ participants: [1, 2, 3], voted: [1, 2, 3] }, PLAYERS), "投票 3 / 3 人");
 });

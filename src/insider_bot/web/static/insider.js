@@ -80,3 +80,12 @@ const IDLE_STATUS = {
 export function idleStatus(insider) {
   return IDLE_STATUS[insider?.phase] ?? null;
 }
+
+/** 投票の進み具合。開票を締め切るか決められるよう、まだ入れていない人の名前を添える。 */
+export function voteProgress(insider, players) {
+  const names = new Map(players.map((player) => [player.id, player.name]));
+  const voted = new Set(insider.voted);
+  const waiting = insider.participants.filter((id) => !voted.has(id)).map((id) => names.get(id) ?? "?");
+  const count = `投票 ${voted.size} / ${insider.participants.length} 人`;
+  return waiting.length ? `${count}（まだ：${waiting.join("・")}）` : count;
+}

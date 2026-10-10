@@ -11,6 +11,7 @@ import {
   selectable,
   setupProblem,
   startMessage,
+  voteProgress,
   voteTargets,
 } from "./insider.js";
 
@@ -102,7 +103,13 @@ export class InsiderView {
       this.send({ type: "close_vote" });
       $("close-vote-dialog").close();
     });
-    $("insider-cancel").addEventListener("click", () => this.send({ type: "giveup" }));
+    // 1 回触れただけで回が終わらないよう、通常のギブアップと同じく確かめてから送る
+    $("insider-cancel").addEventListener("click", () => $("insider-cancel-dialog").showModal());
+    $("insider-cancel-back").addEventListener("click", () => $("insider-cancel-dialog").close());
+    $("insider-cancel-confirm").addEventListener("click", () => {
+      if (this.room?.insider?.phase === "choosing") this.send({ type: "giveup" });
+      $("insider-cancel-dialog").close();
+    });
   }
 
   openSetup() {
@@ -161,7 +168,7 @@ export class InsiderView {
     } else if (insider.phase === "asking") {
       status.textContent = role === null ? "見学中（質問・投票はできません）" : "";
     } else if (insider.phase === "voting") {
-      status.textContent = `投票 ${insider.voted.length} / ${insider.participants.length} 人`;
+      status.textContent = voteProgress(insider, players);
       if (role !== null) this.renderVotes(insider, players, you.id);
     } else {
       status.textContent = "";
