@@ -236,7 +236,7 @@ function renderCelebration(result) {
 function renderResult(result) {
   const label = document.createElement("span");
   label.className = "result-label";
-  label.textContent = "🏳️ ギブアップ";
+  label.textContent = `🏳️ ${result.label}`;
   const title = document.createElement("strong");
   title.className = "result-title";
   title.textContent = result.title;
@@ -423,6 +423,8 @@ class RoomPage {
       case "snapshot":
         this.retry = 0;
         this.setConnected(true);
+        // 結果のカードは同じ名前の人を見分けて描くので、記録より先に参加者を覚える
+        this.players = message.room.players;
         this.renderLog(message.log);
         this.renderRoom(message.room);
         break;
@@ -508,6 +510,7 @@ class RoomPage {
 
   renderRoom(room) {
     const { players, game, you } = room;
+    this.players = players;
     if (this.game?.id !== game?.id && $("giveup-dialog").open)
       $("giveup-dialog").close();
     this.game = game;
@@ -600,7 +603,7 @@ class RoomPage {
     if (entry.kind === "insider_result" && entry.data) {
       item.className = "entry result insider-result";
       item.dataset.kind = "result";
-      item.replaceChildren(...InsiderView.resultNodes(entry.data));
+      item.replaceChildren(...InsiderView.resultNodes(entry.data, this.players ?? []));
       this.renumber();
       if (atBottom) log.scrollTop = log.scrollHeight;
       return;

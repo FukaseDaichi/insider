@@ -28,7 +28,9 @@ export function resultOf(text) {
   if (!text.startsWith(GIVEUP_PREFIX)) return null;
   const [title, ...rest] = text.slice(GIVEUP_PREFIX.length).split("\n");
   const meta = rest.map((line) => line.trim()).filter(Boolean);
-  return { kind: "giveup", title: title.trim(), meta: meta.length ? meta.join("　") : null };
+  // インサイダーゲームの時間切れも、同じお題の公開カードで描く。見出しの小さなラベルだけを変える
+  const label = title.trim().startsWith("時間切れ") ? "時間切れ" : "ギブアップ";
+  return { kind: "giveup", label, title: title.trim(), meta: meta.length ? meta.join("　") : null };
 }
 
 // 質問番号はゲームごとに 1 から。開始の案内（host）で数え直し、質問（question）だけに付ける

@@ -1,11 +1,13 @@
 // ルームのインサイダーゲームの描画。判断は insider.js にあり、ここは DOM に描いてボタンを結ぶだけ
 import {
   DEFAULT_MINUTES,
+  dialogsToClose,
   formatRemaining,
   idleStatus,
   initialSelection,
   MAX_MINUTES,
   MIN_MINUTES,
+  nameLabels,
   resultView,
   ROLE_LABELS,
   selectable,
@@ -123,9 +125,10 @@ export class InsiderView {
   renderPicker() {
     const { players, you } = this.room;
     const choices = selectable(players, you.id, this.topicMode());
+    const names = nameLabels(players);
     $("insider-players").replaceChildren(
       ...choices.map((player) =>
-        pickButton(player.id === you.id ? `${player.name}（自分）` : player.name, this.selected.has(player.id), () => {
+        pickButton(player.id === you.id ? `${names.get(player.id)}（自分）` : names.get(player.id), this.selected.has(player.id), () => {
           if (this.selected.has(player.id)) this.selected.delete(player.id);
           else this.selected.add(player.id);
           this.renderPicker();
@@ -137,8 +140,14 @@ export class InsiderView {
 
   /** room の変化を描く。返り値は「質問の操作（押して話す）を出してよいか」。 */
   render(room) {
+    // 回が替わった・段階が進んだら、もう意味のないダイアログ（前の回の役職・中止や開票の確認）を閉じる
+    for (const id of dialogsToClose(this.room?.insider ?? null, room.insider ?? null)) {
+      if ($(id).open) $(id).close();
+    }
     this.room = room;
     const { insider, you, players, game } = room;
+    // 設定のシートを開いている間に入ってきた人も、候補に出す
+    if ($("insider-setup").open) this.renderPicker();
     const active = insider && insider.phase !== "done";
     // お題当てのフォームを開いている間は、その上に出さない
     $("insider-open").hidden = Boolean(game) || Boolean(active) || !$("start-form").hidden;
@@ -195,8 +204,8 @@ export class InsiderView {
     return formatRemaining(this.deadline - performance.now() / 1000);
   }
 
-  static resultNodes(data) {
-    const view = resultView(data);
+  static resultNodes(data, players = []) {
+    const view = resultView(data, players);
     const nodes = [element("p", "insider-result-headline", view.headline), element("p", "insider-result-title", view.title)];
     if (view.topic) nodes.push(element("p", "insider-result-topic", `お題：${view.topic}`));
     if (view.guesser) nodes.push(element("p", "insider-result-meta", `正解者：${view.guesser}`));

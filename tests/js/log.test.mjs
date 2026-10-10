@@ -79,10 +79,17 @@ test("ギブアップは、内訳なしの見出しだけ", () => {
     resultOf("🏳️ ギブアップ！お題は『りんご』でした（質問数: 3）"),
     {
       kind: "giveup",
+      label: "ギブアップ",
       title: "ギブアップ！お題は『りんご』でした（質問数: 3）",
       meta: null,
     },
   );
+});
+
+test("インサイダーゲームの時間切れは、同じ公開カードに「時間切れ」の見出しで出す", () => {
+  const result = resultOf("🏳️ 時間切れ！お題は『たこ焼き』でした（質問数: 0）");
+  assert.equal(result.kind, "giveup");
+  assert.equal(result.label, "時間切れ");
 });
 
 test("正解でもギブアップでもない発言は結果ではない", () => {
