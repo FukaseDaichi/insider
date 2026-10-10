@@ -11,7 +11,7 @@ Oracle Cloud Always Free の A1 VM 1 台に insider（Web 版・配役ツール�
 | 項目 | 値 | 備考 |
 | --- | --- | --- |
 | Oracle Cloud アカウント | ホームリージョン **ap-tokyo-1** | サインアップ時に決まり、後から変更できない |
-| A1 インスタンス | VM.Standard.A1.Flex、2 OCPU / 12GB、Ubuntu 24.04（aarch64）、ブートボリューム 50GB | `Out of host capacity` なら時間を置いてリトライ。取れるまで Heroku のまま |
+| A1 インスタンス | VM.Standard.A1.Flex、2 OCPU / 12GB、Ubuntu 24.04（aarch64）、ブートボリューム 50GB | `Out of host capacity` なら時間を置いてリトライ |
 | VCN の security list | ingress 22 / 80 / 443（0.0.0.0/0）、egress は既定（全許可）のまま | egress 443 は api.line.me、api.typesafe.ai、Discord のゲートウェイに必要 |
 | SSH 鍵 | インスタンス作成時に登録した公開鍵（`ubuntu` ユーザー用） | |
 | ホスト名 | `<host>`（例 `insider.<domain>`）の A レコードを VM の公開 IP へ | Cloudflare なら DNS の Proxy を **OFF**（DNS only）。Caddy が直接 TLS を終端するため |
@@ -143,7 +143,7 @@ PUBLIC_BASE_URL=https://<host>
 
 期待: `-rw------- 1 root root` と `5`（5 行とも値がある）、`token 172 文字, secret 32 文字`、`bot/info 200`。**401 なら貼り付けで文字が欠けている**（2026-10-06 の切替で 171 文字のまま進め、切替直後の返信が全部 401 になった。webhook 自体は署名が合えば 200 を返すので、返信の失敗は journal の WARNING でしか分からない）。切替前の検証中だけ、これに `LINE_API_BASE_URL=http://127.0.0.1:18080` を足す（[cutover.md](cutover.md)）。
 
-**Discord ボットはここで動き出すと Heroku とは無関係に本物の Discord に接続する。** VM が動いている間は Mac で `scripts/play.sh` を使わない（2 か所で動くと質問に 2 回返信する）。Mac の `.env` に `PRODUCTION_URL=https://<host>` を書いておくと、play.sh は本番の `/healthz` が `ok` の間は起動を断る。
+**Discord ボットはここで動き出すと本物の Discord に接続する。** VM が動いている間は Mac で `scripts/play.sh` を使わない（2 か所で動くと質問に 2 回返信する）。Mac の `.env` に `PRODUCTION_URL=https://<host>` を書いておくと、play.sh は本番の `/healthz` が `ok` の間は起動を断る。
 
 ## 9. Caddy とレート制限モジュール
 

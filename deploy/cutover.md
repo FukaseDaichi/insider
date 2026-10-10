@@ -1,23 +1,10 @@
-# 切替前検証・カットオーバー・ロールバック
+# 切替前検証・LINE のつなぎ込み・様子見
 
-[setup.md](setup.md) が完了し、`main` の最新が VM で動いている状態から始める。人間が画面で操作する分（LINE Developers、外形監視、Heroku の解約、Netlify）は [human-steps.md](human-steps.md) に画面ごとの手順としてまとめてある。
+[setup.md](setup.md) が完了し、`main` の最新が VM で動いている状態から始める。VM を作り直したとき（setup.md §15）もここをやり直す。人間が画面で操作する分（LINE Developers、外形監視）は [human-steps.md](human-steps.md) に画面ごとの手順としてまとめてある。
 
 記法: `[Mac]` は手元の Mac で、`[VM]` は VM に SSH した上で実行する。`<host>` は Caddy が受けるホスト名。
 
 ## A. 切替前の検証（準備 1 件＋13 項目）
-
-### 0. Java との突き合わせ（ゴールデン）を採る
-
-`tests/golden/line_callapi.json` がまだないので、`tests/test_line_golden.py` の比較は skip している。切替前に必ず採る。本番（Heroku）の `/callapi` は使わない（入力列が村を十数個作り、上限 50 件の FIFO で遊んでいる人の村を押し出す）。
-
-```bash
-[Mac] brew install --cask temurin@8          # 本番の LineBot と同じ Java 8
-[Mac] LINE_BOT_CHANNEL_TOKEN=golden LINE_BOT_CHANNEL_SECRET=golden java -jar ~/git/LineBot/insider-game-bot/build/libs/insider-game-bot-2.7.0-SNAPSHOT.jar --server.port=18080
-[Mac] uv run python -m tests.line_golden http://127.0.0.1:18080/callapi    # 別ターミナル
-[Mac] uv run pytest tests/test_line_golden.py -v
-```
-
-期待: `test_python_answers_line_exactly_like_the_java_linebot` が skip ではなく PASS。差があれば伏せ方（村なしの判定・候補の altText・席番号の置換・古い fixture の検出）か Python 側を直す。採ったら docs/spec.md と README の「まだ採っていないあいだは skip」の文を直し、JSON と一緒にコミットする。jar がなければ `(cd ~/git/LineBot && ./gradlew --no-daemon :insider-game-bot:bootJar)` で作る。
 
 ### 準備: 返信をスタブへ向ける
 
@@ -226,16 +213,16 @@ GitHub Actions で `main` の 1 つ前の commit の run を `gh run rerun <run-
 
 | 項目 | 実測値 | 日付 |
 | --- | --- | --- |
-| 0. ゴールデン比較 | PASS（98 手順）。採取時の差は参加者への「入室状況：k/n人」の k だけで、入った順で変わり配役の抽選に左右されるため、席番号と同じく伏せた（tests/line_golden.py） | 2026-10-06 |
+| Java とのゴールデン比較（README の「LINE Bot」） | PASS（98 手順）。採取時の差は参加者への「入室状況：k/n人」の k だけで、入った順で変わり配役の抽選に左右されるため、席番号と同じく伏せた（tests/line_golden.py） | 2026-10-06 |
 | 4. `/line/callback` の所要時間（10 回の最大） | 97 ms（75〜97 ms） | 2026-10-06 |
 | 6. レート制限（作成系と全体それぞれの 400 / 429 の件数、elapsed） | 作成系 40 回: 400 × 30・429 × 10（1 秒）。全体 310 回: 400 × 290・429 × 20（3 秒。直前の作成系 40 回がスライディングウィンドウに残っていた分だけ 429 が多い）。ブラウザの配役ツールで 429 は出ず、Caddyfile の値は変えない | 2026-10-06 |
 | 6. 本文上限の応答コード | クライアントには 413。ただし aiohttp にも届いていて、Caddy が本文を打ち切った時点で `_read_body` が `ConnectionResetError` の Traceback を ERROR で記録し 500 を返していた（村は作られない）。手順書の「aiohttp に届いていない」は成り立たなかった。`_read_body` で ConnectionResetError を 400 にする修正を配備し、再測で aiohttp 側が 400・Traceback なしを確認 | 2026-10-06 |
 | 9. MemoryUtilization | 30.4%（tmpfs。memfloor 起動前は 4.5%） | 2026-10-06 |
 | 12. 自動復旧（Web を壊す／bot を壊す） | Web: `not healthy within 60s: web http=000` → rolling back → exit=1 → /healthz ok。bot: `web http=200; bot activating NRestarts=11` → rolling back → exit=1 → ok、bot active、NRestarts 0 | 2026-10-06 |
 
-## B. カットオーバー
+## B. LINE の Webhook URL をつなぐ
 
-**戻せる最後の地点。** 切替対象は **LINE Developers の Webhook URL だけ**。Netlify の特殊村フォームは接続先を Heroku のまま残す（Web 版に特殊村フォームを取り込んであるので切り替えない。ロールバック時に特殊村が成立する状態を保つ）。
+LINE をこの VM へ向けるのは **LINE Developers の Webhook URL だけ**。ホスト名が変わらない作り直しなら URL はそのままで、1 と 4 だけを行う。
 
 1. A の準備 1 件と 13 項目がすべて通り、スタブが外れている（`sudo grep -c LINE_API_BASE_URL /etc/insider.env` が `0`）
 2. **プレイヤー不在の時間帯**を選ぶ（進行中の村は切替の瞬間に消える）
@@ -245,12 +232,10 @@ GitHub Actions で `main` の 1 つ前の commit の run を `gh run rerun <run-
    2. **別アカウント**でその村番号を送り、役職が届く
    3. `@わーわーず` で Werewords も一通り
    4. **Web（`https://<host>/village/new`）で特殊村を作る → LINE からその番号で参加 → `@配布`**。Web と LINE の村の共有を本物の LINE で確かめる唯一の経路なので飛ばさない
-5. 切替日と Heroku 解約予定日（切替日＋1 か月）を human-steps.md の記録表に書く
-6. [docs/infra.md](../docs/infra.md) を現状に合わせる: 「結論」の表の「現在」を Oracle Cloud にし、memfloor の節に A-9 で決めた方式（tmpfs かプロセスか）を記す。A-6 で全体の 300 回／分が窮屈だったなら `deploy/Caddyfile` の値を直し、infra.md も合わせる
 
-## C. 1 か月の様子見
+## C. 様子見
 
-最初の 1 週間は毎日、以降は週 1 回。
+つないだ後（VM を作り直した後も）、最初の 1 週間は毎日、以降は週 1 回。
 
 | 見るもの | どこで | 期待 |
 | --- | --- | --- |
@@ -267,25 +252,6 @@ GitHub Actions で `main` の 1 つ前の commit の run を `gh run rerun <run-
 
 **Oracle からアイドル判定のメールが届いた場合**: 即削除ではなく、**1 週間後に停止**という猶予付きの通知。アカウントは PAYG に上げてあるので本来は対象外のはずで、届いたら memfloor が効いているか（A-9）を見直す。
 
-## D. ロールバック（Heroku へ戻す）
-
-**破壊的操作。** OCI 上で作られた村はすべて消える。Heroku 側に切替前の古い村が残っていると番号が混乱するので、**Heroku の再起動を先に**行う。VM は止めず、原因を調べられる状態を残す。
-
-```bash
-[Mac] heroku restart -a insidergamehelper
-[Mac] sleep 60; curl -s 'https://insidergamehelper.herokuapp.com/callapi?message=%E3%81%8A%E9%A1%8C&userId=rollback-check'
-```
-
-期待: Heroku が 4 桁の村番号を返す（この確認で作った村は 1 つだけなので FIFO への影響は小さい）。
-
-1. プレイヤーがいないことを確認する（やむを得ず進行中に戻すなら、村が失われることを先に告知する）
-2. 上の再起動と確認
-3. LINE Developers コンソールの Webhook URL を Heroku のもの（`https://insidergamehelper.herokuapp.com/callback`）へ戻し、「検証」で成功を確認する
-4. 実機で `お題` が返ることを確認する
-5. Netlify フォームは切替で触っていないので戻す作業はない
-
-Heroku は切替後 1 か月維持する。
-
-## E. PAYG（済み）
+## D. PAYG（済み）
 
 アカウントは Pay As You Go に上げてあり、予算 `insider-budget`（月 $1、100% でメール）も作ってある（human-steps.md の記録表）。無料枠の範囲なら請求は $0 のまま。アイドル回収の対象からも外れる。

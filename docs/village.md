@@ -30,7 +30,7 @@
 
 この規則は、LineBot（Java 実装）の `String.trim()` と `Integer.parseInt()` と同じである。Python の標準の関数は、全角スペースを除いたり、`1_0` や範囲外の値を数値として読んだりと、受け付ける範囲が広く、同じ入力で応答が変わってしまうため、これらには任せない。
 
-どの文字を 10 進数字とみなすかは、実行環境の Unicode の版で決まる。本番の LineBot は Java 8（Unicode 6.2）で動くので、Unicode 7.0 で加わった BMP の 10 進数字 20 文字（U+0DE6〜U+0DEF、U+A9F0〜U+A9F9）だけは、LineBot ではお題、こちらでは数値になる。
+どの文字を 10 進数字とみなすかは、実行環境の Unicode の版で決まる。LineBot は Java 8（Unicode 6.2）で動いていたので、Unicode 7.0 で加わった BMP の 10 進数字 20 文字（U+0DE6〜U+0DEF、U+A9F0〜U+A9F9）だけは、LineBot ではお題、こちらでは数値になる。
 
 ### 数値
 

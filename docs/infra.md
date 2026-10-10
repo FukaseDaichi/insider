@@ -37,7 +37,8 @@
 - **外向き通信**: api.line.me、api.typesafe.ai（Jev）、Discord のゲートウェイだけ。Gemini TTS は手元で音声を作るときだけで、本番からは呼ばない（`GEMINI_API_KEY` は本番に置かない）。
 - **Tailscale Funnel は本番で使わない。** Mac のローカル遊びにだけ使う。
 - SSH は公開鍵のみ。80/443 は security list と OS の iptables の両方で開ける。journald の上限は 200MB。
-- Oracle の無料枠は「契約」ではなく「予告なく変わる好意」として扱い、VM は失われ得るものとして再作成手順（setup.md §15）と秘密情報の復元手段（パスワードマネージャ）を持つ。
+- Oracle の無料枠は「契約」ではなく「予告なく変わる好意」として扱い、VM は失われ得るものとして再作成手順（setup.md §15）と秘密情報の復元手段（パスワードマネージャ）を持つ。**戻し先はない**: VM が失われたら、作り直すまで LINE・Web・Discord は止まる。Mac の `scripts/play.sh` で Discord と Web は代わりに動かせるが、LINE の webhook は公開 URL が固定でないので受けられない。
+- 無料枠がさらに半減（1 OCPU / 6GB）しても Python のプロセスは小さいので動き続ける。そのときは memfloor の量を見直す。
 
 ### アイドル回収のメモリ床（memfloor）
 
@@ -50,7 +51,7 @@ Always Free のアカウントの A1 は、7 日間 CPU・ネットワーク・�
 
 - OCI Alarm 2 本: `MemoryUtilization` が 20% 未満（Trigger delay 30 分）、および指標が欠測（Absent）。通知先はメール。
 - 外形監視: `GET https://<host>/healthz` を 5 分ごと、本文のキーワード `ok` で判定する無料サービス。
-- `/healthz` は Web プロセスが HTTP を受け付けていることだけを示す。Discord の生死は journald で見る。
+- `/healthz` は Web プロセスが HTTP を受け付けていることだけを示す。Discord の生死は journald で見る（長期の切断はそこでしか気づけない。問題になったら Discord のゲートウェイ接続状態を `/healthz` に含める）。
 
 ### 秘密情報
 

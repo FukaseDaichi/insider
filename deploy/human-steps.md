@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | **この文書** | ブラウザでの画面操作、アカウント登録、値の記録 | 画面の前にいるとき |
 | [setup.md](setup.md) | VM に SSH して打つコマンド（§0〜§15） | ターミナルの前にいるとき |
-| [cutover.md](cutover.md) | 切替前検証（準備 1 件＋13 項目）とその期待値、切替、戻し方 | 切替の判断をするとき |
+| [cutover.md](cutover.md) | 切替前検証（準備 1 件＋13 項目）とその期待値、LINE のつなぎ込み、様子見 | LINE をつなぐ判断をするとき |
 
 ## 触るサービスの一覧
 
@@ -19,8 +19,6 @@
 | Discord Developer Portal | 既にある | ボットトークンを控える（Mac で使っているものと同じでよい） | $0 |
 | TypeSafe | 既にある | API キーを控える | 利用料は別 |
 | 外形監視サービス | 新規作成が必要 | `/healthz` を 5 分ごとに見てメールで知らせる | $0 |
-| Heroku | 既にある | 最後に解約する | 現 $5/月 → $0 |
-| Netlify | 既にある | 最後に特殊村フォームを移転の案内に差し替える | $0 |
 
 ## 記録しておく値
 
@@ -29,7 +27,6 @@
 | VM の公開 IP | `150.230.219.180`（2026-10-06 20:24 作成。インスタンス `insider`、A1.Flex 2 OCPU・12 GB、VCN `insider` / サブネット `insider-public`。scripts/oci-launch-a1.sh の 375 回目で取れた） | Phase 2 |
 | ホスト名 `<host>` | `insidergame.fyi`（Cloudflare Registrar、2026-10-05 取得、年 $5.20、2027-10-05 まで。サブドメインは使わずルートをそのまま使う） | Phase 1 |
 | 切替日 | 2026-10-06 22:33（LINE Developers の Webhook URL を `https://insidergame.fyi/line/callback` に更新。検証の要求が VM に届いて 200） | Phase 6 |
-| Heroku 解約予定日 | 2026-11-06 以降（切替日 + 1 か月。Phase 7 の様子見で問題がなければ） | Phase 6 |
 | memfloor の方式（tmpfs / プロセス） | **tmpfs**（既定の insider-memfloor のまま）。2026-10-06 の 5-1 で、OCI の MemoryUtilization が memfloor 起動前 4.5% → 起動後 30.4% と出て、tmpfs が使用中に数えられていると確認 | Phase 5 |
 | PAYG へ上げた日と理由 | 2026-10-06。A1 が Out of host capacity で 1 晩（173 回）取れなかったため、確保が通りやすい有料アカウントにした。予算 `insider-budget`（月 $1、100% でメール）も同日作成 | 別枠 |
 
@@ -37,15 +34,13 @@
 
 ```
 Phase 1  準備          ホスト名を決める / Oracle アカウントを作る / 鍵と資格情報   ← VM が取れなくても進められる
-Phase 2  VM を作る      A1 インスタンス + 通信の開放                              ← ここが取れるまで Heroku のまま
+Phase 2  VM を作る      A1 インスタンス + 通信の開放                              ← ここが取れるまで LINE・Web・Discord は止まったまま
 Phase 3  DNS を向ける    A レコード
 Phase 4  配備           VM の設定 → GitHub Secrets → 初回配備                    （setup.md §1〜§11）
 Phase 5  監視の下地      Monitoring 確認 + メール通知 + 外形監視
-Phase 6  切替           LINE の Webhook URL だけ                                 ← 戻せる最後の地点
-Phase 7  1 か月の様子見
-Phase 8  後片付け        Heroku + Netlify + LineBot のアーカイブ
+Phase 6  LINE をつなぐ   LINE の Webhook URL だけ                                 （cutover.md B）
 
-別枠  ロールバック（戻したいとき） / PAYG へ上げる（アイドル通知が来たとき）
+別枠  PAYG へ上げる（アイドル通知が来たとき）
 ```
 
 ---
@@ -100,7 +95,7 @@ OCI コンソール → **Compute** → **Instances** → **Create instance**
 | Add SSH keys | **Paste public keys** に `~/.ssh/id_ed25519.pub` など**普段使いの公開鍵**を貼る（デプロイ鍵ではない） |
 | Boot volume | **Specify a custom boot volume size** にチェック → **50** GB |
 
-`Out of host capacity` が出たら時間を置いて何度でも試す。取れるまで Heroku のまま運用し、一定期間試して取れなければ保留とする。手で押し直すより、下の 2-1b で機械に繰り返させる方が早い。
+`Out of host capacity` が出たら時間を置いて何度でも試す。手で押し直すより、下の 2-1b で機械に繰り返させる方が早い。
 
 作れたら **公開 IP** を記録表に書く。
 
@@ -274,9 +269,9 @@ UptimeRobot や Better Stack などが候補。**無料枠でキーワード監�
 
 ---
 
-# Phase 6: 切替（カットオーバー）
+# Phase 6: LINE をつなぐ
 
-**戻せる最後の地点。** 切り替えるのは **LINE Developers の Webhook URL の 1 か所だけ**。Netlify の特殊村フォームは触らない（Web 版に取り込んであるので、接続先を Heroku のまま残してロールバックに備える）。
+切り替えるのは **LINE Developers の Webhook URL の 1 か所だけ**。ホスト名が変わらない作り直しなら URL はそのままで、6-1 は「検証」だけ押す。
 
 ## 事前の確認
 
@@ -296,56 +291,7 @@ LINE Developers コンソール → 対象のチャネル → **Messaging API �
 
 ## 6-2. 実機で確かめる
 
-cutover.md B-4 の 4 項目。**Web で特殊村を作る → LINE からその番号で参加 → `@配布`** は飛ばさない。
-
-## 6-3. 日付を記録する
-
-| | |
-| --- | --- |
-| 切替日 | |
-| Heroku 解約予定日 | 切替日 + 1 か月 |
-
----
-
-# Phase 7: 1 か月の様子見
-
-cutover.md C。最初の 1 週間は毎日、以降は週 1 回。
-
----
-
-# Phase 8: 後片付け
-
-Phase 7 で問題がなければ。**順序が大事**で、8-2 を飛ばすと課金が止まらない。
-
-## 8-1. Heroku アプリを削除する
-
-Heroku ダッシュボード → `insidergamehelper` → **Settings** → 一番下の **Delete app**
-
-## 8-2. Eco dynos を Unsubscribe する ← 忘れやすい
-
-Heroku → 右上のアバター → **Account settings** → **Billing** → **Eco dynos** の **Unsubscribe**
-
-> **Eco はアプリ単位ではなくアカウント単位の月額契約。** アプリを削除しただけでは **$5/月 は止まらない。** 翌月の請求が $0 になっていることを必ず確認する。
-
-## 8-3. Netlify の特殊村フォームを移転の案内に差し替える
-
-公開フォーム（`insidergametool.netlify.app`）のリポジトリで、フォームの画面を「移転しました」の案内と `https://<host>/village/special` へのリンクだけにしてデプロイする。Heroku が消えた後にフォームから送ると失敗するので、同じタイミングで行う。
-
-## 8-4. LineBot リポジトリをアーカイブする
-
-GitHub → LineBot のリポジトリ → **Settings** → **General** → **Danger Zone** → **Archive this repository**。先に README の先頭に移転先（insider のリポジトリと `https://<host>`）を書いてコミットする。役職画像は insider に同梱済みなので、アーカイブしても利用者に影響しない。
-
-## 8-5. docs の蒸留
-
-統合設計書（`docs/superpowers/specs/2026-10-03-unify-line-web-discord-design.md`）の結論を docs/ 直下に蒸留して削除する（docs/AGENTS.md の運用）。この手順書のうち Phase 1〜5 は VM の再作成に要るので残す。Phase 6〜8 と別枠のロールバックは Heroku が消えた時点で用済みになるので消す。
-
----
-
-# 別枠: ロールバック（Heroku へ戻したいとき）
-
-**破壊的操作。** OCI 上で作られた村はすべて消える。手順とコマンドは cutover.md D。画面操作は 1 つ:
-
-**LINE Developers コンソールの Webhook URL を `https://insidergamehelper.herokuapp.com/callback` へ戻し、「検証」で成功を確認する。** その前に `heroku restart` で古い村を破棄する。**VM は止めない。**
+cutover.md B-4 の 4 項目。**Web で特殊村を作る → LINE からその番号で参加 → `@配布`** は飛ばさない。そのあと cutover.md C の様子見に入る。
 
 ---
 
