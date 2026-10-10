@@ -1,87 +1,843 @@
-/* 配役ツール。トップやルームと同じ夜の配色（style.css の変数）を使い、返事のカードと村番号だけを足す */
+/* 配役ツール。LINE のトーク画面と同じ見た目にする（トップやルームの夜の配色とは別）。
+   押せるものはすべて高さ 44px 以上。リッチメニューのマスとカードのボタンの行は、それより大きくする */
 
-.replies {
-  display: grid;
-  gap: 14px;
-  margin-top: 24px;
+:root {
+  color-scheme: light;
+  --talk-bg: #8cabd9;
+  --page-bg: #e6ebf2;
+  --bar-bg: #ffffff;
+  --bar-line: rgba(0, 0, 0, 0.1);
+  --header-bg: rgba(140, 171, 217, 0.94);
+  --header-ink: #111111;
+  --ink: #111111;
+  --sub-ink: #6b7280;
+  --meta-ink: rgba(17, 24, 39, 0.6);
+  --bot-bubble: #ffffff;
+  --me-bubble: #8de055;
+  --card-line: #e5e7eb;
+  --card-action: #42659a;
+  --pressed: rgba(0, 0, 0, 0.07);
+  --input-bg: #f1f2f4;
+  --green: #06c755;
+  --green-pressed: #05a647;
+  --green-ink: #ffffff;
+  --tile-icon: #06c755;
+  --chip-bg: #ffffff;
+  --day-bg: rgba(0, 0, 0, 0.22);
+  --danger: #e5484d;
+  --focus: #1d6bf3;
+  --font: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI",
+    Meiryo, sans-serif;
 }
 
-.replies:empty {
-  display: none;
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --talk-bg: #22262c;
+    --page-bg: #111214;
+    --bar-bg: #1b1d21;
+    --bar-line: rgba(255, 255, 255, 0.09);
+    --header-bg: rgba(27, 29, 33, 0.94);
+    --header-ink: #f2f3f5;
+    --ink: #f2f3f5;
+    --sub-ink: #9aa1ab;
+    --meta-ink: rgba(242, 243, 245, 0.55);
+    --bot-bubble: #383b42;
+    --me-bubble: #5fbf3d;
+    --card-line: #4a4e56;
+    --card-action: #8fb0f2;
+    --pressed: rgba(255, 255, 255, 0.08);
+    --input-bg: #2c2f35;
+    --tile-icon: #3ddc84;
+    --chip-bg: #383b42;
+    --day-bg: rgba(255, 255, 255, 0.12);
+    --focus: #7aa7ff;
+  }
 }
 
-.reply-text {
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
   margin: 0;
-  line-height: 1.8;
-  white-space: pre-line;
-  overflow-wrap: anywhere;
 }
 
-.reply-card {
+body {
+  overflow: hidden;
+  background: var(--page-bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button,
+a {
+  touch-action: manipulation;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
+}
+
+.noscript {
+  margin: 0;
+  padding: 24px 16px;
+}
+
+/* 画面全体。キーボードが開いたときは village.js が見えている高さに合わせる */
+.app {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100dvh;
+  max-width: 560px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--talk-bg);
+}
+
+.app-header {
+  flex: none;
+  display: grid;
+  grid-template-columns: 52px 1fr 52px;
+  align-items: center;
+  min-height: 52px;
+  padding-top: env(safe-area-inset-top);
+  background: var(--header-bg);
+  color: var(--header-ink);
+  border-bottom: 1px solid var(--bar-line);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  z-index: 1;
+}
+
+.app-title {
+  margin: 0;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 700;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-inline: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.icon-button:active {
+  background: var(--pressed);
+}
+
+/* --- トーク --- */
+
+.talk {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 10px 12px;
+}
+
+.talk-log {
   display: grid;
   gap: 12px;
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-}
-
-.reply-image,
-.reply-card-image {
-  justify-self: center;
-  width: 100%;
-  max-width: 320px;
-  height: auto;
-  border-radius: var(--radius);
-}
-
-.reply-card-title {
   margin: 0;
-  color: var(--accent);
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  padding: 0;
+  list-style: none;
 }
 
-.reply-actions {
+.entry {
+  display: grid;
+  gap: 12px;
+}
+
+.day {
+  justify-self: center;
+  margin: 4px 0 0;
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: var(--day-bg);
+  color: #fff;
+  font-size: 12px;
+}
+
+.notice {
+  justify-self: center;
+  max-width: 90%;
+  margin: 0;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: var(--day-bg);
+  color: #fff;
+  font-size: 12px;
+  text-align: center;
+}
+
+.msg {
   display: flex;
-  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 8px;
 }
 
-.reply-actions > * {
-  flex: 1 1 auto;
+.msg.me {
+  justify-content: flex-end;
+  align-items: flex-end;
+}
+
+.avatar {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+}
+
+.msg-main {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  min-width: 0;
+  max-width: calc(100% - 46px);
+}
+
+.name {
+  margin: 0;
+  color: var(--meta-ink);
+  font-size: 12px;
+}
+
+.line {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.meta {
+  flex: none;
+  display: grid;
+  justify-items: end;
+  color: var(--meta-ink);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.msg.bot .meta {
+  justify-items: start;
+}
+
+.bubble {
+  position: relative;
+  margin: 0;
+  max-width: 100%;
+  padding: 9px 13px;
+  border-radius: 18px;
+  background: var(--bot-bubble);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+
+.msg.me .bubble {
+  max-width: 75%;
+  background: var(--me-bubble);
+  color: #111;
+}
+
+/* 最初の吹き出しにだけ、LINE と同じ小さな尻尾を付ける */
+.msg.bot .line:first-of-type .bubble {
+  border-top-left-radius: 4px;
+}
+
+.msg.me .bubble {
+  border-top-right-radius: 4px;
+}
+
+.retry {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.retry::before {
+  content: "!";
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #fff;
+  font-weight: 700;
+}
+
+.photo {
+  display: block;
+  width: min(220px, 100%);
+  height: auto;
+  border-radius: 16px;
+  background: var(--bot-bubble);
+}
+
+.typing .bubble {
+  display: flex;
+  gap: 5px;
+  padding: 14px 16px;
+}
+
+.typing .bubble span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sub-ink);
+  animation: typing 1.2s infinite ease-in-out;
+}
+
+.typing .bubble span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing .bubble span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing .bubble span {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/* --- テンプレートのカード（LINE のボタン・確認テンプレート） --- */
+
+.tpl {
+  width: min(280px, 100%);
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--bot-bubble);
+}
+
+/* LINE のボタンテンプレートの画像は横長（1.51:1）の枠に、切らずに収める（imageSize: contain） */
+.tpl-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1.51;
+  object-fit: contain;
+  background: #fff;
+}
+
+.tpl-body {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+}
+
+.tpl-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.tpl-text {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.tpl-actions {
+  display: grid;
+}
+
+.tpl-action {
+  display: grid;
+  place-items: center;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 0;
+  border-top: 1px solid var(--card-line);
+  background: none;
+  color: var(--card-action);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tpl-action:active {
+  background: var(--pressed);
+}
+
+.tpl-confirm .tpl-actions {
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+}
+
+.tpl-confirm .tpl-action + .tpl-action {
+  border-left: 1px solid var(--card-line);
+}
+
+.invite-number {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+}
+
+.qr {
+  display: block;
+  width: min(200px, 100%);
+  height: auto;
+  margin: 6px auto 2px;
+  image-rendering: pixelated;
+}
+
+.invite-url {
+  margin: 0;
+  color: var(--sub-ink);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* --- 下の欄（クイックリプライ・入力欄・リッチメニュー） --- */
+
+.talk-footer {
+  flex: none;
+  background: var(--bar-bg);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.quick-replies {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 10px;
+  background: var(--talk-bg);
+  scrollbar-width: none;
+}
+
+.quick-replies::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex: none;
   min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--bar-line);
+  border-radius: 999px;
+  background: var(--chip-bg);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.chip:active {
+  filter: brightness(0.93);
+}
+
+.composer {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 6px;
+  border-top: 1px solid var(--bar-line);
+}
+
+.composer .icon-button {
+  color: var(--sub-ink);
+  flex: none;
+}
+
+.icon-button[aria-expanded="true"] .icon-grid,
+.icon-button[aria-expanded="false"] .icon-keyboard {
+  display: none;
+}
+
+.composer-input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--input-bg);
+  /* 16px 未満だと iPhone が拡大する */
+  font-size: 16px;
+}
+
+.composer-input:focus-visible {
+  outline-offset: 0;
+}
+
+.send-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--green);
+  cursor: pointer;
+}
+
+.send-button:disabled {
+  color: var(--sub-ink);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.send-button:not(:disabled):active {
+  background: var(--pressed);
+}
+
+.rich-menu {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--bar-line);
+}
+
+.rich-menu[data-open="false"] {
+  display: none;
+}
+
+.tile {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  min-height: 92px;
+  padding: 10px 4px;
+  border: 0;
+  border-right: 1px solid var(--bar-line);
+  border-bottom: 1px solid var(--bar-line);
+  background: var(--bar-bg);
+  color: var(--ink);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tile:nth-child(3n) {
+  border-right: 0;
+}
+
+.tile:nth-child(n + 4) {
+  border-bottom: 0;
+}
+
+.tile:active {
+  background: var(--pressed);
+}
+
+.tile-icon {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 2px;
+  color: var(--tile-icon);
+}
+
+.tile span {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.tile small {
+  color: var(--sub-ink);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(160px + env(safe-area-inset-bottom));
+  max-width: min(90vw, 420px);
+  margin: 0;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 8px);
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* --- ダイアログ --- */
+
+.scanner {
+  width: 100%;
+  max-width: 560px;
+  height: 100%;
+  max-height: none;
+  margin: auto;
+  padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+  border: 0;
+  background: #000;
+  color: #fff;
+}
+
+.scanner[open] {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: 12px;
+}
+
+.scanner h2 {
+  margin: 0;
+  font-size: 17px;
+  text-align: center;
+}
+
+.scanner-video {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: cover;
+  border-radius: 16px;
+  background: #111;
+}
+
+.scanner-message {
+  min-height: 1.5em;
+  margin: 0;
+  text-align: center;
+}
+
+.scanner .outline-button {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.action-sheet {
+  width: min(100% - 16px, 544px);
+  margin: auto auto calc(8px + env(safe-area-inset-bottom));
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: var(--bar-bg);
+  color: var(--ink);
+}
+
+.action-sheet[open] {
+  display: grid;
+}
+
+.action-sheet::backdrop,
+.scanner::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.action-sheet-note {
+  margin: 0;
+  padding: 14px 18px;
+  color: var(--sub-ink);
+  font-size: 13px;
+  text-align: center;
+}
+
+.action-sheet-button {
+  min-height: 56px;
+  border: 0;
+  border-top: 1px solid var(--bar-line);
+  background: none;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.action-sheet-button:active {
+  background: var(--pressed);
+}
+
+.action-sheet-button.danger {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* --- 特殊村のページ（LINE のアプリ内のページと同じく、白い面に置く） --- */
+
+.sheet-page {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
+  background: var(--bar-bg);
+}
+
+.stack {
+  display: grid;
+  gap: 14px;
+}
+
+.lead {
+  margin: 0;
+  color: var(--sub-ink);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field-label {
+  font-weight: 700;
+}
+
+.field-note {
+  margin-left: 6px;
+  color: var(--sub-ink);
+  font-weight: 400;
+}
+
+textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 12px 14px;
+  border: 1px solid var(--bar-line);
+  border-radius: 12px;
+  background: var(--input-bg);
+  font-size: 16px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.line-button,
+.outline-button {
+  display: grid;
+  place-items: center;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.line-button {
+  border: 0;
+  background: var(--green);
+  color: var(--green-ink);
+}
+
+.line-button:active {
+  background: var(--green-pressed);
+}
+
+.line-button:disabled {
+  opacity: 0.6;
+}
+
+.outline-button {
+  border: 1px solid var(--bar-line);
+  background: none;
+  color: var(--ink);
+}
+
+.outline-button:active {
+  background: var(--pressed);
 }
 
 .village-number {
   margin: 0;
-  color: var(--muted);
-  letter-spacing: 0.12em;
+  color: var(--sub-ink);
+  text-align: center;
 }
 
 .village-number strong {
   display: block;
-  color: var(--accent);
-  font-size: 48px;
+  color: var(--ink);
+  font-size: 44px;
   letter-spacing: 0.06em;
 }
 
-.kind-button {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  text-align: left;
+.url {
+  margin: 0;
+  color: var(--sub-ink);
+  font-size: 13px;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
-.kind-button small {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 400;
+.message {
+  min-height: 1.5em;
+  margin: 12px 0 0;
+  color: var(--danger);
+  font-size: 14px;
 }
 
-#special-input {
-  width: 100%;
-  min-height: 200px;
-  max-height: none;
-  resize: vertical;
+.message:empty {
+  display: none;
 }

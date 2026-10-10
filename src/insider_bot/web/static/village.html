@@ -4,210 +4,190 @@
     <meta charset="utf-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
     />
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#191a20" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#8cabd9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1b1d21" media="(prefers-color-scheme: dark)" />
     <meta
       name="description"
       content="インサイダーゲームの役職とお題を、参加者それぞれのスマホに配ります。"
     />
-    <title>INSIDER — インサイダーの配役</title>
+    <title>インサイダー — 配役</title>
     <link rel="icon" href="/static/mark.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/static/style.css" />
     <link rel="stylesheet" href="/static/village.css" />
     <script type="module" src="/static/village.js"></script>
   </head>
   <body>
-    <!-- 印の ✳（index.html と同じ）。文字の ✳ は iPhone だと緑の絵文字で描かれるので SVG にする -->
+    <!-- アイコン。線で描くものは stroke、塗るものは fill を使う -->
     <svg hidden aria-hidden="true" focusable="false">
-      <symbol id="star-mark" viewBox="0 0 24 24">
-        <g fill="currentColor">
-          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" />
-          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(45 12 12)" />
-          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(90 12 12)" />
-          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(135 12 12)" />
-          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(180 12 12)" />
-          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(225 12 12)" />
-          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(270 12 12)" />
-          <path d="M12 12 10.4 4.6a1.6 1.6 0 1 1 3.2 0Z" transform="rotate(315 12 12)" />
+      <symbol id="i-back" viewBox="0 0 24 24">
+        <path d="M15 4.5 7.5 12l7.5 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="i-more" viewBox="0 0 24 24">
+        <g fill="currentColor"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></g>
+      </symbol>
+      <symbol id="i-keyboard" viewBox="0 0 24 24">
+        <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <rect x="2.5" y="5.5" width="19" height="13" rx="2.5" />
+          <path d="M6.5 9.5h.01M10.2 9.5h.01M13.8 9.5h.01M17.5 9.5h.01M6.5 12.5h.01M10.2 12.5h.01M13.8 12.5h.01M17.5 12.5h.01M8 15.5h8" />
+        </g>
+      </symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24">
+        <g fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+          <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+          <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+          <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+        </g>
+      </symbol>
+      <symbol id="i-send" viewBox="0 0 24 24">
+        <path d="M3.4 20.6 21.5 12 3.4 3.4 3.4 10.2 15.5 12 3.4 13.8Z" fill="currentColor" />
+      </symbol>
+      <symbol id="i-house" viewBox="0 0 24 24">
+        <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v10h13V10" /><path d="M12 12.5v5M9.5 15h5" />
+        </g>
+      </symbol>
+      <symbol id="i-crown" viewBox="0 0 24 24">
+        <path d="M3 8.5 7.5 12 12 5l4.5 7L21 8.5 19 19H5Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="i-enter" viewBox="0 0 24 24">
+        <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 4h4.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H14" /><path d="M9.5 16.5 14 12 9.5 7.5" /><path d="M14 12H3.5" />
+        </g>
+      </symbol>
+      <symbol id="i-qr" viewBox="0 0 24 24">
+        <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round">
+          <rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1" />
+          <rect x="14" y="3.5" width="6.5" height="6.5" rx="1" />
+          <rect x="3.5" y="14" width="6.5" height="6.5" rx="1" />
+          <path d="M14 14h2.5v2.5H14zM18 18h2.5v2.5H18zM14 20.5h1.5M20.5 14v1.5" stroke-linecap="round" />
+        </g>
+      </symbol>
+      <symbol id="i-letter" viewBox="0 0 24 24">
+        <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round">
+          <rect x="3" y="5.5" width="18" height="13" rx="2" /><path d="m3.5 7 8.5 6.5L20.5 7" stroke-linecap="round" />
+        </g>
+      </symbol>
+      <symbol id="i-help" viewBox="0 0 24 24">
+        <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+          <circle cx="12" cy="12" r="9" /><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.1-2.4 3.6" /><path d="M12 17.2h.01" stroke-width="2.4" />
         </g>
       </symbol>
     </svg>
-    <a class="skip-link" href="#main">コンテンツへ</a>
-    <header class="site-header">
-      <a class="brand" href="/" aria-label="INSIDER ホーム"
-        ><span class="brand-mark" aria-hidden="true"></span>INSIDER<span
-          class="brand-dot"
-          aria-hidden="true"
-          ><svg class="star" aria-hidden="true"><use href="#star-mark" /></svg></span
-        ></a
-      >
-      <span class="header-caption">インサイダーの配役</span>
-    </header>
-    <main id="main" class="village">
-      <section id="village-home" class="page entrance" hidden>
-        <p class="eyebrow">INSIDER CASTING</p>
-        <h1>役職とお題を、<br />ひとりずつに。</h1>
-        <p class="lead">
-          村を作って番号を伝えると、参加した人のスマホに、それぞれの役職とお題が届きます。
-        </p>
-        <div class="stack">
-          <a class="button primary arrow-button" href="/village/new"
-            ><span>村を作る</span><span aria-hidden="true">↗</span></a
-          >
-          <form id="join-form" class="stack">
-            <label class="field" for="join-number"
-              >村番号<input
-                id="join-number"
-                inputmode="numeric"
-                autocomplete="off"
-                placeholder="4〜5 桁の数字"
-                required
-            /></label>
-            <button type="submit" class="secondary">村に入る</button>
-          </form>
-          <button id="scan-open" type="button" class="secondary wide">
-            QR で村に入る
-          </button>
-          <a class="button secondary wide" href="/village/special"
-            >特殊村を作る</a
-          >
-          <p id="home-message" class="message" role="status"></p>
-        </div>
-      </section>
 
-      <section id="village-new" class="page entrance" hidden>
-        <p class="eyebrow">NEW VILLAGE</p>
-        <h1>村を作る</h1>
-        <div id="step-kind" class="stack" hidden>
-          <p class="lead">遊び方を選んでください。</p>
-          <button type="button" class="secondary kind-button" data-kind="normal">
-            <span>通常の村</span
-            ><small>あなたが GM。参加者にインサイダー 1 人と村人を配ります</small>
-          </button>
-          <button type="button" class="secondary kind-button" data-kind="god">
-            <span>神モード</span
-            ><small>GM も参加者から選びます。あなたは配るだけ</small>
-          </button>
-          <button type="button" class="secondary kind-button" data-kind="random">
-            <span>ランダム</span
-            ><small>あなたも参加します。お題も役職もランダム</small>
-          </button>
+    <noscript><p class="noscript">この画面は JavaScript を使います。ブラウザの設定で有効にしてください。</p></noscript>
+
+    <div id="talk" class="app" hidden>
+      <header class="app-header">
+        <a class="icon-button" href="/" aria-label="INSIDER のトップへ戻る"><svg class="icon"><use href="#i-back" /></svg></a>
+        <h1 class="app-title">インサイダー</h1>
+        <button id="talk-more" type="button" class="icon-button" aria-label="その他" aria-haspopup="dialog">
+          <svg class="icon"><use href="#i-more" /></svg>
+        </button>
+      </header>
+
+      <main id="talk-scroll" class="talk">
+        <ol id="talk-log" class="talk-log" aria-label="トーク"></ol>
+        <div id="typing" class="msg bot typing" hidden aria-hidden="true">
+          <img class="avatar" src="/static/mark.svg" alt="" />
+          <div class="msg-main"><p class="bubble"><span></span><span></span><span></span></p></div>
         </div>
-        <form id="step-topic" class="stack" hidden>
-          <label class="field" for="topic-input"
-            >お題<input id="topic-input" maxlength="5000" autocomplete="off" required
-          /></label>
-          <button type="submit" class="primary">お題を決める</button>
+      </main>
+
+      <footer class="talk-footer">
+        <div id="quick-replies" class="quick-replies" aria-label="クイックリプライ" hidden></div>
+        <form id="composer" class="composer">
+          <button
+            id="menu-toggle"
+            type="button"
+            class="icon-button"
+            aria-controls="rich-menu"
+            aria-expanded="true"
+            aria-label="メニューを閉じる"
+          >
+            <svg class="icon icon-keyboard"><use href="#i-keyboard" /></svg
+            ><svg class="icon icon-grid"><use href="#i-grid" /></svg>
+          </button>
+          <input
+            id="composer-input"
+            class="composer-input"
+            aria-label="メッセージ"
+            placeholder="メッセージを入力"
+            enterkeyhint="send"
+            autocomplete="off"
+            maxlength="5000"
+          />
+          <button id="composer-send" type="submit" class="send-button" aria-label="送信" disabled>
+            <svg class="icon"><use href="#i-send" /></svg>
+          </button>
         </form>
-        <form id="step-size" class="stack" hidden>
-          <label class="field" for="size-input"
-            >人数<input
-              id="size-input"
-              type="number"
-              inputmode="numeric"
-              max="100"
-              required
-          /></label>
-          <button type="submit" class="primary">人数を決める</button>
-        </form>
-        <div id="step-status" class="stack" hidden>
-          <p class="village-number">村番号<strong id="status-number"></strong></p>
-          <canvas
-            id="status-qr"
-            class="qr"
-            width="1"
-            height="1"
-            aria-label="村に入る QR コード"
-          ></canvas>
-          <p id="status-url" class="url"></p>
-          <button id="status-copy" type="button" class="secondary">
-            URL をコピー
+        <nav id="rich-menu" class="rich-menu" aria-label="メニュー">
+          <button type="button" class="tile" data-menu="normal">
+            <svg class="tile-icon"><use href="#i-house" /></svg><span>村を作る</span><small>あなたが GM</small>
           </button>
-          <a id="werewords-join" class="button secondary wide" hidden
-            >ワーワーズの村に入る</a
-          >
-          <div id="status-replies" class="replies" aria-live="polite"></div>
-          <div class="row">
-            <button id="reverse-button" type="button" class="secondary" hidden>
-              逆村にする</button
-            ><button id="werewords-button" type="button" class="secondary" hidden>
-              ワーワーズにする
-            </button>
-          </div>
-          <button id="restart-button" type="button" class="link">
-            新しい村を作る
+          <button type="button" class="tile" data-menu="god">
+            <svg class="tile-icon"><use href="#i-crown" /></svg><span>神モード</span><small>GM も参加者から</small>
           </button>
-        </div>
-        <div id="new-replies" class="replies" aria-live="polite"></div>
-        <p id="new-message" class="message" role="status"></p>
-      </section>
+          <button type="button" class="tile" data-menu="join">
+            <svg class="tile-icon"><use href="#i-enter" /></svg><span>村に入る</span><small>村番号を入力</small>
+          </button>
+          <button type="button" class="tile" data-menu="scan">
+            <svg class="tile-icon"><use href="#i-qr" /></svg><span>QR で入る</span><small>カメラで読む</small>
+          </button>
+          <a class="tile" href="/village/special">
+            <svg class="tile-icon"><use href="#i-letter" /></svg><span>特殊村</span><small>配る言葉を決める</small>
+          </a>
+          <button type="button" class="tile" data-menu="help">
+            <svg class="tile-icon"><use href="#i-help" /></svg><span>遊び方</span><small>使い方を見る</small>
+          </button>
+        </nav>
+      </footer>
+    </div>
 
-      <section id="village-card" class="page entrance" hidden>
-        <p class="eyebrow">YOUR ROLE</p>
-        <h1>村 <span id="card-number"></span></h1>
-        <div id="card-replies" class="replies" aria-live="polite"></div>
-        <div id="card-status" class="replies" aria-live="polite"></div>
-        <div class="stack">
-          <button id="card-reload" type="button" class="secondary wide">
-            もう一度表示する
-          </button>
-          <a class="button secondary wide" href="/village">配役ツールのトップへ</a>
-        </div>
-        <p id="card-message" class="message" role="status"></p>
-      </section>
-
-      <section id="village-special" class="page entrance" hidden>
-        <p class="eyebrow">CUSTOM VILLAGE</p>
-        <h1>配る言葉から、<br />村をつくる。</h1>
-        <p class="lead">
-          1 行に 1 通。参加した人に 1 通ずつ届きます（届く順は作るときにシャッフルします）。途中の空の行には「メッセージは特にありません。」が届きます。
-        </p>
+    <div id="special" class="app" hidden>
+      <header class="app-header">
+        <a class="icon-button" href="/village" aria-label="トークに戻る"><svg class="icon"><use href="#i-back" /></svg></a>
+        <h1 class="app-title">特殊村を作る</h1>
+        <span class="icon-button" aria-hidden="true"></span>
+      </header>
+      <main class="sheet-page">
         <form id="special-form" class="stack">
+          <p class="lead">
+            1 行に 1 通。参加した人に 1 通ずつ届きます（届く順は作るときにシャッフルします）。途中の空の行には「メッセージは特にありません。」が届きます。
+          </p>
           <label class="field" for="special-input"
-            ><span
-              >メッセージ
-              <span id="special-count" class="field-note">0 通</span></span
+            ><span class="field-label">メッセージ <span id="special-count" class="field-note">0 通</span></span
             ><textarea id="special-input" rows="8" required></textarea>
           </label>
-          <button
-            id="special-submit"
-            type="submit"
-            class="primary arrow-button"
-          >
-            <span>特殊村を作る</span><span aria-hidden="true">↗</span>
-          </button>
+          <button id="special-submit" type="submit" class="line-button">特殊村を作る</button>
         </form>
         <div id="special-result" class="stack" hidden>
           <p class="village-number">村番号<strong id="special-number"></strong></p>
-          <canvas
-            id="special-qr"
-            class="qr"
-            width="1"
-            height="1"
-            aria-label="村に入る QR コード"
-          ></canvas>
+          <canvas id="special-qr" class="qr" width="1" height="1" aria-label="村に入る QR コード"></canvas>
           <p id="special-url" class="url"></p>
-          <button id="special-copy" type="button" class="secondary">
-            URL をコピー
-          </button>
-          <button id="special-again" type="button" class="link">
-            もう 1 つ作る
-          </button>
+          <button id="special-copy" type="button" class="line-button">URL をコピー</button>
+          <button id="special-again" type="button" class="outline-button">もう 1 つ作る</button>
+          <a class="outline-button" href="/village">トークに戻る</a>
         </div>
         <p id="special-message" class="message" role="status"></p>
-      </section>
-    </main>
+      </main>
+    </div>
 
-    <dialog id="scanner" class="sheet" aria-labelledby="scanner-title">
-      <p class="eyebrow">JOIN THE VILLAGE</p>
+    <dialog id="scanner" class="scanner" aria-labelledby="scanner-title">
       <h2 id="scanner-title">QR で村に入る</h2>
       <video id="scanner-video" class="scanner-video" playsinline muted></video>
-      <p id="scanner-message" class="message" role="status"></p>
-      <button id="scanner-close" type="button" class="secondary wide">
-        閉じる
-      </button>
+      <p id="scanner-message" class="scanner-message" role="status"></p>
+      <button id="scanner-close" type="button" class="outline-button">閉じる</button>
     </dialog>
+
+    <dialog id="more-sheet" class="action-sheet" aria-label="その他">
+      <p class="action-sheet-note">履歴はこの端末にだけ残っています。消しても、村や役職はなくなりません。</p>
+      <button id="clear-talk" type="button" class="action-sheet-button danger">トーク履歴を削除</button>
+      <button id="more-close" type="button" class="action-sheet-button">キャンセル</button>
+    </dialog>
+
+    <p id="toast" class="toast" role="status" aria-live="polite"></p>
   </body>
 </html>

@@ -39,6 +39,7 @@ test("ボタンはカードにし、押したときの動作を種類ごとに�
   };
   assert.deepEqual(replyView(reply, ORIGIN), {
     kind: "card",
+    confirm: false,
     title: null,
     text: "お題は「すいか」です。確定しますか？",
     image: null,
@@ -59,12 +60,13 @@ test("画像と見出しのあるボタン（人数設定の返事）", () => {
   assert.equal(view.title, "1234村");
 });
 
-test("確認テンプレートもカードにする", () => {
+test("確認テンプレートもカードにし、ボタンを横に並べる印を付ける", () => {
   const view = replyView(
     { type: "confirm", text: "村の作成をしますか？", actions: [{ type: "message", label: "GM", text: "お題" }] },
     ORIGIN,
   );
   assert.equal(view.kind, "card");
+  assert.equal(view.confirm, true);
   assert.deepEqual(view.actions, [{ label: "GM", kind: "text", value: "お題" }]);
 });
 

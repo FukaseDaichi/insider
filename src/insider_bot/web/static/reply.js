@@ -1,4 +1,5 @@
-// 返事モデル（/api/village の JSON）を画面に描く。文字はすべて textContent で入れ、innerHTML は使わない。
+// 返事モデル（/api/village の JSON）を LINE のトークと同じ形（吹き出し・画像・テンプレートのカード）で描く。
+// 文字はすべて textContent で入れ、innerHTML は使わない。
 // Web には文字数の制限がないので、LINE 向けの代わりの返事は届かず、本体だけを描く。
 
 /** 画像やリンクに使ってよい URL。https か、このサイト（origin）の URL だけを許す。 */
@@ -35,6 +36,8 @@ export function replyView(reply, origin) {
   if (reply?.type === "buttons" || reply?.type === "confirm") {
     return {
       kind: "card",
+      // LINE の確認テンプレートは、ボタンを横に並べる
+      confirm: reply.type === "confirm",
       title: reply.title ?? null,
       text: reply.text,
       image: safeUrl(reply.image, origin),
@@ -60,17 +63,17 @@ function image(className, src) {
 }
 
 function renderActions(actions, onAction) {
-  const row = element("div", "reply-actions");
+  const row = element("div", "tpl-actions");
   for (const action of actions) {
     if (action.kind === "link") {
-      const link = element("a", "button secondary", action.label);
+      const link = element("a", "tpl-action", action.label);
       link.href = action.value;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       row.append(link);
       continue;
     }
-    const button = element("button", "secondary", action.label);
+    const button = element("button", "tpl-action", action.label);
     button.type = "button";
     button.addEventListener("click", () => onAction(action));
     row.append(button);
@@ -79,21 +82,24 @@ function renderActions(actions, onAction) {
 }
 
 function renderView(view, onAction) {
-  if (view.kind === "text") return element("p", "reply-text", view.text);
-  if (view.kind === "image") return image("reply-image", view.src);
-  const card = element("div", "reply-card");
-  if (view.image) card.append(image("reply-card-image", view.image));
-  if (view.title) card.append(element("p", "reply-card-title", view.title));
-  card.append(element("p", "reply-text", view.text));
+  if (view.kind === "text") return element("p", "bubble", view.text);
+  if (view.kind === "image") return image("photo", view.src);
+  const card = element("div", view.confirm ? "tpl tpl-confirm" : "tpl");
+  if (view.image) card.append(image("tpl-image", view.image));
+  const body = element("div", "tpl-body");
+  if (view.title) body.append(element("p", "tpl-title", view.title));
+  body.append(element("p", "tpl-text", view.text));
+  card.append(body);
   if (view.actions.length) card.append(renderActions(view.actions, onAction));
   return card;
 }
 
-/** 返事の列で container の中身を置き換える。ボタンが押されたら onAction({label, kind, value}) を呼ぶ。 */
-export function renderReplies(container, replies, onAction, origin = location.origin) {
-  container.replaceChildren();
+/** 返事の列を、吹き出しなどの要素の列にする。ボタンが押されたら onAction({label, kind, value}) を呼ぶ。 */
+export function replyNodes(replies, onAction, origin = location.origin) {
+  const nodes = [];
   for (const reply of replies) {
     const view = replyView(reply, origin);
-    if (view) container.append(renderView(view, onAction));
+    if (view) nodes.push(renderView(view, onAction));
   }
+  return nodes;
 }
