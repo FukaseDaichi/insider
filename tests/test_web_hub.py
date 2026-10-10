@@ -761,3 +761,38 @@ async def test_normal_game_after_done_round_clears_role_card():
     assert t.last_room()["insider"]["phase"] == "done"
     await world.hub.start(world.room, tp, "りんご", "")
     assert t.last_room()["insider"] is None
+
+
+async def test_giveup_while_topic_is_being_registered_does_not_revive_round():
+    world = World(rng=FixedRandom(0))  # たろう がインサイダー
+    (t, tp), (h, hp), (j, jp), _ = trio(world)
+    await world.hub.insider_start(world.room, hp, [tp.player_id, hp.player_id, jp.player_id], "insider", None, None)
+    lock = world.hub._service._lock(world.room.room_id)
+    await lock.acquire()
+    task = asyncio.create_task(world.hub.insider_topic(world.room, tp, "もも"))
+    await asyncio.sleep(0)
+    await world.hub.giveup(world.room, jp)
+    lock.release()
+    await task
+    assert world.room.insider.phase.value == "done"
+    assert world.manager.get(world.room.room_id) is None
+    assert t.last_room()["game"] is None
+
+
+async def test_insider_topic_while_random_start_is_registering_is_refused():
+    world = World(rng=FixedRandom(0))
+    (t, tp), (h, hp), (j, jp), _ = trio(world)
+    lock = world.hub._service._lock(world.room.room_id)
+    await lock.acquire()
+    task = asyncio.create_task(
+        world.hub.insider_start(world.room, hp, [tp.player_id, hp.player_id, jp.player_id], "random", None, None)
+    )
+    await asyncio.sleep(0)
+    # 断られずに 2 回目の開始へ進むと、握ったままのロックを待って止まる
+    async with asyncio.timeout(1):
+        await world.hub.insider_topic(world.room, tp, "もも")
+    assert t.notices()[-1] == "いまはお題を決められません"
+    lock.release()
+    await task
+    assert world.manager.get(world.room.room_id).topic == "すいか"
+    assert world.room.insider.phase.value == "asking"

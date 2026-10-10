@@ -212,6 +212,8 @@ class RoomHub:
             self._broadcast_entry(room, room.add_entry(None, INSIDER_CHOOSING))
             self._broadcast_room(room)
             return
+        # お題を先に置き、始まるまでの間に届いたインサイダーのお題を insider_topic が断るようにする
+        insider.topic = chosen
         await self._begin_insider(room, insider, chosen)
 
     async def insider_topic(self, room: Room, player: Player, topic: str) -> None:
@@ -236,11 +238,16 @@ class RoomHub:
         """お題当てのゲームを AI の GM で始める。参加者は全員（インサイダーも）質問する。"""
         outcome = await self._service.start(room.room_id, GM_SETTER_ID, GM_NAME, topic, "")
         game = self._manager.get(room.room_id)
-        if outcome.public is None or game is None or room.insider is not insider:
-            # _busy で防いでいるので起きないはず。起きたらこの回を捨て、画面を戻す
-            log.warning("インサイダーゲームを始められませんでした（room=%s）", room.code)
-            if room.insider is insider:
-                room.insider = None
+        started = outcome.public is not None and game is not None
+        if not started or room.insider is not insider or insider.phase is not Phase.CHOOSING:
+            if started:
+                # 待つ間に中止された（お題待ちのギブアップ）。作ったばかりのゲームは誰にも見せずに終える
+                self._manager.end(room.room_id)
+            else:
+                # _busy で防いでいるので起きないはず。起きたらこの回を捨て、画面を戻す
+                log.warning("インサイダーゲームを始められませんでした（room=%s）", room.code)
+                if room.insider is insider and insider.phase is Phase.CHOOSING:
+                    room.insider = None
             self._broadcast_room(room)
             return
         insider.begin(topic, game.game_id, self._clock())
