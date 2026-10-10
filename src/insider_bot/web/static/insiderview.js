@@ -140,7 +140,8 @@ export class InsiderView {
     this.room = room;
     const { insider, you, players, game } = room;
     const active = insider && insider.phase !== "done";
-    $("insider-open").hidden = Boolean(game) || Boolean(active);
+    // お題当てのフォームを開いている間は、その上に出さない
+    $("insider-open").hidden = Boolean(game) || Boolean(active) || !$("start-form").hidden;
     this.deadline = insider?.remaining == null ? null : performance.now() / 1000 + insider.remaining;
     const panel = $("insider-panel");
     panel.hidden = !insider;

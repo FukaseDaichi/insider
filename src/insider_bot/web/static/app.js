@@ -735,6 +735,8 @@ class RoomPage {
     $("invite-copy").addEventListener("click", () => this.copyInvite());
     $("start-open").addEventListener("click", () => {
       $("start-open").hidden = true;
+      // フォームの上に別のゲームの開始ボタンを残さない
+      $("insider-open").hidden = true;
       $("start-form").hidden = false;
       $("topic").focus();
     });
@@ -781,6 +783,7 @@ class RoomPage {
   closeStartForm() {
     $("start-form").hidden = true;
     $("start-open").hidden = false;
+    $("insider-open").hidden = false;
   }
 
   setSound(on) {
