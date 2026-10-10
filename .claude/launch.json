@@ -7,6 +7,13 @@
       "runtimeArgs": ["-c", "WEB_PORT=\"${PORT:-8080}\" exec uv run --env-file .env python -m insider_bot.web"],
       "port": 8080,
       "autoPort": true
+    },
+    {
+      "name": "insider-web-local",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "LINE_CHANNEL_SECRET= LINE_CHANNEL_TOKEN= WEB_PORT=\"${PORT:-8080}\" exec uv run --env-file .env python -m insider_bot.web"],
+      "port": 8080,
+      "autoPort": true
     }
   ]
 }
