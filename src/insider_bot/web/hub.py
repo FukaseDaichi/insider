@@ -17,7 +17,16 @@ from insider_bot import format as fmt
 from insider_bot.game import Clock, GameManager
 from insider_bot.service import GameService, Outcome
 from insider_bot.village.illust import Illustrations
-from insider_bot.web.insider import ACTIVE_PHASES, InsiderRound, InvalidSetup, Rng, check_setup, deal
+from insider_bot.web.insider import (
+    ACTIVE_PHASES,
+    InsiderRound,
+    InvalidSetup,
+    Phase,
+    Rng,
+    check_setup,
+    check_topic,
+    deal,
+)
 from insider_bot.web.rooms import Entry, Player, Room, RoomNotFound, RoomRegistry
 
 log = logging.getLogger(__name__)
@@ -200,6 +209,24 @@ class RoomHub:
             self._broadcast_room(room)
             return
         await self._begin_insider(room, insider, chosen)
+
+    async def insider_topic(self, room: Room, player: Player, topic: str) -> None:
+        insider = room.insider
+        # お題を先に置いてから await する。連打や再送で 2 回届いても、ゲームは 1 回だけ始まる
+        if (
+            insider is None
+            or insider.phase is not Phase.CHOOSING
+            or insider.insider_id != player.player_id
+            or insider.topic is not None
+        ):
+            self._notify(room, player, "いまはお題を決められません")
+            return
+        try:
+            insider.topic = check_topic(topic)
+        except InvalidSetup as error:
+            self._notify(room, player, str(error))
+            return
+        await self._begin_insider(room, insider, insider.topic)
 
     async def _begin_insider(self, room: Room, insider: InsiderRound, topic: str) -> None:
         """お題当てのゲームを AI の GM で始める。参加者は全員（インサイダーも）質問する。"""

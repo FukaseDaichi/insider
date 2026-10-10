@@ -575,3 +575,36 @@ async def test_players_with_the_same_name_are_told_apart_by_id():
     await world.hub.insider_start(world.room, hp, [tp.player_id, hp.player_id, t2p.player_id], "random", None, None)
     assert t2.last_room()["insider"]["you"]["role"] == "insider"
     assert t.last_room()["insider"]["you"]["role"] == "villager"
+
+
+async def test_insider_chooses_topic_then_game_starts():
+    world = World(rng=FixedRandom(2))  # じろう がインサイダー
+    (t, tp), (h, hp), (j, jp), _ = trio(world)
+    await world.hub.insider_start(world.room, tp, [tp.player_id, hp.player_id, jp.player_id], "insider", None, 5)
+    assert world.manager.get(world.room.room_id) is None
+    assert t.last_room()["insider"]["phase"] == "choosing"
+    assert t.entries()[-1]["text"] == "🕵️ インサイダーがお題を考えています…"
+    assert j.last_room()["insider"]["you"]["topic"] is None
+    await world.hub.insider_topic(world.room, tp, "もも")
+    assert t.notices()[-1] == "いまはお題を決められません"
+    await world.hub.insider_topic(world.room, jp, "  ")
+    assert j.notices()[-1] == "お題は1〜50文字で入力してください"
+    world.clock.advance(30)
+    await world.hub.insider_topic(world.room, jp, "もも")
+    assert world.manager.get(world.room.room_id).topic == "もも"
+    assert j.last_room()["insider"]["you"]["topic"] == "もも"
+    # 制限時間はお題が決まった時点から数える
+    assert j.last_room()["insider"]["remaining"] == 300.0
+
+
+async def test_insider_topic_twice_starts_only_one_game():
+    world = World(rng=FixedRandom(0))
+    (t, tp), (h, hp), (j, jp), _ = trio(world)
+    await world.hub.insider_start(world.room, hp, [tp.player_id, hp.player_id, jp.player_id], "insider", None, None)
+    await asyncio.gather(
+        world.hub.insider_topic(world.room, tp, "もも"),
+        world.hub.insider_topic(world.room, tp, "なし"),
+    )
+    assert world.manager.get(world.room.room_id).topic == "もも"
+    assert t.notices()[-1] == "いまはお題を決められません"
+    assert [e["text"] for e in t.entries()].count(INSIDER_STARTED) == 1
