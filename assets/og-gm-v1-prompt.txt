@@ -1,0 +1,24 @@
+Generation mode: built-in image_gen, imagegen skill.
+Character reference: src/insider_bot/web/static/host.png
+Generated source: 1730 x 909 PNG. Export: 1200 x 630 PNG, resized only.
+All typography was generated together with the illustration; no text was added afterward.
+
+Use case: ads-marketing
+Asset type: Final production Open Graph social sharing image for the Japanese browser conversation game INSIDER.
+Primary request: Create one exceptionally polished landscape OGP image, 1200 x 630 pixels (1.90476:1). Generate ALL typography together with the illustration in this single image. A confident, welcoming, memorable game invitation, premium graphic design with a charming anime GM girl.
+Input images: Image 1 (/Users/fukasedaichi/git/insider/src/insider_bot/web/static/host.png) is a CHARACTER IDENTITY AND ILLUSTRATION STYLE REFERENCE, not a layout to copy. Preserve this same recognizable GM girl: black chin-length bob with bangs, warm brown eyes, black ring choker, oversized black hoodie with bright acid-lime lining and drawstrings, cheerful wink, friendly open smile, a raised peace-sign hand.
+Scene/backdrop: Dark charcoal #191a20 background with subtle fine grain; sparse orbital lines around a mysterious question-mark card, lime eight-point asterisk accents and a restrained glow. Evoke the site's YES / NO conversation-card motif with two understated floating cards. Avoid visual noise.
+Composition/framing: A deliberately designed wide editorial composition. Left 58% carries an oversized warm-white INSIDER wordmark and large two-line Japanese headline. Right 42% features the GM girl as a large beautifully drawn waist-up portrait, her entire face and peace-sign hand fully visible inside the canvas; lower hoodie can extend to bottom edge. Keep visual and typographic areas distinct and balanced, with generous breathing space and roughly 56px outer safe margins. Strong thumbnail readability. The girl's black clothing has visible detail against the dark background.
+Style/medium: High quality expressive anime illustration matching the supplied character, integrated with crisp premium contemporary Japanese graphic typography; strong magazine-cover art direction, no generic template, no 3D.
+Lighting/mood: Friendly, playful intrigue. Delicate lime rim light, warm skin tones, clear silhouette, natural face.
+Color palette: Charcoal #191a20, acid-lime #dfef78, warm off-white #f4f3eb, subtle gray; warm natural skin tones.
+Text (verbatim):
+Main largest wordmark: "INSIDER"
+Japanese headline immediately below the wordmark on TWO lines:
+"いい質問が、"
+"秘密をほどく。"
+Small but legible supporting line below headline: "ひとつの秘密を、みんなの質問で。"
+Bottom small pill or line: "登録不要・ブラウザで遊べる"
+Small lettering on background cards only: "YES" and "NO", plus the symbol "?" on the secret card.
+Typography: All copy is part of the generated image, exact Japanese characters and punctuation, absolutely accurate and readable. INSIDER is bold modern uppercase sans-serif, I N S I D E R. Japanese headline is extra-bold clean Japanese typography, warm white with tasteful lime emphasis on 秘密. Headline large enough for social previews.
+Constraints: Include the referenced GM GIRL prominently. Generate the typography and character simultaneously. No other people. No extra words, fake logos, URLs, watermarks, or unreadable decorative microcopy. No separate frame or mockup. Full-bleed finished OGP image, opaque background. Do not reproduce the square composition of the reference.
