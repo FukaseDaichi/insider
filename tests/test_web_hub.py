@@ -11,6 +11,7 @@ from insider_bot.web.hub import (
     CORRECT_SOUND,
     GIVEUP_SOUND,
     INSIDER_STARTED,
+    INSIDER_VOTING,
     START_SOUNDS,
     RoomHub,
     answer_sound,
@@ -608,3 +609,77 @@ async def test_insider_topic_twice_starts_only_one_game():
     assert world.manager.get(world.room.room_id).topic == "もも"
     assert t.notices()[-1] == "いまはお題を決められません"
     assert [e["text"] for e in t.entries()].count(INSIDER_STARTED) == 1
+
+
+CORRECT_SUIKA = FakeJudge(answers={"すいかですか？": CORRECT})
+
+
+async def insider_playing(rng_index: int = 0):
+    """たろう・はなこ・じろう が参加者（rng_index 番目がインサイダー）、さぶろう は見るだけ。お題は すいか。"""
+    world = World(judge=FakeJudge(answers={"すいかですか？": CORRECT}), rng=FixedRandom(rng_index))
+    people = trio(world)
+    ids = [p.player_id for _, p in people[:3]]
+    await world.hub.insider_start(world.room, people[0][1], ids, "random", None, 5)
+    return world, people
+
+
+async def test_spectator_cannot_ask():
+    world, people = await insider_playing()
+    s, sp = people[3]
+    await world.hub.ask(world.room, sp, "果物ですか", world.game_id())
+    assert s.notices()[-1] == "インサイダーゲームの参加者だけが質問できます"
+    assert world.judge.calls == []
+
+
+async def test_correct_guess_opens_voting_then_all_votes_close_it():
+    world, people = await insider_playing(rng_index=0)  # たろう がインサイダー
+    (t, tp), (h, hp), (j, jp), (s, sp) = people
+    await world.hub.ask(world.room, hp, "すいかですか", world.game_id())
+    insider = t.last_room()["insider"]
+    assert insider["phase"] == "voting"
+    assert insider["remaining"] is None
+    assert t.entries()[-1]["text"] == INSIDER_VOTING
+    world.hub.vote(world.room, sp, tp.player_id)
+    assert s.notices()[-1] == "参加者だけが投票できます"
+    world.hub.vote(world.room, hp, tp.player_id)
+    world.hub.vote(world.room, jp, hp.player_id)
+    world.hub.vote(world.room, jp, tp.player_id)  # 入れ直し
+    assert t.last_room()["insider"]["voted"] == [hp.player_id, jp.player_id]
+    # 誰が誰に入れたかは、本人の接続以外に送らない
+    assert t.last_room()["insider"]["you"]["vote"] is None
+    assert j.last_room()["insider"]["you"]["vote"] == tp.player_id
+    world.hub.vote(world.room, tp, hp.player_id)
+    result = t.entries()[-1]
+    assert result["kind"] == "insider_result"
+    assert result["data"] == {
+        "ending": "voted",
+        "topic": "すいか",
+        "insider": "たろう",
+        "insider_id": tp.player_id,
+        "guesser": "はなこ",
+        "winner": "villagers",
+        "votes": [
+            {"id": tp.player_id, "name": "たろう", "count": 2},
+            {"id": hp.player_id, "name": "はなこ", "count": 1},
+            {"id": jp.player_id, "name": "じろう", "count": 0},
+        ],
+    }
+    assert "村人の勝ち" in result["text"]
+    assert t.last_room()["insider"]["phase"] == "done"
+    assert s.last_room()["insider"]["result"] == result["data"]
+
+
+async def test_close_vote_by_participant_with_tie_lets_insider_win():
+    world, people = await insider_playing(rng_index=0)
+    (t, tp), (h, hp), (j, jp), (s, sp) = people
+    await world.hub.ask(world.room, hp, "すいかですか", world.game_id())
+    world.hub.close_vote(world.room, hp)
+    assert h.notices()[-1] == "まだ誰も投票していません"
+    world.hub.vote(world.room, hp, tp.player_id)
+    world.hub.vote(world.room, tp, jp.player_id)
+    world.hub.close_vote(world.room, sp)
+    assert s.notices()[-1] == "参加者だけが開票できます"
+    world.hub.close_vote(world.room, jp)
+    data = t.entries()[-1]["data"]
+    assert data["winner"] == "insider"
+    assert "インサイダーの勝ち" in t.entries()[-1]["text"]

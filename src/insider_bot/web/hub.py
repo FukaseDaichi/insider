@@ -19,6 +19,7 @@ from insider_bot.service import GameService, Outcome
 from insider_bot.village.illust import Illustrations
 from insider_bot.web.insider import (
     ACTIVE_PHASES,
+    Ending,
     InsiderRound,
     InvalidSetup,
     Phase,
@@ -68,6 +69,7 @@ GM_NAME = "GM"
 # 先頭の 🎮 で画面が開始の案内（GM の吹き出し）と見分け、質問番号を数え直す
 INSIDER_STARTED = "🎮 インサイダーゲーム開始！\n役職を確かめて、質問どうぞ。"
 INSIDER_CHOOSING = "🕵️ インサイダーがお題を考えています…"
+INSIDER_VOTING = "🗳️ お題が当たりました！インサイダーは誰？\n話し合って、自分以外の 1 人に投票してください。"
 MODE_LABELS = {
     "random": "お題はランダム",
     "self": "お題は出した人が決めました",
@@ -259,6 +261,10 @@ class RoomHub:
 
     async def _ask(self, room: Room, player: Player, text: str, game_id: object) -> None:
         # handle_question が対象のゲームを控えるまで await を挟まない。確かめたゲームと判定するゲームを一致させるため
+        insider = room.insider
+        if insider is not None and insider.phase is Phase.ASKING and not insider.is_participant(player.player_id):
+            self._notify(room, player, "インサイダーゲームの参加者だけが質問できます")
+            return
         if len(text.strip()) > QUESTION_MAX:
             self._notify(room, player, f"質問は{QUESTION_MAX}文字までです")
             return
@@ -295,6 +301,77 @@ class RoomHub:
             # 判定の順番待ちの間に、先の質問の正解やギブアップでゲームが終わった
             entry.text = f"❓ {question}\n— ゲームが終わったため取り消しました"
         self._broadcast_entry(room, entry)
+        # インサイダーゲームのお題が当たったら、投票に進む。判定中に別の回へ替わっていたら触らない
+        if (
+            outcome.is_correct
+            and insider is not None
+            and insider is room.insider
+            and insider.phase is Phase.ASKING
+            and insider.game_id == game.game_id
+        ):
+            self._cancel_timer(room)
+            insider.start_voting(player.name)
+            self._broadcast_entry(room, room.add_entry(None, INSIDER_VOTING))
+        self._broadcast_room(room)
+
+    def vote(self, room: Room, player: Player, target: int) -> None:
+        insider = room.insider
+        if insider is None:
+            self._notify(room, player, "いまは投票できません")
+            return
+        problem = insider.vote(player.player_id, target)
+        if problem is not None:
+            self._notify(room, player, problem)
+            return
+        if insider.all_voted():
+            self._finish_insider(room, insider, Ending.VOTED)
+            return
+        self._broadcast_room(room)
+
+    def close_vote(self, room: Room, player: Player) -> None:
+        """接続が切れた人を待たずに締め切る。"""
+        insider = room.insider
+        if insider is None or insider.phase is not Phase.VOTING:
+            self._notify(room, player, "いまは開票できません")
+            return
+        if not insider.is_participant(player.player_id):
+            self._notify(room, player, "参加者だけが開票できます")
+            return
+        if not insider.votes:
+            self._notify(room, player, "まだ誰も投票していません")
+            return
+        self._finish_insider(room, insider, Ending.VOTED)
+
+    def _cancel_timer(self, room: Room) -> None:
+        pass
+
+    def _finish_insider(self, room: Room, insider: InsiderRound, ending: Ending) -> None:
+        """回を終え、インサイダーを明かした結果のカードを全員に送る。誰が誰に入れたかは出さない。"""
+        insider.finish(ending)
+        name = self._name_of(room, insider.insider_id)
+        votes: list[dict[str, Any]] = []
+        if ending is Ending.VOTED:
+            tally = insider.tally()
+            winner = "villagers" if tally.villagers_win else "insider"
+            votes = [
+                {"id": player_id, "name": self._name_of(room, player_id), "count": count}
+                for player_id, count in tally.counts.items()
+            ]
+            text = f"🕵️ インサイダーは {name} でした。{'村人の勝ち！' if tally.villagers_win else 'インサイダーの勝ち！'}"
+        else:
+            winner = "none"
+            text = f"🕵️ インサイダーは {name} でした。全員の負け…"
+        insider.result = {
+            "ending": ending.value,
+            "topic": insider.topic,
+            "insider": name,
+            # 同じ名前の人がいても、結果のカードでインサイダーの行を取り違えないよう ID も入れる
+            "insider_id": insider.insider_id,
+            "guesser": insider.guesser,
+            "winner": winner,
+            "votes": votes,
+        }
+        self._broadcast_entry(room, room.add_entry(None, text, kind="insider_result", data=insider.result))
         self._broadcast_room(room)
 
     def _apply(self, room: Room, player: Player, outcome: Outcome, author: str | None) -> None:
