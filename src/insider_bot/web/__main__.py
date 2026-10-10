@@ -13,6 +13,7 @@ from insider_bot.judge import JevJudge, create_jev_client
 from insider_bot.line.client import LineReplyClient
 from insider_bot.line.webhook import CALLBACK_PATH, LineWebhook, add_line_routes
 from insider_bot.service import GameService
+from insider_bot.village.words import BEGINNER_RANK
 from insider_bot.web.hub import RoomHub
 from insider_bot.web.rooms import RoomRegistry
 from insider_bot.web.server import create_app
@@ -27,7 +28,15 @@ async def make_app(config: WebConfig) -> web.Application:
     service = GameService(manager, JevJudge(client, config.correct_threshold, config.jev_timeout_seconds))
     registry = RoomRegistry(on_remove=lambda room: manager.end(room.room_id))
     village = build_village(config.public_base_url)
-    app = create_app(RoomHub(registry, service, manager), village=village)
+    # ルームのインサイダーゲームも、配役ツールと同じ辞書（初心者の範囲）と役職画像を使う
+    hub = RoomHub(
+        registry,
+        service,
+        manager,
+        pick_topic=lambda: village.service.pick_topic(BEGINNER_RANK),
+        role_image=village.service.illust.url_for,
+    )
+    app = create_app(hub, village=village)
     if config.line is not None:
         # LINE も Web と同じ中核を使うので、LINE で作った村に Web から入れる
         sender = LineReplyClient(config.line.channel_token, config.line.api_base_url)

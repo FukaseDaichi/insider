@@ -8,6 +8,7 @@ from aiohttp import WSCloseCode, WSMsgType
 from aiohttp.test_utils import TestClient, TestServer
 
 from insider_bot.game import GameManager
+from insider_bot.judge import Verdict
 from insider_bot.service import GameService
 from insider_bot.village.illust import Illustrations
 from insider_bot.web.hub import RoomHub
@@ -33,7 +34,7 @@ async def serve(static_dir, judge=None, village=None, **limits):
     manager = GameManager(clock=clock)
     service = GameService(manager, judge or FakeJudge(), clock=clock)
     registry = RoomRegistry(clock=clock, on_remove=lambda room: manager.end(room.room_id), **limits)
-    hub = RoomHub(registry, service, manager, clock=clock)
+    hub = RoomHub(registry, service, manager, clock=clock, pick_topic=lambda: "すいか", rng=FixedRandom(*([0] * 20)))
     kwargs = {} if static_dir is None else {"static_dir": static_dir}
     async with TestClient(TestServer(create_app(hub, village=village, **kwargs))) as client:
         yield client
@@ -328,3 +329,45 @@ async def test_the_real_village_page_is_served_and_the_special_form_link_leads_t
         response = await client.get(reply.text)
         assert response.status == 200
         assert "配役" in await response.text()
+
+
+async def test_insider_game_over_websocket(static_dir):
+    judge = FakeJudge(answers={"すいかですか？": Verdict(1.0, True, "exact")})
+    async with serve(static_dir, judge=judge) as client:
+        code = await create_room(client)
+        players = [await join(client, code, name) for name in ("たろう", "はなこ", "じろう")]
+        ws = [p[0] for p in players]
+        ids = [player["id"] for player in players[-1][2]["room"]["players"]]
+        await ws[0].send_json(
+            {"type": "insider_start", "participants": ids, "topic_mode": "random", "topic": None, "minutes": None}
+        )
+        room = await receive_until(ws[0], lambda m: m["type"] == "room" and (m["insider"] or {}).get("phase") == "asking")
+        assert room["insider"]["you"]["role"] == "insider"  # FixedRandom(0) で 1 人目
+        await ws[1].send_json({"type": "ask", "text": "すいかですか", "game_id": room["game"]["id"]})
+        await receive_until(ws[1], lambda m: m["type"] == "room" and (m["insider"] or {}).get("phase") == "voting")
+        for voter, target in ((0, 1), (1, 0), (2, 0)):
+            await ws[voter].send_json({"type": "vote", "target": ids[target]})
+        result = await receive_until(ws[2], lambda m: m["type"] == "entry" and m["entry"].get("kind") == "insider_result")
+        assert result["entry"]["data"]["winner"] == "villagers"
+
+
+@pytest.mark.parametrize(
+    "junk",
+    [
+        {"type": "insider_start", "participants": "1,2,3", "topic_mode": "random"},
+        {"type": "insider_start", "participants": [1, True, 3], "topic_mode": "random"},
+        {"type": "insider_start", "participants": [1, 2, 3], "topic_mode": 5},
+        {"type": "insider_start", "participants": [1, 2, 3], "topic_mode": "random", "minutes": "5"},
+        {"type": "insider_topic", "topic": 3},
+        {"type": "vote", "target": "1"},
+        {"type": "vote", "target": False},
+    ],
+)
+async def test_malformed_insider_messages_are_ignored(static_dir, junk):
+    async with serve(static_dir) as client:
+        code = await create_room(client)
+        ws, _, _ = await join(client, code, "たろう")
+        await ws.send_json(junk)
+        await ws.send_json({"type": "start", "topic": "りんご", "hint": ""})
+        notice = await receive_until(ws, lambda m: m["type"] == "notice")
+        assert notice["text"] == "お題『りんご』を登録しました"

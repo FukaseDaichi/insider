@@ -114,6 +114,11 @@ async def _read_join(ws: web.WebSocketResponse) -> dict[str, Any] | None:
     return message
 
 
+def _is_int(value: object) -> bool:
+    # JSON の true / false は Python で int の仲間になるので除く
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 async def _dispatch(hub: RoomHub, room: Room, player: Player, message: dict[str, Any] | None) -> None:
     if message is None:
         return
@@ -128,6 +133,27 @@ async def _dispatch(hub: RoomHub, room: Room, player: Player, message: dict[str,
             await hub.start(room, player, topic, hint)
     elif kind == "giveup":
         await hub.giveup(room, player)
+    elif kind == "insider_start":
+        participants, mode = message.get("participants"), message.get("topic_mode")
+        topic, minutes = message.get("topic"), message.get("minutes")
+        if (
+            isinstance(participants, list)
+            and all(_is_int(p) for p in participants)
+            and isinstance(mode, str)
+            and (topic is None or isinstance(topic, str))
+            and (minutes is None or _is_int(minutes))
+        ):
+            await hub.insider_start(room, player, participants, mode, topic, minutes)
+    elif kind == "insider_topic":
+        topic = message.get("topic")
+        if isinstance(topic, str):
+            await hub.insider_topic(room, player, topic)
+    elif kind == "vote":
+        target = message.get("target")
+        if _is_int(target):
+            hub.vote(room, player, target)
+    elif kind == "close_vote":
+        hub.close_vote(room, player)
 
 
 async def websocket(request: web.Request) -> web.WebSocketResponse:
