@@ -3,6 +3,7 @@ import { parseAnswer } from "./answer.js";
 import { AskWatch } from "./askwatch.js";
 import { fireCrackers } from "./confetti.js";
 import { HOST_NAME, hostLines } from "./host.js";
+import { InsiderView } from "./insiderview.js";
 import { placeChrome, watchCompact } from "./layout.js";
 import { isWeak, numberQuestions, questionNote, resultOf } from "./log.js";
 import { renderQr, Scanner } from "./qr.js";
@@ -356,6 +357,10 @@ class RoomPage {
           },
         })
       : null;
+    this.insider = new InsiderView({
+      send: (message) => this.send(message),
+      notice: (text) => this.notice(text),
+    });
   }
 
   start() {
@@ -364,6 +369,7 @@ class RoomPage {
     $("menu-code").textContent = this.code;
     document.title = `ルーム ${this.code} — INSIDER`;
     this.bindControls();
+    this.insider.bind();
     this.bindMenu();
     this.bindLog();
     if (!speechSupported) {
@@ -500,7 +506,8 @@ class RoomPage {
     $("giveup-confirm").disabled = !connected;
   }
 
-  renderRoom({ players, game, you }) {
+  renderRoom(room) {
+    const { players, game, you } = room;
     if (this.game?.id !== game?.id && $("giveup-dialog").open)
       $("giveup-dialog").close();
     this.game = game;
@@ -523,9 +530,11 @@ class RoomPage {
     secret.textContent = you.is_setter
       ? `あなただけのお題：${you.topic}${you.hint ? `　／ 補足：${you.hint}` : ""}`
       : "";
-    $("start-panel").hidden = Boolean(game);
-    // 出題者も質問者に紛れて遊ぶので、全員に同じ操作を出す
-    $("asker-panel").hidden = !game;
+    const canAsk = this.insider.render(room);
+    const busy = Boolean(game) || Boolean(room.insider && room.insider.phase !== "done");
+    $("start-panel").hidden = busy;
+    // 出題者も質問者に紛れて遊ぶので、全員に同じ操作を出す。インサイダーゲームでは見るだけの人に出さない
+    $("asker-panel").hidden = !game || !canAsk;
     if (game) this.closeStartForm();
     if (!game) this.talk?.cancel("ゲームが終わったため取り消しました");
     this.renderStatus();
@@ -533,17 +542,20 @@ class RoomPage {
 
   renderStatus() {
     if (!this.game) {
-      $("game-status").textContent = "準備中 — 仲間を招いて、お題をひとつ。";
+      $("game-status").textContent =
+        this.insider.idleLabel() ?? "準備中 — 仲間を招いて、お題をひとつ。";
       return;
     }
     const elapsed = Math.max(
       0,
       Math.floor(performance.now() / 1000 - this.startedAt),
     );
+    // インサイダーゲームに制限時間があるときは、経過の代わりに残りを出す
+    const remaining = this.insider.remainingLabel();
     $("game-status").replaceChildren(
       ...[
         ["質問", `${this.game.questions} 回`],
-        ["経過", formatElapsed(elapsed)],
+        remaining === null ? ["経過", formatElapsed(elapsed)] : ["残り", remaining],
       ].map(([label, value]) => {
         const stat = document.createElement("span");
         stat.append(label);
@@ -583,6 +595,15 @@ class RoomPage {
         this.items.delete(Number(oldest.dataset.id));
         oldest.remove();
       }
+    }
+    // インサイダーゲームの結果は、文字の読み解きではなく記録の中身で描く
+    if (entry.kind === "insider_result" && entry.data) {
+      item.className = "entry result insider-result";
+      item.dataset.kind = "result";
+      item.replaceChildren(...InsiderView.resultNodes(entry.data));
+      this.renumber();
+      if (atBottom) log.scrollTop = log.scrollHeight;
+      return;
     }
     const answer = !entry.pending && parseAnswer(entry.text);
     const note = !answer && questionNote(entry.text);

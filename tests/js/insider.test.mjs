@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import {
   formatRemaining,
+  idleStatus,
   initialSelection,
   resultView,
   selectable,
@@ -90,4 +91,11 @@ test("結果の表示", () => {
   ]);
   assert.equal(resultView({ ending: "time_up", topic: "すいか", insider: "たろう", winner: "none", votes: [] }).headline, "時間切れ　全員の負け…");
   assert.equal(resultView({ ending: "giveup", topic: null, insider: "たろう", winner: "none", votes: [] }).topic, null);
+});
+
+test("ゲームのない間の上のバー。お題待ちと投票中はそれを出す", () => {
+  assert.equal(idleStatus(null), null);
+  assert.equal(idleStatus({ phase: "done" }), null);
+  assert.equal(idleStatus({ phase: "choosing" }), "インサイダーがお題を考えています…");
+  assert.equal(idleStatus({ phase: "voting" }), "投票中 — インサイダーは誰？");
 });

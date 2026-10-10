@@ -328,6 +328,9 @@
             >
               お題を出す <span aria-hidden="true">＋</span>
             </button>
+            <button id="insider-open" type="button" class="secondary wide insider-open">
+              インサイダーゲーム開始 <span aria-hidden="true">🕵️</span>
+            </button>
             <form id="start-form" class="stack" hidden>
               <div class="form-heading">
                 <span class="eyebrow">YOUR SECRET</span
@@ -359,6 +362,30 @@
                 </button>
               </div>
             </form>
+          </div>
+          <div id="insider-panel" class="insider-panel" hidden>
+            <p id="insider-status" class="insider-status" role="status"></p>
+            <button id="role-open" type="button" class="secondary wide" hidden>
+              自分の役職を見る
+            </button>
+            <form id="insider-topic-form" class="row" hidden>
+              <input
+                id="insider-topic-input"
+                aria-label="お題"
+                maxlength="50"
+                autocomplete="off"
+                placeholder="お題を決めてください（50文字まで）"
+                required
+              /><button type="submit" class="primary">決める</button>
+            </form>
+            <div id="vote-panel" class="stack" hidden>
+              <p class="insider-lead">インサイダーだと思う人に投票（開票まで入れ直せます）</p>
+              <div id="vote-targets" class="pick-grid"></div>
+              <button id="vote-close" type="button" class="secondary wide">開票する</button>
+            </div>
+            <button id="insider-cancel" type="button" class="link muted-link" hidden>
+              中止する（全員の負け）
+            </button>
           </div>
           <div id="asker-panel" hidden>
             <p id="transcript" class="transcript" aria-live="polite"></p>
@@ -524,6 +551,60 @@
         <button id="giveup-confirm" type="button" class="primary">
           お題を公開
         </button>
+      </div>
+    </dialog>
+
+    <dialog id="insider-setup" class="sheet insider-sheet" aria-labelledby="insider-setup-title">
+      <p class="eyebrow">INSIDER GAME</p>
+      <h2 id="insider-setup-title">インサイダーゲームを始める</h2>
+      <form id="insider-form" class="stack">
+        <fieldset class="field-group">
+          <legend>参加者 <span id="insider-count" class="field-note"></span></legend>
+          <div id="insider-players" class="pick-grid"></div>
+        </fieldset>
+        <fieldset class="field-group">
+          <legend>お題</legend>
+          <div class="segmented">
+            <label class="segment"><input type="radio" name="topic-mode" value="random" checked /><span>ランダム</span></label>
+            <label class="segment"><input type="radio" name="topic-mode" value="self" /><span>自分で決める</span></label>
+            <label class="segment"><input type="radio" name="topic-mode" value="insider" /><span>インサイダーが決める</span></label>
+          </div>
+          <label id="insider-topic-field" class="field" hidden
+            >お題 <span class="field-note">50文字まで・あなたは参加できません</span
+            ><input id="insider-topic" maxlength="50" autocomplete="off"
+          /></label>
+        </fieldset>
+        <fieldset class="field-group">
+          <legend>制限時間</legend>
+          <label class="check-row"><input id="insider-timer" type="checkbox" /> 制限時間をつける</label>
+          <div id="insider-minutes-row" class="stepper" hidden>
+            <button id="minutes-down" type="button" aria-label="1分減らす">−</button
+            ><output id="insider-minutes" aria-live="polite">5</output><span>分</span
+            ><button id="minutes-up" type="button" aria-label="1分増やす">＋</button>
+          </div>
+        </fieldset>
+        <p id="insider-problem" class="message" role="status"></p>
+        <div class="row">
+          <button type="submit" class="primary">配って始める</button
+          ><button id="insider-setup-cancel" type="button" class="secondary">やめる</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="role-dialog" class="sheet role-sheet" aria-labelledby="role-title">
+      <p class="eyebrow">YOUR ROLE</p>
+      <h2 id="role-title"></h2>
+      <img id="role-image" class="role-image" alt="" />
+      <p id="role-topic" class="role-topic"></p>
+      <button id="role-close" type="button" class="primary wide">閉じる</button>
+    </dialog>
+
+    <dialog id="close-vote-dialog" class="sheet" aria-labelledby="close-vote-title">
+      <h2 id="close-vote-title">開票しますか？</h2>
+      <p class="dialog-lead">まだ投票していない人がいても締め切ります。</p>
+      <div class="row">
+        <button id="close-vote-cancel" type="button" class="secondary" autofocus>やめる</button
+        ><button id="close-vote-confirm" type="button" class="primary">開票する</button>
       </div>
     </dialog>
     <noscript

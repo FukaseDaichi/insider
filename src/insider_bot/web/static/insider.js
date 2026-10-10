@@ -70,3 +70,13 @@ export function resultView(data) {
     rows: (data.votes ?? []).map((vote) => ({ name: vote.name, count: vote.count, insider: vote.id === data.insider_id })),
   };
 }
+
+const IDLE_STATUS = {
+  choosing: "インサイダーがお題を考えています…",
+  voting: "投票中 — インサイダーは誰？",
+};
+
+/** お題当てのゲームがない間の上のバー。インサイダーゲームのお題待ち・投票中だけ文を返し、それ以外は null。 */
+export function idleStatus(insider) {
+  return IDLE_STATUS[insider?.phase] ?? null;
+}
