@@ -10,6 +10,7 @@ from insider_bot.web.hub import (
     ANSWER_SOUNDS,
     CORRECT_SOUND,
     GIVEUP_SOUND,
+    INSIDER_STARTED,
     START_SOUNDS,
     RoomHub,
     answer_sound,
@@ -17,7 +18,7 @@ from insider_bot.web.hub import (
 )
 from insider_bot.web.rooms import InvalidName, RoomNotFound, RoomRegistry
 from insider_bot.web.server import STATIC_DIR
-from tests.fakes import FakeClock, FakeJudge
+from tests.fakes import FakeClock, FakeJudge, FixedRandom
 
 CORRECT = Verdict(1.0, True, "exact")
 PENDING = "❓ 果物ですか？\n… 判定中"
@@ -48,14 +49,23 @@ class FakeConnection:
 
 
 class World:
-    def __init__(self, judge: FakeJudge | None = None, choose=None) -> None:
+    def __init__(self, judge: FakeJudge | None = None, choose=None, topic: str | None = "すいか", rng=None) -> None:
         self.clock = FakeClock()
         self.judge = judge or FakeJudge()
         self.manager = GameManager(clock=self.clock)
         service = GameService(self.manager, self.judge, clock=self.clock)
         registry = RoomRegistry(clock=self.clock, on_remove=lambda room: self.manager.end(room.room_id))
         options = {} if choose is None else {"choose": choose}
-        self.hub = RoomHub(registry, service, self.manager, clock=self.clock, **options)
+        self.hub = RoomHub(
+            registry,
+            service,
+            self.manager,
+            clock=self.clock,
+            pick_topic=lambda: topic,
+            role_image=lambda role: f"/static/roles/{role}.png",
+            rng=rng or FixedRandom(*([0] * 20)),
+            **options,
+        )
         self.room = self.hub.create_room()
 
     def join(self, name: str, token: str | None = None):
@@ -478,3 +488,90 @@ async def test_notice_reaches_every_tab_of_that_player_only():
     await world.hub.start(world.room, setter, "りんご", "")
     assert tab1.notices() == tab2.notices() == ["お題『りんご』を登録しました"]
     assert other.notices() == []
+
+
+# --- インサイダーゲーム: 配って始める ---
+
+
+def trio(world: World):
+    """たろう・はなこ・じろう の 3 人と、見るだけの さぶろう。"""
+    return [world.join(name) for name in ("たろう", "はなこ", "じろう", "さぶろう")]
+
+
+async def test_insider_random_start_deals_roles_and_starts_game():
+    world = World(rng=FixedRandom(1))  # 2 番目（はなこ）がインサイダー
+    (t, tp), (h, hp), (j, jp), (s, sp) = trio(world)
+    await world.hub.insider_start(world.room, tp, [tp.player_id, hp.player_id, jp.player_id], "random", None, None)
+    game = world.manager.get(world.room.room_id)
+    assert game.topic == "すいか"
+    assert world.judge.calls == []
+    insider = h.last_room()["insider"]
+    assert insider["phase"] == "asking"
+    assert insider["participants"] == [tp.player_id, hp.player_id, jp.player_id]
+    assert insider["you"] == {"role": "insider", "topic": "すいか", "image": "/static/roles/INSIDER.png", "vote": None}
+    assert t.last_room()["insider"]["you"] == {
+        "role": "villager",
+        "topic": None,
+        "image": "/static/roles/VILLAGERS.png",
+        "vote": None,
+    }
+    assert s.last_room()["insider"]["you"] == {"role": None, "topic": None, "image": None, "vote": None}
+    texts = [entry["text"] for entry in t.entries()]
+    assert texts[-1] == INSIDER_STARTED
+    assert "たろう・はなこ・じろう" in texts[-2]
+    assert "すいか" not in "".join(texts)
+    assert t.of("sound")
+
+
+async def test_insider_role_is_kept_only_in_own_snapshot():
+    world = World(rng=FixedRandom(0))
+    (t, tp), (h, hp), (j, jp), _ = trio(world)
+    await world.hub.insider_start(world.room, hp, [tp.player_id, hp.player_id, jp.player_id], "random", None, None)
+    again, _ = world.join("たろう", tp.token)
+    snapshot = again.of("snapshot")[0]["room"]
+    assert snapshot["insider"]["you"]["role"] == "insider"
+    assert snapshot["insider"]["you"]["topic"] == "すいか"
+    # ほかの人の接続には、誰がインサイダーかもお題も入らない
+    for conn in (h, j):
+        dumped = json.dumps(conn.messages, ensure_ascii=False)
+        assert "すいか" not in dumped
+        assert "INSIDER.png" not in dumped
+
+
+async def test_insider_self_topic_excludes_starter():
+    world = World()
+    (t, tp), (h, hp), (j, jp), (s, sp) = trio(world)
+    await world.hub.insider_start(world.room, tp, [tp.player_id, hp.player_id, jp.player_id], "self", "ぶどう", None)
+    assert t.notices()[-1] == "お題を決める人は参加者になれません"
+    assert world.room.insider is None
+    await world.hub.insider_start(world.room, tp, [hp.player_id, jp.player_id, sp.player_id], "self", "ぶどう", 3)
+    assert world.manager.get(world.room.room_id).topic == "ぶどう"
+    assert t.last_room()["insider"]["you"]["role"] is None
+    assert t.last_room()["insider"]["remaining"] == 180.0
+
+
+async def test_insider_start_rejects_invalid_setup_and_busy_room():
+    world = World()
+    (t, tp), (h, hp), (j, jp), _ = trio(world)
+    await world.hub.insider_start(world.room, tp, [tp.player_id, hp.player_id], "random", None, None)
+    assert t.notices()[-1] == "参加者を3人以上選んでください"
+    await world.hub.start(world.room, tp, "りんご", "")
+    await world.hub.insider_start(world.room, tp, [tp.player_id, hp.player_id, jp.player_id], "random", None, None)
+    assert t.notices()[-1] == "このルームではゲームが進行中です"
+
+
+async def test_insider_random_start_needs_dictionary():
+    world = World(topic=None)
+    (t, tp), (h, hp), (j, jp), _ = trio(world)
+    await world.hub.insider_start(world.room, tp, [tp.player_id, hp.player_id, jp.player_id], "random", None, None)
+    assert t.notices()[-1] == "お題の辞書が使えないため、ランダムでは始められません"
+    assert world.room.insider is None
+
+
+async def test_players_with_the_same_name_are_told_apart_by_id():
+    world = World(rng=FixedRandom(2))
+    (t, tp), (h, hp) = world.join("たろう"), world.join("はなこ")
+    (t2, t2p) = world.join("たろう")
+    await world.hub.insider_start(world.room, hp, [tp.player_id, hp.player_id, t2p.player_id], "random", None, None)
+    assert t2.last_room()["insider"]["you"]["role"] == "insider"
+    assert t.last_room()["insider"]["you"]["role"] == "villager"

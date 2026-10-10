@@ -16,6 +16,8 @@ from typing import Any, Protocol
 from insider_bot import format as fmt
 from insider_bot.game import Clock, GameManager
 from insider_bot.service import GameService, Outcome
+from insider_bot.village.illust import Illustrations
+from insider_bot.web.insider import ACTIVE_PHASES, InsiderRound, InvalidSetup, Rng, check_setup, deal
 from insider_bot.web.rooms import Entry, Player, Room, RoomNotFound, RoomRegistry
 
 log = logging.getLogger(__name__)
@@ -51,6 +53,23 @@ CORRECT_SOUND = "/static/sounds/correct.m4a"
 GIVEUP_SOUND = "/static/sounds/giveup.m4a"
 
 
+# インサイダーゲームでは、お題当ての出題者は人ではなく AI の GM。参加者の ID（1 から）と重ならない番兵
+GM_SETTER_ID = 0
+GM_NAME = "GM"
+# 先頭の 🎮 で画面が開始の案内（GM の吹き出し）と見分け、質問番号を数え直す
+INSIDER_STARTED = "🎮 インサイダーゲーム開始！\n役職を確かめて、質問どうぞ。"
+INSIDER_CHOOSING = "🕵️ インサイダーがお題を考えています…"
+MODE_LABELS = {
+    "random": "お題はランダム",
+    "self": "お題は出した人が決めました",
+    "insider": "お題はインサイダーが決めます",
+}
+
+
+def _default_role_image(role: str) -> str:
+    return Illustrations("").default_url(role)
+
+
 def answer_sound(yes_percent: int) -> str:
     band = min(max(yes_percent, 0), 99) // 10
     return ANSWER_SOUNDS[band]
@@ -64,12 +83,19 @@ class RoomHub:
         manager: GameManager,
         clock: Clock = time.monotonic,
         choose: Callable[[Sequence[str]], str] = random.choice,
+        pick_topic: Callable[[], str | None] = lambda: None,
+        role_image: Callable[[str], str] = _default_role_image,
+        rng: Rng | None = None,
     ) -> None:
         self._registry = registry
         self._service = service
         self._manager = manager
         self._clock = clock
         self._choose = choose
+        # ランダムのお題（配役ツールと同じ辞書）と役職画像。__main__ が配役ツールの中核から渡す
+        self._pick_topic = pick_topic
+        self._role_image = role_image
+        self._rng: Rng = rng if rng is not None else random.Random()
         # 判定中のタスクが途中で回収されないよう、終わるまで参照を持つ
         self._tasks: set[asyncio.Task[None]] = set()
 
@@ -109,15 +135,87 @@ class RoomHub:
         if len(hint) > HINT_MAX:
             self._notify(room, player, f"補足は{HINT_MAX}文字までです")
             return
-        if self._manager.get(room.room_id) is not None:
+        if self._busy(room):
             self._notify(room, player, "このルームではゲームが進行中です")
             return
         outcome = await self._service.start(room.room_id, player.player_id, player.name, topic, hint)
         if outcome.public is not None:
+            # 前のインサイダーゲームの役職のカードは、次のゲームが始まるまでしか出さない
+            room.insider = None
             outcome = Outcome(private=outcome.private, public=WEB_STARTED)
             # 状態ではなくその場かぎりの合図。再接続や途中参加の snapshot では鳴らさない
             self._broadcast(room, {"type": "sound", "src": self._choose(START_SOUNDS)})
         self._apply(room, player, outcome, author=None)
+
+    def _busy(self, room: Room) -> bool:
+        """お題当てのゲームが進行中か、インサイダーゲームがお題待ち・質問・投票のどれか。"""
+        if self._manager.get(room.room_id) is not None:
+            return True
+        return room.insider is not None and room.insider.phase in ACTIVE_PHASES
+
+    def _name_of(self, room: Room, player_id: int) -> str:
+        for candidate in room.players.values():
+            if candidate.player_id == player_id:
+                return candidate.name
+        return "?"
+
+    async def insider_start(
+        self,
+        room: Room,
+        player: Player,
+        participants: list[int],
+        topic_mode: str,
+        topic: str | None,
+        minutes: int | None,
+    ) -> None:
+        if self._busy(room):
+            self._notify(room, player, "このルームではゲームが進行中です")
+            return
+        try:
+            setup = check_setup(
+                [p.player_id for p in room.players.values()], player.player_id, participants, topic_mode, topic, minutes
+            )
+        except InvalidSetup as error:
+            self._notify(room, player, str(error))
+            return
+        chosen = setup.topic
+        if setup.topic_mode == "random":
+            chosen = self._pick_topic()
+            if chosen is None:
+                self._notify(room, player, "お題の辞書が使えないため、ランダムでは始められません")
+                return
+        insider = deal(setup, self._rng)
+        insider.images = {
+            player_id: self._role_image("INSIDER" if player_id == insider.insider_id else "VILLAGERS")
+            for player_id in insider.participants
+        }
+        # 次の await より前に置く。始まるまでの間に届いた別の開始は _busy で断られる
+        room.insider = insider
+        names = "・".join(self._name_of(room, player_id) for player_id in insider.participants)
+        self._broadcast_entry(
+            room, room.add_entry(None, f"🕵️ インサイダーゲーム　参加者: {names}（{MODE_LABELS[setup.topic_mode]}）")
+        )
+        if chosen is None:
+            self._broadcast_entry(room, room.add_entry(None, INSIDER_CHOOSING))
+            self._broadcast_room(room)
+            return
+        await self._begin_insider(room, insider, chosen)
+
+    async def _begin_insider(self, room: Room, insider: InsiderRound, topic: str) -> None:
+        """お題当てのゲームを AI の GM で始める。参加者は全員（インサイダーも）質問する。"""
+        outcome = await self._service.start(room.room_id, GM_SETTER_ID, GM_NAME, topic, "")
+        game = self._manager.get(room.room_id)
+        if outcome.public is None or game is None or room.insider is not insider:
+            # _busy で防いでいるので起きないはず。起きたらこの回を捨て、画面を戻す
+            log.warning("インサイダーゲームを始められませんでした（room=%s）", room.code)
+            if room.insider is insider:
+                room.insider = None
+            self._broadcast_room(room)
+            return
+        insider.begin(topic, game.game_id, self._clock())
+        self._broadcast(room, {"type": "sound", "src": self._choose(START_SOUNDS)})
+        self._broadcast_entry(room, room.add_entry(None, INSIDER_STARTED))
+        self._broadcast_room(room)
 
     async def giveup(self, room: Room, player: Player) -> None:
         outcome = await self._service.giveup(room.room_id)
@@ -199,7 +297,26 @@ class RoomHub:
         return {"players": players, "game": header, "you": you, "insider": self._insider_state(room, player)}
 
     def _insider_state(self, room: Room, player: Player) -> dict[str, Any] | None:
-        return None
+        insider = room.insider
+        if insider is None:
+            return None
+        role = insider.role_of(player.player_id)
+        # 役職・お題・自分の票は、その人の接続にだけ入れる。ほかの接続には誰がインサイダーかを送らない
+        you = {
+            "role": role,
+            "topic": insider.topic if role == "insider" else None,
+            "image": insider.images.get(player.player_id),
+            "vote": insider.votes.get(player.player_id),
+        }
+        return {
+            "phase": insider.phase.value,
+            "participants": list(insider.participants),
+            "topic_mode": insider.topic_mode,
+            "remaining": insider.remaining(self._clock()),
+            "voted": [player_id for player_id in insider.participants if player_id in insider.votes],
+            "you": you,
+            "result": insider.result,
+        }
 
     def _broadcast_room(self, room: Room, skip: Connection | None = None) -> None:
         for conn, player in list(room.connections.items()):
