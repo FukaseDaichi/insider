@@ -16,12 +16,14 @@ from insider_bot.web.hub import (
     INSIDER_VOTE_SOUND,
     INSIDER_VOTING,
     INSIDER_WIN_SOUND,
+    RANDOM_STARTED,
     VILLAGERS_WIN_SOUND,
     START_SOUNDS,
     RoomHub,
     answer_sound,
     prepare_question,
 )
+from insider_bot.web.insider import InsiderRound, Phase
 from insider_bot.web.rooms import InvalidName, RoomNotFound, RoomRegistry
 from insider_bot.web.server import STATIC_DIR
 from tests.fakes import FakeClock, FakeJudge, FixedRandom
@@ -225,6 +227,62 @@ async def test_start_sound_is_not_replayed_on_join():
     world, _, _ = await playing()
     late_conn, _ = world.join("じろう")
     assert late_conn.of("sound") == []
+
+
+# --- ランダムのお題 ---
+
+
+async def test_random_start_announces_to_everyone_without_revealing_topic():
+    world = World(choose=lambda sounds: sounds[2])
+    starter_conn, starter = world.join("たろう")
+    other_conn, _ = world.join("はなこ")
+    await world.hub.start_random(world.room, starter)
+    late_conn, _ = world.join("じろう")
+    assert world.manager.get(world.room.room_id).topic == "すいか"
+    for conn in (starter_conn, other_conn):
+        assert conn.entries() == [{"id": 1, "author": None, "text": RANDOM_STARTED, "pending": False}]
+        assert conn.of("sound") == [{"type": "sound", "src": "/static/sounds/start-3.m4a"}]
+        assert conn.notices() == []
+    # 始めた人も出題者ではない。お題は GM しか知らない
+    assert starter_conn.last_room()["you"] == {"id": starter.player_id, "is_setter": False}
+    for conn in (starter_conn, other_conn, late_conn):
+        assert "すいか" not in json.dumps(conn.messages, ensure_ascii=False)
+
+
+async def test_random_start_lets_the_starter_guess():
+    world = World(judge=FakeJudge(answers={"すいかですか？": CORRECT}))
+    starter_conn, starter = world.join("たろう")
+    await world.hub.start_random(world.room, starter)
+    await world.hub.ask(world.room, starter, "すいかですか", world.game_id())
+    assert "🎉 正解です！お題は「すいか」でした" in starter_conn.entries()[-1]["text"]
+    assert world.manager.get(world.room.room_id) is None
+
+
+async def test_random_start_needs_dictionary():
+    world = World(topic=None)
+    starter_conn, starter = world.join("たろう")
+    await world.hub.start_random(world.room, starter)
+    assert starter_conn.notices() == ["お題の辞書が使えないため、ランダムでは始められません"]
+    assert starter_conn.entries() == []
+    assert world.manager.get(world.room.room_id) is None
+
+
+async def test_random_start_is_rejected_while_a_game_is_running():
+    world, (setter_conn, setter), _ = await playing()
+    await world.hub.start_random(world.room, setter)
+    assert setter_conn.notices()[-1] == "このルームではゲームが進行中です"
+    assert world.manager.get(world.room.room_id).topic == "りんご"
+
+
+async def test_random_start_clears_the_previous_insider_round():
+    world = World()
+    starter_conn, starter = world.join("たろう")
+    finished = InsiderRound(participants=(starter.player_id,), insider_id=starter.player_id, topic_mode="random", minutes=None)
+    finished.phase = Phase.DONE
+    world.room.insider = finished
+    await world.hub.start_random(world.room, starter)
+    assert world.room.insider is None
+    assert starter_conn.last_room()["insider"] is None
 
 
 def test_start_sounds_are_served():

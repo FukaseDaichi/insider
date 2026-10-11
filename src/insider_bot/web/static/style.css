@@ -825,6 +825,23 @@ body:has(.room:not([hidden])) {
   margin: 0 0 3px;
 }
 
+/* お題当てゲームのフォームで、自分で決めるかランダムかを分ける線 */
+.or-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.or-divider::before,
+.or-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+
 .transcript {
   font-size: 14px;
   line-height: 1.7;
@@ -1085,6 +1102,43 @@ dialog h2 {
   line-height: 1.9;
   color: var(--muted);
   margin: 0;
+}
+
+/* 確信度の短いバー。判定した側の割合を塗る */
+meter {
+  display: block;
+  width: 44px;
+  height: 3px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: #3b3d48;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+meter::-webkit-meter-bar {
+  background: #3b3d48;
+  border: 0;
+  border-radius: 2px;
+.rules-video {
+  margin: 14px 0 0;
+}
+
+.rules-video video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #22242b;
+}
+
+.rules-video figcaption {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
 }
 
 /* 確信度の短いバー。判定した側の割合を塗る */

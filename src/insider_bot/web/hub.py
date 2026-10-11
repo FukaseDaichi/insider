@@ -52,6 +52,8 @@ def prepare_question(text: str) -> str:
 # Discord 用の「最後に「？」をつけてね」は、「？」を自動で付ける Web では声で「はてな」と言わせかねない。
 # 出題者は質問者に紛れて遊ぶので、名前を出さない
 WEB_STARTED = "🎮 お題が設定されました！\n質問どうぞ。"
+# ランダムのお題は AI の GM しか知らない。始めた人も質問者として遊ぶ
+RANDOM_STARTED = "🎮 お題はランダムに決まりました！\n誰も知らないお題を、全員で当ててください。"
 # ゲーム開始の音声。同じ部屋や通話で遊んでも声が重ならないよう、サーバーが選んで全員に同じものを送る
 START_SOUNDS = tuple(f"/static/sounds/start-{n}.m4a" for n in (1, 2, 3))
 # 返事の声。はい % を 10 刻みの帯に分け、名前は帯の下限（yes-50 は 50〜59）。50 以上が「はい」で画面の ✅/❌ と揃える
@@ -165,6 +167,25 @@ class RoomHub:
             # 状態ではなくその場かぎりの合図。再接続や途中参加の snapshot では鳴らさない
             self._broadcast(room, {"type": "sound", "src": self._choose(START_SOUNDS)})
         self._apply(room, player, outcome, author=None)
+
+    async def start_random(self, room: Room, player: Player) -> None:
+        """配役ツールの辞書から引いたお題で、AI の GM を出題者にして始める。お題は誰の画面にも出ない。"""
+        if self._busy(room):
+            self._notify(room, player, "このルームではゲームが進行中です")
+            return
+        topic = self._pick_topic()
+        if topic is None:
+            self._notify(room, player, "お題の辞書が使えないため、ランダムでは始められません")
+            return
+        outcome = await self._service.start(room.room_id, GM_SETTER_ID, GM_NAME, topic, "")
+        if outcome.public is None:
+            # _busy で防いでいるので起きないはず。起きたら本人にだけ知らせる
+            self._apply(room, player, Outcome(private=outcome.private), author=None)
+            return
+        room.insider = None
+        self._broadcast(room, {"type": "sound", "src": self._choose(START_SOUNDS)})
+        # 「お題『〜』を登録しました」の通知はお題を漏らすので、本人にも出さない
+        self._apply(room, player, Outcome(public=RANDOM_STARTED), author=None)
 
     def _busy(self, room: Room) -> bool:
         """お題当てのゲームが進行中か、インサイダーゲームがお題待ち・質問・投票のどれか。"""

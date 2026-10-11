@@ -380,6 +380,15 @@
                   やめる
                 </button>
               </div>
+              <p class="or-divider"><span>または</span></p>
+              <button
+                id="start-random"
+                type="button"
+                class="secondary wide arrow-button"
+              >
+                ランダムなお題で始める <span aria-hidden="true">🎲</span>
+              </button>
+              <p class="hint">お題は GM だけが知っています。あなたもみんなと一緒に当てます</p>
             </form>
           </div>
           <div id="insider-panel" class="insider-panel" hidden>
@@ -555,6 +564,31 @@
             <p>
               「インサイダーゲーム」で参加者を選んで配ると、ひとり（インサイダー）にだけお題が届きます。お題が当たったら話し合って、インサイダーだと思う人に投票。最多票がインサイダーなら村人の勝ちです。
             </p>
+          </div>
+        </li>
+      </ol>
+      <p class="rules-note">
+        iPhone で「押して話す」が使えないときは
+        <a href="/static/iphone-voice.html" target="_blank" rel="noopener"
+          >設定のしかた <span aria-hidden="true">↗</span></a
+        >
+      </p>
+            <!-- 再生ボタンを押すまで何も読み込まない。シートを閉じたら app.js が止める -->
+            <figure class="rules-video">
+              <video
+                id="rules-video"
+                controls
+                playsinline
+                preload="none"
+                width="1280"
+                height="720"
+                poster="/static/howto-insider.webp"
+                aria-label="インサイダーゲームの遊び方の動画"
+              >
+                <source src="/static/howto-insider.mp4" type="video/mp4" />
+              </video>
+              <figcaption>動画で見る（60 秒・音が出ます）</figcaption>
+            </figure>
           </div>
         </li>
       </ol>

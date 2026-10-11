@@ -757,6 +757,13 @@ class RoomPage {
       $("hint").value = "";
       this.closeStartForm();
     });
+    // ランダムのお題は GM だけが知る。入力途中のお題は次に開いたときに残さない
+    $("start-random").addEventListener("click", () => {
+      if (!this.send({ type: "start_random" })) return;
+      $("topic").value = "";
+      $("hint").value = "";
+      this.closeStartForm();
+    });
     const giveup = () => {
       this.giveupGameId = this.game?.id;
       $("giveup-dialog").showModal();
@@ -867,6 +874,8 @@ if (!match) {
 } else {
   const code = match[1].toUpperCase();
   if (!ROOM_CODE_PATTERN.test(code))
+// Esc で閉じたときも、見えないところで動画の音が鳴り続けないように止める
+$("rules").addEventListener("close", () => $("rules-video").pause());
     showFatal("ルームが見つかりません（URL を確かめてください）");
   else if (code !== match[1]) location.replace(`/r/${code}${location.search}`);
   else initRoom(code);

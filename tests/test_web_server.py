@@ -98,6 +98,21 @@ async def test_vendor_files_are_cached_but_app_files_are_revalidated(static_dir)
         assert app.headers["Cache-Control"] == "no-cache"
 
 
+async def test_howto_video_on_the_rules_sheet_is_served_with_range_requests():
+    # iPhone の Safari は Range を返さない動画を再生しないので、206 で返ることまで確かめる
+    index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    sources = re.findall(r'(?:src|poster)="(/static/howto-[^"]+)"', index)
+    assert sorted(sources) == ["/static/howto-insider.mp4", "/static/howto-insider.webp"]
+    async with serve(None) as client:
+        video = await client.get("/static/howto-insider.mp4", headers={"Range": "bytes=0-1023"})
+        assert video.status == 206
+        assert video.content_type == "video/mp4"
+        assert len(await video.read()) == 1024
+        poster = await client.get("/static/howto-insider.webp")
+        assert poster.status == 200
+        assert poster.content_type == "image/webp"
+
+
 async def test_all_regenerated_role_images_are_served_by_the_real_app():
     illust = Illustrations("", FixedRandom(*(list(range(5)) * 4)))
     urls = [illust.url_for(role) for role in ("INSIDER", "VILLAGERS", "GM", "GOD") for _ in range(5)]
@@ -349,6 +364,20 @@ async def test_insider_game_over_websocket(static_dir):
             await ws[voter].send_json({"type": "vote", "target": ids[target]})
         result = await receive_until(ws[2], lambda m: m["type"] == "entry" and m["entry"].get("kind") == "insider_result")
         assert result["entry"]["data"]["winner"] == "villagers"
+
+
+async def test_random_game_over_websocket(static_dir):
+    judge = FakeJudge(answers={"すいかですか？": Verdict(1.0, True, "exact")})
+    async with serve(static_dir, judge=judge) as client:
+        code = await create_room(client)
+        starter, _, _ = await join(client, code, "たろう")
+        other, _, _ = await join(client, code, "はなこ")
+        await starter.send_json({"type": "start_random"})
+        room = await receive_until(starter, lambda m: m["type"] == "room" and m["game"] is not None)
+        assert room["you"] == {"id": 1, "is_setter": False}
+        await starter.send_json({"type": "ask", "text": "すいかですか", "game_id": room["game"]["id"]})
+        correct = await receive_until(other, is_entry("正解です"))
+        assert "すいか" in correct["entry"]["text"]
 
 
 @pytest.mark.parametrize(

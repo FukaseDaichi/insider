@@ -131,6 +131,8 @@ async def _dispatch(hub: RoomHub, room: Room, player: Player, message: dict[str,
         topic, hint = message.get("topic"), message.get("hint", "")
         if isinstance(topic, str) and isinstance(hint, str):
             await hub.start(room, player, topic, hint)
+    elif kind == "start_random":
+        await hub.start_random(room, player)
     elif kind == "giveup":
         await hub.giveup(room, player)
     elif kind == "insider_start":
