@@ -2701,6 +2701,7 @@ body:has(.room:not([hidden])) .site-header {
 /* ルームではサイトヘッダーを出さないので、バー左端の印からトップへ戻れるようにする */
 .room-home {
   order: 0;
+  position: relative;
   display: grid;
   place-items: center;
   width: 36px;
@@ -2714,6 +2715,13 @@ body:has(.room:not([hidden])) .site-header {
   transition:
     background 0.2s,
     transform 0.3s;
+}
+/* 丸の見た目は 36px のまま、押せる範囲だけを 44px に広げる（基準は枠線の内側の 34px なので 5px ずつ） */
+.room-home::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
 }
 .room-home:hover {
   background: var(--line);
@@ -2792,7 +2800,7 @@ body:has(.room:not([hidden])) .site-header {
 .sound-hint {
   justify-content: flex-start;
   gap: 8px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 8px 12px;
   border-color: var(--accent);
   border-radius: 6px;
