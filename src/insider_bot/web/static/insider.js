@@ -69,20 +69,30 @@ export function voteTargets(insider, players, myId) {
   return insider.participants.filter((id) => id !== myId).map((id) => ({ id, name: names.get(id) ?? "?" }));
 }
 
+// 勝った側の見出しはテロップにして 1 文字ずつ跳ねさせるので、正解のテロップと同じく「！！」で終える。
+// スマホでは 2 行に折り返すので、語の途中で切れないよう語ごとに分けて持つ
 const HEADLINES = {
-  villagers: "村人の勝ち！",
-  insider: "インサイダーの勝ち！",
+  villagers: ["村人の", "勝ち！！"],
+  insider: ["インサイダーの", "勝ち！！"],
 };
+const ENDING_LABELS = { time_up: "時間切れ", giveup: "ギブアップ" };
 
-/** 結果のカードに出す形。誰が誰に入れたかはサーバーも送らない。名前はルームの参加者一覧で見分けを付ける。 */
+/**
+ * 結果のカードに出す形。誰が誰に入れたかはサーバーも送らない。名前はルームの参加者一覧で見分けを付ける。
+ * look は見た目（villagers / insider は GM のコスプレのカード、lose は落ち着いたカード）。
+ * reveal はインサイダーの名前をいったん札で隠してから明かすので、文と名前を分けて持つ。
+ */
 export function resultView(data, players = []) {
   const names = nameLabels(players);
-  let headline = HEADLINES[data.winner] ?? "全員の負け…";
-  if (data.ending === "time_up") headline = "時間切れ　全員の負け…";
-  if (data.ending === "giveup") headline = "ギブアップ　全員の負け…";
+  const name = names.get(data.insider_id) ?? data.insider;
+  const won = data.winner in HEADLINES;
   return {
-    title: `インサイダーは ${names.get(data.insider_id) ?? data.insider}`,
-    headline,
+    look: won ? data.winner : "lose",
+    label: won ? null : (ENDING_LABELS[data.ending] ?? null),
+    title: `インサイダーは ${name}`,
+    reveal: { lead: "インサイダーは", name },
+    headline: HEADLINES[data.winner]?.join("") ?? "全員の負け…",
+    telop: HEADLINES[data.winner] ?? null,
     topic: data.topic ?? null,
     guesser: data.guesser ?? null,
     // 同じ名前の人がいても取り違えないよう、インサイダーの行は ID で見分ける

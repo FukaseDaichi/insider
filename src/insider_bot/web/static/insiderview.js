@@ -16,6 +16,7 @@ import {
   voteProgress,
   voteTargets,
 } from "./insider.js";
+import { hostImage } from "./host.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -204,20 +205,72 @@ export class InsiderView {
     return formatRemaining(this.deadline - performance.now() / 1000);
   }
 
-  static resultNodes(data, players = []) {
+  /**
+   * 結果のカード。勝った側があれば、正解のテロップと同じ型で GM がその陣営のコスプレで発表する
+   * （集中線・飛び込むテロップ・名前をいったん「？？？」の札で隠してから明かす帯・票の一覧）。
+   * 全員の負けは落ち着いたカード。className は li に付ける
+   */
+  static resultCard(data, players = []) {
     const view = resultView(data, players);
-    const nodes = [element("p", "insider-result-headline", view.headline), element("p", "insider-result-title", view.title)];
-    if (view.topic) nodes.push(element("p", "insider-result-topic", `お題：${view.topic}`));
-    if (view.guesser) nodes.push(element("p", "insider-result-meta", `正解者：${view.guesser}`));
-    if (view.rows.length) {
-      const list = element("ul", "insider-result-votes");
-      for (const row of view.rows) {
-        const item = element("li", row.insider ? "is-insider" : "");
-        item.append(element("span", "", row.name), element("span", "count", `${row.count} 票`));
-        list.append(item);
-      }
-      nodes.push(list);
+    const votes = view.rows.length ? [InsiderView.voteList(view.rows)] : [];
+    if (view.look === "lose") {
+      const nodes = [];
+      if (view.label) nodes.push(element("p", "insider-result-label", view.label));
+      nodes.push(element("p", "insider-result-headline", view.headline), element("p", "insider-result-title", view.title));
+      if (view.topic) nodes.push(element("p", "insider-result-topic", `お題：${view.topic}`));
+      return { className: "entry result insider-result lose", nodes: [...nodes, ...votes] };
     }
-    return nodes;
+    const lines = element("span", "celebrate-lines");
+    lines.setAttribute("aria-hidden", "true");
+    const avatar = element("figure", "celebrate-avatar");
+    avatar.setAttribute("aria-hidden", "true");
+    const face = element("span", "celebrate-face");
+    const img = document.createElement("img");
+    img.src = hostImage(`${view.look}-win`);
+    img.alt = "";
+    img.width = 160;
+    img.height = 160;
+    face.append(img);
+    avatar.append(face);
+    // インサイダーの勝ちは、紫の光の粒がゆっくり昇る
+    const dust = element("span", "celebrate-dust");
+    dust.setAttribute("aria-hidden", "true");
+    for (let i = 0; i < 6; i++) dust.append(document.createElement("i"));
+    const body = element("div", "celebrate-body");
+    // 語ごとの箱に入れ、折り返しは語の間だけ。跳ねる順番は語をまたいで続ける
+    const telop = element("strong", "celebrate-telop");
+    let index = 0;
+    for (const word of view.telop) {
+      const box = element("span", "telop-word");
+      for (const char of word) {
+        const span = element("span", "", char);
+        span.style.setProperty("--i", String(index++));
+        box.append(span);
+      }
+      telop.append(box);
+    }
+    const reveal = element("p", "celebrate-band reveal");
+    const name = element("span", "reveal-name");
+    const mask = element("span", "reveal-mask", "？？？");
+    mask.setAttribute("aria-hidden", "true");
+    name.append(mask, element("span", "reveal-real", view.reveal.name));
+    reveal.append(element("span", "", `${view.reveal.lead} `), name);
+    body.append(telop, reveal);
+    const meta = element("p", "celebrate-meta");
+    if (view.topic) meta.append(element("span", "", `お題：${view.topic}`));
+    if (view.guesser) meta.append(element("span", "", `正解者：${view.guesser}`));
+    if (meta.childElementCount) body.append(meta);
+    body.append(...votes);
+    return { className: `entry celebrate insider-result ${view.look}`, nodes: [lines, dust, avatar, body] };
+  }
+
+  static voteList(rows) {
+    const list = element("ul", "insider-result-votes");
+    for (const row of rows) {
+      const item = element("li", row.insider ? "is-insider" : "");
+      item.append(element("span", "", row.name), element("span", "count", `${row.count} 票`));
+      list.append(item);
+    }
+    return list;
   }
 }

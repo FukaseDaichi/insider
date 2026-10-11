@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { burst, fireCrackers, step } from "../../src/insider_bot/web/static/confetti.js";
+import { burst, CONFETTI_COLORS, fireCrackers, step } from "../../src/insider_bot/web/static/confetti.js";
 
 const middle = () => 0.5;
 
@@ -81,4 +81,10 @@ test("視差効果を減らす設定では出さない", () => {
   const page = fakePage({ reduced: true });
   assert.equal(fireCrackers(page), false);
   assert.deepEqual(page.appended, []);
+});
+
+test("紙片の色は陣営ごとに差し替えられる", () => {
+  const colors = ["#111111", "#222222"];
+  for (const p of burst("left", 400, 800, Math.random, colors)) assert.ok(colors.includes(p.color), p.color);
+  assert.ok(Object.keys(CONFETTI_COLORS).length >= 3);
 });

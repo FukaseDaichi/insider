@@ -86,13 +86,13 @@ test("結果の表示", () => {
       { id: 2, name: "はなこ", count: 1 },
     ],
   });
-  assert.equal(view.headline, "村人の勝ち！");
+  assert.equal(view.headline, "村人の勝ち！！");
   assert.equal(view.title, "インサイダーは たろう");
   assert.deepEqual(view.rows, [
     { name: "たろう", count: 2, insider: true },
     { name: "はなこ", count: 1, insider: false },
   ]);
-  assert.equal(resultView({ ending: "time_up", topic: "すいか", insider: "たろう", winner: "none", votes: [] }).headline, "時間切れ　全員の負け…");
+  assert.equal(resultView({ ending: "time_up", topic: "すいか", insider: "たろう", winner: "none", votes: [] }).headline, "全員の負け…");
   assert.equal(resultView({ ending: "giveup", topic: null, insider: "たろう", winner: "none", votes: [] }).topic, null);
 });
 
@@ -154,4 +154,23 @@ test("状態が変わったら、もう意味のないダイアログを閉じ�
   // 次のゲームが始まった（回がなくなった・新しい回になった）ら、前の役職のカードも閉じる
   assert.deepEqual(dialogsToClose(done, null), ["role-dialog", "insider-cancel-dialog", "close-vote-dialog"]);
   assert.deepEqual(dialogsToClose(done, { ...asking, phase: "choosing" }), ["role-dialog", "close-vote-dialog"]);
+});
+
+test("結果のカードの見た目は勝った側で決まり、負けのときは終わり方のラベルを添える", () => {
+  const base = { topic: "すいか", insider: "たろう", insider_id: 1, votes: [] };
+  assert.equal(resultView({ ...base, ending: "voted", winner: "villagers" }).look, "villagers");
+  assert.equal(resultView({ ...base, ending: "voted", winner: "villagers" }).label, null);
+  assert.equal(resultView({ ...base, ending: "voted", winner: "insider" }).look, "insider");
+  assert.equal(resultView({ ...base, ending: "time_up", winner: "none" }).look, "lose");
+  assert.equal(resultView({ ...base, ending: "time_up", winner: "none" }).label, "時間切れ");
+  assert.equal(resultView({ ...base, ending: "giveup", winner: "none" }).label, "ギブアップ");
+  assert.equal(resultView({ ...base, ending: "giveup", winner: "none" }).headline, "全員の負け…");
+  // 勝ったときの見出しはテロップにするので、1 文字ずつ跳ねられるよう「！！」で終える
+  assert.equal(resultView({ ...base, ending: "voted", winner: "villagers" }).headline, "村人の勝ち！！");
+  assert.equal(resultView({ ...base, ending: "voted", winner: "insider" }).headline, "インサイダーの勝ち！！");
+  // スマホで語の途中で折り返さないよう、テロップは語ごとに分けて持つ
+  assert.deepEqual(resultView({ ...base, ending: "voted", winner: "insider" }).telop, ["インサイダーの", "勝ち！！"]);
+  assert.equal(resultView({ ...base, ending: "giveup", winner: "none" }).telop, null);
+  // インサイダーの名前は札でいったん隠してから明かすので、文と名前を分けて持つ
+  assert.deepEqual(resultView({ ...base, ending: "voted", winner: "insider" }, PLAYERS).reveal, { lead: "インサイダーは", name: "たろう" });
 });

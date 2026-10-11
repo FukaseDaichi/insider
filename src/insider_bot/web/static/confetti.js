@@ -1,7 +1,12 @@
 // 正解のときのクラッカー。画面の左下と右下の隅から紙吹雪を打ち上げ、ひらひら舞い落ちさせる。
 // 画面全体に重ねたキャンバスに描き、紙片が全部消えたら取り除く。
 // 速さ・重力・落ちる速さは画面の高さに比例させ、どの画面でも高さの 6〜8 割まで上がるようにする
-const COLORS = ["#dfef78", "#bdb2e4", "#f1f0e9", "#ff9f80", "#7fe0c8", "#ffd75e"];
+// 正解はにぎやかな色とりどり。インサイダーゲームの勝敗は、勝った側の色（村人はライム、インサイダーは紫）
+export const CONFETTI_COLORS = {
+  correct: ["#dfef78", "#bdb2e4", "#f1f0e9", "#ff9f80", "#7fe0c8", "#ffd75e"],
+  villagers: ["#dfef78", "#b5d94a", "#f4f3eb", "#8fe3a0", "#ffd75e", "#e9f7a3"],
+  insider: ["#bdb2e4", "#8a6fd0", "#5b3fa0", "#f1f0e9", "#d9c8ff", "#3b2a66"],
+};
 const PER_SIDE = 80;
 // この高さの画面を基準に、速さ・重力・落ちる速さを決めてある
 const BASE_HEIGHT = 600;
@@ -22,7 +27,7 @@ const MAX_DT = 2.5;
 const TAU = Math.PI * 2;
 
 /** 片側のクラッカーから飛び出す紙片。左は右上へ、右はそれを左右反転して左上へ飛ぶ。 */
-export function burst(side, width, height, random = Math.random) {
+export function burst(side, width, height, random = Math.random, colors = CONFETTI_COLORS.correct) {
   const scale = height / BASE_HEIGHT;
   const direction = side === "left" ? 1 : -1;
   return Array.from({ length: PER_SIDE }, () => {
@@ -45,7 +50,7 @@ export function burst(side, width, height, random = Math.random) {
       phase: random() * TAU,
       width: 7 + random() * 6,
       height: 4 + random() * 4,
-      color: COLORS[Math.floor(random() * COLORS.length)],
+      color: colors[Math.floor(random() * colors.length)],
     };
   });
 }
@@ -90,7 +95,12 @@ function draw(context, particles, width, height) {
  * 左右のクラッカーを鳴らす。画面が裏にあるときと、視差効果を減らす設定では出さない。
  * 出したら true。裏に回ったら、戻ったときに残りを出さずに片付ける。
  */
-export function fireCrackers({ doc = document, view = window, random = Math.random } = {}) {
+export function fireCrackers({
+  doc = document,
+  view = window,
+  random = Math.random,
+  colors = CONFETTI_COLORS.correct,
+} = {}) {
   if (doc.visibilityState === "hidden") return false;
   if (view.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
   const canvas = doc.createElement("canvas");
@@ -106,7 +116,7 @@ export function fireCrackers({ doc = document, view = window, random = Math.rand
   context.scale(ratio, ratio);
   doc.body.append(canvas);
 
-  let particles = burst("left", width, height, random);
+  let particles = burst("left", width, height, random, colors);
   let rightFired = false;
   let start = null;
   let last = null;
@@ -115,7 +125,7 @@ export function fireCrackers({ doc = document, view = window, random = Math.rand
     const dt = last === null ? 1 : Math.min((now - last) / FRAME_MS, MAX_DT);
     last = now;
     if (!rightFired && now - start >= RIGHT_DELAY_MS) {
-      particles.push(...burst("right", width, height, random));
+      particles.push(...burst("right", width, height, random, colors));
       rightFired = true;
     }
     particles = step(particles, dt, height);

@@ -1,11 +1,11 @@
 // 画面全体: トップページ、名前の入力、ルーム画面（WebSocket の接続と再接続）
 import { parseAnswer } from "./answer.js";
 import { AskWatch } from "./askwatch.js";
-import { fireCrackers } from "./confetti.js";
-import { HOST_NAME, hostLines } from "./host.js";
+import { CONFETTI_COLORS, fireCrackers } from "./confetti.js";
+import { HOST_NAME, hostEntry, hostImage } from "./host.js";
 import { InsiderView } from "./insiderview.js";
 import { placeChrome, watchCompact } from "./layout.js";
-import { isWeak, numberQuestions, questionNote, resultOf } from "./log.js";
+import { celebrationOf, isWeak, numberQuestions, questionNote, resultOf } from "./log.js";
 import { renderQr, Scanner } from "./qr.js";
 import { ROOM_CODE_PATTERN } from "./roomurl.js";
 import { SoundPlayer } from "./sound.js";
@@ -71,8 +71,8 @@ function showFatal(message) {
   showPage("fatal");
 }
 
-// 案内役「GM」のアバターと吹き出し。行は順番に現れるよう、何行目かを CSS に渡す
-function renderHost(lines) {
+// 案内役「GM」のアバターと吹き出し。絵は場面（pose）で選び、行は順番に現れるよう、何行目かを CSS に渡す
+function renderHost(lines, pose) {
   // カードの背景に散る小さな飾り（読み上げない）
   const deco = document.createElement("span");
   deco.className = "host-deco";
@@ -85,7 +85,7 @@ function renderHost(lines) {
   const face = document.createElement("span");
   face.className = "host-face";
   const img = document.createElement("img");
-  img.src = "/static/host.png";
+  img.src = hostImage(pose);
   img.alt = "";
   img.width = 160;
   img.height = 160;
@@ -433,9 +433,10 @@ class RoomPage {
         break;
       case "entry":
         this.upsertEntry(message.entry);
-        // 判定中の質問が正解に変わった、その場かぎりの合図。snapshot（再接続・途中参加）では鳴らさない
-        if (!message.entry.pending && resultOf(message.entry.text)?.kind === "correct")
-          setTimeout(() => fireCrackers(), CRACKER_DELAY_MS);
+        // 正解と、インサイダーゲームの勝敗のクラッカー。その場かぎりの合図で、snapshot（再接続・途中参加）では鳴らさない
+        const celebration = celebrationOf(message.entry);
+        if (celebration)
+          setTimeout(() => fireCrackers({ colors: CONFETTI_COLORS[celebration] }), CRACKER_DELAY_MS);
         break;
       case "notice":
         this.notice(message.text);
@@ -601,9 +602,21 @@ class RoomPage {
     }
     // インサイダーゲームの結果は、文字の読み解きではなく記録の中身で描く
     if (entry.kind === "insider_result" && entry.data) {
-      item.className = "entry result insider-result";
+      const card = InsiderView.resultCard(entry.data, this.players ?? []);
+      item.className = card.className;
       item.dataset.kind = "result";
-      item.replaceChildren(...InsiderView.resultNodes(entry.data, this.players ?? []));
+      item.replaceChildren(...card.nodes);
+      this.renumber();
+      if (atBottom) log.scrollTop = log.scrollHeight;
+      return;
+    }
+    // GM の吹き出し。開始の案内（host）だけが質問番号の区切りで、節目の吹き出し（cue）では数え直さない
+    const host = hostEntry(entry);
+    if (host) {
+      item.className = "entry host";
+      item.dataset.kind = host.start ? "host" : "cue";
+      item.dataset.pose = host.pose;
+      item.replaceChildren(...renderHost(host.lines, host.pose));
       this.renumber();
       if (atBottom) log.scrollTop = log.scrollHeight;
       return;
@@ -612,7 +625,6 @@ class RoomPage {
     const note = !answer && questionNote(entry.text);
     // 正解・ギブアップは、言い当てた人やギブアップした人が質問者として付く
     const result = !entry.pending && resultOf(entry.text);
-    const host = !entry.author && !entry.pending && hostLines(entry.text);
     if (answer || note) {
       item.className = "entry question";
       item.dataset.kind = "question";
@@ -623,10 +635,6 @@ class RoomPage {
         ...renderQuestion(entry.author, answer ? answer.question : note.question),
         answer ? renderVerdict(answer) : renderNote(note.note),
       );
-    } else if (host) {
-      item.className = "entry host";
-      item.dataset.kind = "host";
-      item.replaceChildren(...renderHost(host));
     } else if (result?.kind === "correct") {
       item.className = "entry celebrate";
       item.dataset.kind = "result";

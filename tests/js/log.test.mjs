@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  celebrationOf,
   isWeak,
   numberQuestions,
   questionNote,
@@ -126,4 +127,14 @@ test("弱い判定は、はい・いいえのどちらも 65% 未満のとき", 
   assert.equal(isWeak(65), false);
   assert.equal(isWeak(35), false);
   assert.equal(isWeak(93), false);
+});
+
+test("クラッカーは正解と、インサイダーゲームで勝った側があるときだけ。色は鳴らす側で決まる", () => {
+  assert.equal(celebrationOf({ text: "🎉 正解です！お題は「りんご」でした\n正解者: はなこ" }), "correct");
+  assert.equal(celebrationOf({ text: "🎉 正解です！お題は「りんご」でした\n…", pending: true }), null);
+  assert.equal(celebrationOf({ text: "…", kind: "insider_result", data: { winner: "villagers" } }), "villagers");
+  assert.equal(celebrationOf({ text: "…", kind: "insider_result", data: { winner: "insider" } }), "insider");
+  assert.equal(celebrationOf({ text: "…", kind: "insider_result", data: { winner: "none" } }), null);
+  assert.equal(celebrationOf({ text: "🎉 正解です！お題は「りんご」でした\n…", kind: "host", data: {} }), null);
+  assert.equal(celebrationOf({ text: "🏳️ ギブアップ！お題は『りんご』でした" }), null);
 });

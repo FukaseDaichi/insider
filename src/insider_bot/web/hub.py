@@ -76,8 +76,15 @@ GM_SETTER_ID = 0
 GM_NAME = "GM"
 # 先頭の 🎮 で画面が開始の案内（GM の吹き出し）と見分け、質問番号を数え直す
 INSIDER_STARTED = "🎮 インサイダーゲーム開始！\n役職を確かめて、質問どうぞ。"
+# ここから下はインサイダーゲームの節目で出す GM の吹き出し（kind="host"）。
+# text はそのまま読める記録として残し、画面は data の pose（GM の絵）と lines（セリフ）で描く
 INSIDER_CHOOSING = "🕵️ インサイダーがお題を考えています…"
+INSIDER_CHOOSING_LINES = ["役職を配ったよ。", "インサイダーがお題を考え中…しーっ。"]
 INSIDER_VOTING = "🗳️ お題が当たりました！インサイダーは誰？\n話し合って、自分以外の 1 人に投票してください。"
+INSIDER_VOTING_LINES = ["当たり！でも、まだ終わりじゃないよ。", "インサイダーは誰？話し合って投票！"]
+# 締め切りのこれだけ前に「あと 1 分！」の吹き出しを出す。制限時間が 1 分のときは出さない
+HURRY_BEFORE_SECONDS = 60
+HURRY_LINES = ["あと 1 分！", "質問、急いで！"]
 MODE_LABELS = {
     "random": "お題はランダム",
     "self": "お題は出した人が決めました",
@@ -118,7 +125,7 @@ class RoomHub:
         # 判定中のタスクが途中で回収されないよう、終わるまで参照を持つ
         self._tasks: set[asyncio.Task[None]] = set()
         # ルーム → インサイダーゲームの時間切れの予約
-        self._timers: dict[int, asyncio.TimerHandle] = {}
+        self._timers: dict[int, list[asyncio.TimerHandle]] = {}
 
     def create_room(self) -> Room:
         return self._registry.create()
@@ -236,7 +243,7 @@ class RoomHub:
             room, room.add_entry(None, f"🕵️ インサイダーゲーム　参加者: {names}（{MODE_LABELS[setup.topic_mode]}）")
         )
         if chosen is None:
-            self._broadcast_entry(room, room.add_entry(None, INSIDER_CHOOSING))
+            self._broadcast_entry(room, self._host_entry(room, INSIDER_CHOOSING, "secret", INSIDER_CHOOSING_LINES))
             self._broadcast_room(room)
             return
         # お題を先に置き、始まるまでの間に届いたインサイダーのお題を insider_topic が断るようにする
@@ -297,15 +304,27 @@ class RoomHub:
         outcome = await self._service.giveup(room.room_id)
         if outcome.public is not None:
             self._broadcast(room, {"type": "sound", "src": GIVEUP_SOUND})
-        self._apply(room, player, outcome, author=player.name)
-        if (
+        in_round = (
             outcome.public is not None
             and insider is not None
             and insider is room.insider
             and insider.phase is Phase.ASKING
-        ):
-            self._cancel_timer(room)
-            self._finish_insider(room, insider, Ending.GIVEUP)
+        )
+        if not in_round:
+            self._apply(room, player, outcome, author=player.name)
+            return
+        # インサイダーゲームでは、お題の公開カードの代わりに白旗の GM の吹き出しで明かす
+        self._cancel_timer(room)
+        self._broadcast_entry(
+            room,
+            self._host_entry(
+                room,
+                outcome.public,
+                "giveup",
+                [f"{player.name} さんがギブアップ…", f"お題は『{insider.topic}』でした。"],
+            ),
+        )
+        self._finish_insider(room, insider, Ending.GIVEUP)
 
     def ask(self, room: Room, player: Player, text: str, game_id: object) -> asyncio.Task[None]:
         """判定は接続の受信ループから切り離して動かす。質問者のタブが閉じても結果は履歴に残る。"""
@@ -368,7 +387,7 @@ class RoomHub:
         if opens_voting:
             self._cancel_timer(room)
             insider.start_voting(player.name)
-            self._broadcast_entry(room, room.add_entry(None, INSIDER_VOTING))
+            self._broadcast_entry(room, self._host_entry(room, INSIDER_VOTING, "detective", INSIDER_VOTING_LINES))
         self._broadcast_room(room)
 
     def vote(self, room: Room, player: Player, target: int) -> None:
@@ -400,8 +419,10 @@ class RoomHub:
         self._finish_insider(room, insider, Ending.VOTED)
 
     def _schedule_time_up(self, room: Room, game_id: int, seconds: float) -> None:
-        """締め切りに時間切れの処理を 1 つ予約する。ルームが片付けられてもゲームが消えるので、発火しても何もしない。"""
+        """締め切りに時間切れの処理を、その 1 分前に「あと 1 分！」の吹き出しを予約する。
+        ルームが片付けられてもゲームが消えるので、発火しても何もしない。"""
         self._cancel_timer(room)
+        loop = asyncio.get_running_loop()
 
         def fire() -> None:
             self._timers.pop(room.room_id, None)
@@ -409,12 +430,25 @@ class RoomHub:
             self._tasks.add(task)
             task.add_done_callback(self._tasks.discard)
 
-        self._timers[room.room_id] = asyncio.get_running_loop().call_later(seconds, fire)
+        handles = [loop.call_later(seconds, fire)]
+        if seconds > HURRY_BEFORE_SECONDS:
+            handles.append(loop.call_later(seconds - HURRY_BEFORE_SECONDS, self.hurry, room, game_id))
+        self._timers[room.room_id] = handles
 
     def _cancel_timer(self, room: Room) -> None:
-        handle = self._timers.pop(room.room_id, None)
-        if handle is not None:
+        for handle in self._timers.pop(room.room_id, []):
             handle.cancel()
+
+    def hurry(self, room: Room, game_id: int) -> None:
+        """締め切りの 1 分前。そのゲームがまだ質問の段階のときだけ、GM が急かす。"""
+        insider = room.insider
+        if insider is None or insider.phase is not Phase.ASKING or insider.game_id != game_id:
+            return
+        self._broadcast_entry(room, self._host_entry(room, "⏰ あと 1 分！", "hurry", HURRY_LINES))
+
+    def _host_entry(self, room: Room, text: str, pose: str, lines: list[str]) -> Entry:
+        """GM の吹き出しの記録。text は読める記録として残し、画面は pose と lines で描く。"""
+        return room.add_entry(None, text, kind="host", data={"pose": pose, "lines": lines})
 
     async def time_up(self, room: Room, game_id: int) -> None:
         """制限時間が来た。そのゲームがまだ質問の段階のときだけ、全員の負けで終える。"""
@@ -427,9 +461,15 @@ class RoomHub:
         if outcome.public is None or game is None or room.insider is not insider or insider.phase is not Phase.ASKING:
             return
         self._broadcast(room, {"type": "sound", "src": INSIDER_TIMEUP_SOUND})
-        # 🏳️ で始めると、画面はギブアップと同じお題の公開カードで描く
+        # 時計を抱えた GM の吹き出しでお題を明かし、続く結果のカードでインサイダーを明かす
         self._broadcast_entry(
-            room, room.add_entry(None, f"🏳️ 時間切れ！お題は『{insider.topic}』でした（質問数: {game.question_count}）")
+            room,
+            self._host_entry(
+                room,
+                f"🏳️ 時間切れ！お題は『{insider.topic}』でした（質問数: {game.question_count}）",
+                "hurry",
+                ["時間切れー！", f"お題は『{insider.topic}』でした。"],
+            ),
         )
         self._finish_insider(room, insider, Ending.TIME_UP)
 

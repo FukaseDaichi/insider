@@ -6,15 +6,19 @@ import pytest
 from insider_bot.game import GameManager
 from insider_bot.judge import JudgeError, Verdict
 from insider_bot.service import GameService
+from insider_bot.web import hub as hub_module
 from insider_bot.web.hub import (
     ANSWER_SOUNDS,
     CORRECT_SOUND,
     GIVEUP_SOUND,
+    INSIDER_CHOOSING,
+    INSIDER_CHOOSING_LINES,
     INSIDER_START_SOUND,
     INSIDER_STARTED,
     INSIDER_TIMEUP_SOUND,
     INSIDER_VOTE_SOUND,
     INSIDER_VOTING,
+    INSIDER_VOTING_LINES,
     INSIDER_WIN_SOUND,
     RANDOM_STARTED,
     VILLAGERS_WIN_SOUND,
@@ -893,3 +897,105 @@ async def test_vote_result_plays_winner_sound(votes, sound):
     for voter, target in enumerate(votes):
         world.hub.vote(world.room, people[voter][1], ids[target])
     assert sounds_of(conns[0])[-1] == sound
+
+
+# --- GM の吹き出し（kind: host） ---
+
+
+def hosts_of(conn) -> list[dict]:
+    return [entry for entry in conn.entries() if entry.get("kind") == "host"]
+
+
+async def test_insider_choosing_is_a_host_bubble_with_secret_pose():
+    world = World(rng=FixedRandom(0))
+    (t, tp), (h, hp), (j, jp), _ = trio(world)
+    await world.hub.insider_start(world.room, hp, [tp.player_id, hp.player_id, jp.player_id], "insider", None, None)
+    bubble = hosts_of(t)[-1]
+    assert bubble["text"] == INSIDER_CHOOSING
+    assert bubble["data"] == {"pose": "secret", "lines": INSIDER_CHOOSING_LINES}
+
+
+async def test_correct_guess_is_a_host_bubble_with_detective_pose():
+    world, people = await insider_playing()
+    (t, tp), (h, hp), _, _ = people
+    await world.hub.ask(world.room, hp, "すいかですか", world.game_id())
+    bubble = t.entries()[-1]
+    assert bubble["text"] == INSIDER_VOTING
+    assert bubble["data"] == {"pose": "detective", "lines": INSIDER_VOTING_LINES}
+
+
+async def test_hurry_bubble_one_minute_before_the_deadline():
+    world, people = await insider_playing()
+    (t, tp), _, _, _ = people
+    game_id = world.game_id()
+    world.hub.hurry(world.room, game_id)
+    bubble = t.entries()[-1]
+    assert bubble["kind"] == "host"
+    assert bubble["data"] == {"pose": "hurry", "lines": ["あと 1 分！", "質問、急いで！"]}
+    # 別のゲームの合図と、当たって投票に進んだあとでは出さない
+    before = len(t.entries())
+    world.hub.hurry(world.room, game_id + 1)
+    assert len(t.entries()) == before
+    await world.hub.ask(world.room, people[1][1], "すいかですか", game_id)
+    before = len(t.entries())
+    world.hub.hurry(world.room, game_id)
+    assert len(t.entries()) == before
+
+
+async def test_timer_schedules_hurry_only_when_there_is_more_than_a_minute(monkeypatch):
+    world, people = await insider_playing()
+    fired = []
+    monkeypatch.setattr(world.hub, "hurry", lambda room, game_id: fired.append(("hurry", game_id)))
+
+    async def fake_time_up(room, game_id):
+        fired.append(("time_up", game_id))
+
+    monkeypatch.setattr(world.hub, "time_up", fake_time_up)
+    # 「1 分前」を短くして、実時間で待たずに順番を確かめる
+    monkeypatch.setattr(hub_module, "HURRY_BEFORE_SECONDS", 0.02)
+    world.hub._schedule_time_up(world.room, 42, 0.04)
+    await asyncio.sleep(0.1)
+    assert fired == [("hurry", 42), ("time_up", 42)]
+    fired.clear()
+    # 制限時間が「1 分前」と同じ長さなら、急かさずに締め切りだけ
+    world.hub._schedule_time_up(world.room, 43, 0.02)
+    await asyncio.sleep(0.1)
+    assert fired == [("time_up", 43)]
+    # 予約した 2 つとも取り消せる
+    world.hub._schedule_time_up(world.room, 44, 0.04)
+    world.hub._cancel_timer(world.room)
+    await asyncio.sleep(0.1)
+    assert fired == [("time_up", 43)]
+
+
+async def test_time_up_is_a_host_bubble_that_reveals_the_topic():
+    world, people = await insider_playing(rng_index=1)
+    (t, tp), _, (j, jp), _ = people
+    game_id = world.game_id()
+    await world.hub.ask(world.room, jp, "果物ですか", game_id)
+    await world.hub.time_up(world.room, game_id)
+    bubble = t.entries()[-2]
+    assert bubble["text"] == "🏳️ 時間切れ！お題は『すいか』でした（質問数: 1）"
+    assert bubble["data"] == {"pose": "hurry", "lines": ["時間切れー！", "お題は『すいか』でした。"]}
+    assert t.entries()[-1]["kind"] == "insider_result"
+
+
+async def test_giveup_in_insider_game_is_a_host_bubble_with_the_giver_name():
+    world, people = await insider_playing(rng_index=2)
+    (t, tp), (h, hp), _, _ = people
+    await world.hub.giveup(world.room, hp)
+    bubble = t.entries()[-2]
+    assert bubble["kind"] == "host"
+    assert bubble["author"] is None
+    assert bubble["text"] == "🏳️ ギブアップ！お題は『すいか』でした（質問数: 0）"
+    assert bubble["data"] == {"pose": "giveup", "lines": ["はなこ さんがギブアップ…", "お題は『すいか』でした。"]}
+    assert t.entries()[-1]["data"]["ending"] == "giveup"
+    assert t.of("sound")[-1]["src"] == GIVEUP_SOUND
+
+
+async def test_normal_giveup_stays_a_plain_card():
+    world, setter, asker = await playing()
+    await world.hub.giveup(world.room, asker[1])
+    entry = setter[0].entries()[-1]
+    assert entry["author"] == "はなこ"
+    assert "kind" not in entry

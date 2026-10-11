@@ -33,6 +33,18 @@ export function resultOf(text) {
   return { kind: "giveup", label, title: title.trim(), meta: meta.length ? meta.join("　") : null };
 }
 
+// クラッカーを鳴らす記録。正解は色とりどり、インサイダーゲームの勝敗は勝った側の色（confetti.js の CONFETTI_COLORS の鍵）。
+// 判定中の質問と、全員の負けでは鳴らさない
+export function celebrationOf(entry) {
+  if (entry.pending) return null;
+  if (entry.kind === "insider_result") {
+    const winner = entry.data?.winner;
+    return winner === "villagers" || winner === "insider" ? winner : null;
+  }
+  if (entry.kind) return null;
+  return resultOf(entry.text)?.kind === "correct" ? "correct" : null;
+}
+
 // 質問番号はゲームごとに 1 から。開始の案内（host）で数え直し、質問（question）だけに付ける
 export function numberQuestions(kinds) {
   let n = 0;
