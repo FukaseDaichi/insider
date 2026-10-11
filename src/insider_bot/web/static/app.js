@@ -867,8 +867,16 @@ for (const button of document.querySelectorAll("[data-rules-open]")) {
   button.addEventListener("click", () => $("rules").showModal());
 }
 $("rules-close").addEventListener("click", () => $("rules").close());
-// Esc で閉じたときも、見えないところで動画の音が鳴り続けないように止める
-$("rules").addEventListener("close", () => $("rules-video").pause());
+// 遊び方の動画は 1 本ずつ流す。Esc で閉じたときも、見えないところで音が鳴り続けないように止める
+const rulesVideos = [...document.querySelectorAll("#rules video")];
+for (const video of rulesVideos) {
+  video.addEventListener("play", () => {
+    for (const other of rulesVideos) if (other !== video) other.pause();
+  });
+}
+$("rules").addEventListener("close", () => {
+  for (const video of rulesVideos) video.pause();
+});
 
 const match = /^\/r\/([^/]+)\/?$/.exec(location.pathname);
 if (!match) {

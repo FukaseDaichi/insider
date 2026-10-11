@@ -519,70 +519,37 @@
     <dialog id="rules" class="sheet rules-sheet" aria-labelledby="rules-title">
       <p class="eyebrow">A SMALL GUIDE TO BIG QUESTIONS</p>
       <h2 id="rules-title">答えは、会話のなかに。</h2>
-      <ol class="rules-list">
-        <li>
-          <span>01</span>
-          <div>
-            <h3>仲間とルームに集まる</h3>
-            <p>
-              ルームを作り、URL や QR を共有。会話には Discord や Zoom
-              などの通話を使います。
-            </p>
-          </div>
-        </li>
-        <li>
-          <span>02</span>
-          <div>
-            <h3>ひとりがお題を決める</h3>
-            <p>
-              「お題当てゲーム」から秘密の言葉を設定。お題は出題者の画面にだけ表示され、誰が出したかは明かされません。出題者もみんなに紛れて質問・回答できます。
-            </p>
-          </div>
-        </li>
-        <li>
-          <span>03</span>
-          <div>
-            <h3>はい・いいえで、絞り込む</h3>
-            <p>
-              「果物ですか？」のように質問。ボタンを押して話し、離すと送信。文字でも質問できます。
-            </p>
-          </div>
-        </li>
-        <li>
-          <span>04</span>
-          <div>
-            <h3>わかったら、答えを質問する</h3>
-            <p>
-              「りんごですか？」と聞いて正解を目指そう。ギブアップするとお題を公開して終了します。
-            </p>
-          </div>
-        </li>
-        <li>
-          <span>05</span>
-          <div>
-            <h3>インサイダーゲームでも遊べる</h3>
-            <p>
-              「インサイダーゲーム」で参加者を選んで配ると、ひとり（インサイダー）にだけお題が届きます。お題が当たったら話し合って、インサイダーだと思う人に投票。最多票がインサイダーなら村人の勝ちです。
-            </p>
-            <!-- 再生ボタンを押すまで何も読み込まない。シートを閉じたら app.js が止める -->
-            <figure class="rules-video">
-              <video
-                id="rules-video"
-                controls
-                playsinline
-                preload="none"
-                width="1280"
-                height="720"
-                poster="/static/howto-insider.webp"
-                aria-label="インサイダーゲームの遊び方の動画"
-              >
-                <source src="/static/howto-insider.mp4" type="video/mp4" />
-              </video>
-              <figcaption>動画で見る（60 秒・音が出ます）</figcaption>
-            </figure>
-          </div>
-        </li>
-      </ol>
+      <!-- 再生ボタンを押すまで何も読み込まない。シートを閉じたら app.js が止める -->
+      <div class="rules-videos">
+        <figure class="rules-video">
+          <figcaption>お題当てゲーム <span>30 秒・音が出ます</span></figcaption>
+          <video
+            controls
+            playsinline
+            preload="none"
+            width="1280"
+            height="720"
+            poster="/static/howto-odai.webp"
+            aria-label="お題当てゲームの遊び方の動画"
+          >
+            <source src="/static/howto-odai.mp4" type="video/mp4" />
+          </video>
+        </figure>
+        <figure class="rules-video">
+          <figcaption>インサイダーゲーム <span>60 秒・音が出ます</span></figcaption>
+          <video
+            controls
+            playsinline
+            preload="none"
+            width="1280"
+            height="720"
+            poster="/static/howto-insider.webp"
+            aria-label="インサイダーゲームの遊び方の動画"
+          >
+            <source src="/static/howto-insider.mp4" type="video/mp4" />
+          </video>
+        </figure>
+      </div>
       <p class="rules-note">
         iPhone で「押して話す」が使えないときは
         <a href="/static/iphone-voice.html" target="_blank" rel="noopener"

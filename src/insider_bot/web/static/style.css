@@ -1071,41 +1071,31 @@ dialog h2 {
   width: min(92vw, 500px) !important;
 }
 
-.rules-list {
-  padding: 0;
-  list-style: none;
+.rules-videos {
+  display: grid;
+  gap: 22px;
   margin: 25px 0;
 }
 
-.rules-list li {
-  display: flex;
-  gap: 18px;
-  padding: 16px 0;
+.rules-video {
+  margin: 0;
+  padding-top: 16px;
   border-top: 1px solid var(--line);
 }
 
-.rules-list li > span {
-  font:
-    13px Georgia,
-    serif;
-  color: var(--accent);
-  padding-top: 3px;
-}
-
-.rules-list h3 {
+.rules-video figcaption {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
   font-size: 13px;
-  margin: 0 0 8px;
+  font-weight: 700;
 }
 
-.rules-list p {
-  font-size: 12px;
-  line-height: 1.9;
+.rules-video figcaption span {
+  font-size: 11px;
+  font-weight: 400;
   color: var(--muted);
-  margin: 0;
-}
-
-.rules-video {
-  margin: 14px 0 0;
 }
 
 .rules-video video {
@@ -1116,12 +1106,6 @@ dialog h2 {
   border: 1px solid var(--line);
   border-radius: 6px;
   background: #22242b;
-}
-
-.rules-video figcaption {
-  margin-top: 8px;
-  font-size: 11px;
-  color: var(--muted);
 }
 
 /* 確信度の短いバー。判定した側の割合を塗る */
@@ -1986,10 +1970,6 @@ dialog .eyebrow {
 }
 
 .invite-code-line strong {
-  color: var(--accent);
-}
-
-.rules-list li > span {
   color: var(--accent);
 }
 

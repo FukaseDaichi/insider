@@ -98,17 +98,19 @@ async def test_vendor_files_are_cached_but_app_files_are_revalidated(static_dir)
         assert app.headers["Cache-Control"] == "no-cache"
 
 
-async def test_howto_video_on_the_rules_sheet_is_served_with_range_requests():
+@pytest.mark.parametrize("game", ["odai", "insider"])
+async def test_howto_videos_on_the_rules_sheet_are_served_with_range_requests(game):
     # iPhone の Safari は Range を返さない動画を再生しないので、206 で返ることまで確かめる
     index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
     sources = re.findall(r'(?:src|poster)="(/static/howto-[^"]+)"', index)
-    assert sorted(sources) == ["/static/howto-insider.mp4", "/static/howto-insider.webp"]
+    assert f"/static/howto-{game}.mp4" in sources
+    assert f"/static/howto-{game}.webp" in sources
     async with serve(None) as client:
-        video = await client.get("/static/howto-insider.mp4", headers={"Range": "bytes=0-1023"})
+        video = await client.get(f"/static/howto-{game}.mp4", headers={"Range": "bytes=0-1023"})
         assert video.status == 206
         assert video.content_type == "video/mp4"
         assert len(await video.read()) == 1024
-        poster = await client.get("/static/howto-insider.webp")
+        poster = await client.get(f"/static/howto-{game}.webp")
         assert poster.status == 200
         assert poster.content_type == "image/webp"
 
