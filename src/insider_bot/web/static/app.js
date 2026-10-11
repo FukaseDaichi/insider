@@ -867,6 +867,8 @@ for (const button of document.querySelectorAll("[data-rules-open]")) {
   button.addEventListener("click", () => $("rules").showModal());
 }
 $("rules-close").addEventListener("click", () => $("rules").close());
+// Esc で閉じたときも、見えないところで動画の音が鳴り続けないように止める
+$("rules").addEventListener("close", () => $("rules-video").pause());
 
 const match = /^\/r\/([^/]+)\/?$/.exec(location.pathname);
 if (!match) {
@@ -874,8 +876,6 @@ if (!match) {
 } else {
   const code = match[1].toUpperCase();
   if (!ROOM_CODE_PATTERN.test(code))
-// Esc で閉じたときも、見えないところで動画の音が鳴り続けないように止める
-$("rules").addEventListener("close", () => $("rules-video").pause());
     showFatal("ルームが見つかりません（URL を確かめてください）");
   else if (code !== match[1]) location.replace(`/r/${code}${location.search}`);
   else initRoom(code);
