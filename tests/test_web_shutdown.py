@@ -20,7 +20,7 @@ class BrokenSocket:
 
 
 async def test_close_all_starts_closing_every_socket_before_any_finishes():
-    # 1 本ずつ待つと、応答しない端末の数だけ close のタイムアウト（10 秒）が積み上がり、停止が TimeoutStopSec を超える
+    # 1 本ずつ待つと、操作の処理中で応答しない端末の数だけ close のタイムアウト（10 秒）が積み上がり、停止が TimeoutStopSec を超える
     gate = asyncio.Event()
     log: list[tuple[str, str]] = []
     sockets = [RecordingSocket(f"ws{i}", gate, log) for i in range(3)]

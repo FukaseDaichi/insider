@@ -104,3 +104,26 @@ async def test_the_line_client_is_closed_only_after_the_replies_in_flight_are_se
             assert created[0].events == ["sent", "closed"]
         finally:
             gate.set()
+
+
+def test_main_bounds_the_shutdown_so_systemd_does_not_kill_it(monkeypatch):
+    from pathlib import Path
+
+    from insider_bot.web import __main__ as web_main
+
+    calls = []
+
+    def fake_run_app(app, **kwargs):
+        app.close()  # make_app のコルーチンは動かさない
+        calls.append(kwargs)
+
+    monkeypatch.setattr(web_main, "load_web_config", lambda: web_config())
+    monkeypatch.setattr(web_main.web, "run_app", fake_run_app)
+    web_main.main()
+
+    timeout = calls[0]["shutdown_timeout"]
+    assert timeout == web_main.SHUTDOWN_TIMEOUT_SECONDS
+    # aiohttp は受信中の要求を最大 2×timeout 待つ。その前後に WebSocket の close（10 秒）と LINE の返信の待ち（10 秒×2）
+    service = Path(__file__).parent.parent / "deploy" / "insider-web.service"
+    stop = next(int(line.split("=")[1]) for line in service.read_text().splitlines() if line.startswith("TimeoutStopSec="))
+    assert 10 + 10 + 2 * timeout + 10 < stop

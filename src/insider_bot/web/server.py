@@ -221,8 +221,8 @@ async def _cleanup_loop(hub: RoomHub, interval: float) -> None:
 async def close_all(sockets: Iterable[Any]) -> None:
     """停止時にすべての WebSocket を同時に閉じる。
 
-    1 本ずつ待つと、応答しない端末の数だけ close のタイムアウト（10 秒）が積み上がり、
-    systemd の TimeoutStopSec（90 秒）を超えて SIGKILL される。
+    操作の処理中の接続は、相手の応答を close のタイムアウト（10 秒）まで待つ。1 本ずつ待つと、
+    そうした接続のうち応答しない端末の数だけ 10 秒が積み上がり、systemd の TimeoutStopSec（90 秒）を超えて SIGKILL される。
     """
     await asyncio.gather(
         *(ws.close(code=WSCloseCode.GOING_AWAY, message=b"server shutdown") for ws in list(sockets)),

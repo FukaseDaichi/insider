@@ -21,6 +21,11 @@ from insider_bot.web.village_setup import build_village
 
 log = logging.getLogger(__name__)
 
+# 停止時に aiohttp が受信中の要求を待つ秒数。aiohttp は最大でこの 2 倍待つ（終わるのを待ち、取り消してもう一度待つ）。
+# 長く続きうる要求は送信中の静的ファイルだけなので、短くても失うものはない。
+# 前後の WebSocket の close と LINE の返信の待ちと合わせて、systemd の TimeoutStopSec（90 秒）に収める
+SHUTDOWN_TIMEOUT_SECONDS = 20.0
+
 
 async def make_app(config: WebConfig) -> web.Application:
     client = create_jev_client(config.typesafe_api_key, config.jev_timeout_seconds)
@@ -67,7 +72,7 @@ def main() -> None:
     except ConfigError as error:
         print(f"設定エラー: {error}", file=sys.stderr)
         sys.exit(1)
-    web.run_app(make_app(config), host=config.host, port=config.port)
+    web.run_app(make_app(config), host=config.host, port=config.port, shutdown_timeout=SHUTDOWN_TIMEOUT_SECONDS)
 
 
 if __name__ == "__main__":
