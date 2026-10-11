@@ -1,6 +1,6 @@
 # インフラ構成
 
-本番は Oracle Cloud の VM 1 台で 24 時間動かし、配備の一式は `deploy/` にある。手元の Mac での起動（`scripts/play.sh`）は、本番が止まっているときの予備で、本番が動いている間は起動を断る。手順は [deploy/setup.md](../deploy/setup.md)（VM）、[deploy/human-steps.md](../deploy/human-steps.md)（画面操作）、[README](../README.md)（Mac）。
+本番は Oracle Cloud の VM 1 台で 24 時間動かし、配備の一式は `deploy/` にある。手元の Mac での起動（`scripts/play.sh`）は、本番が止まっているときの予備で、本番が動いている間は起動を断る。手順は [deploy/setup.md](../deploy/setup.md)（VM の設定・作り直した後の確認・定期点検）、[deploy/human-steps.md](../deploy/human-steps.md)（画面操作と現在の値）、[README](../README.md)（Mac）。
 
 ## 結論
 
@@ -30,9 +30,9 @@
 
 - **VM は A1 を 1 台**（VM.Standard.A1.Flex 2 OCPU / 12GB、ap-tokyo-1、Ubuntu 24.04、ブート 50GB）。Always Free の枠（1,500 OCPU 時間／月）は A1 を 2 台並べた瞬間に超えるので、Web＋LINE と Discord の同居は好みではなく枠の帰結。
 - **ホスト名は 1 つ**で、Web 版の URL と LINE の webhook を兼ねる。Cloudflare なら Proxy OFF（Caddy が直接 TLS を終端する）。
-- **Caddy**（`deploy/Caddyfile`）が TLS を終端し、すべてのパスを `127.0.0.1:8080` の aiohttp へ流す。`/api/village/*` は IP ごとに 2 段で制限する: 村を作る操作（`create`、`special`、`werewords`、`text`）は **30 回／分**、全体は **300 回／分**（無認証の作成を繰り返して村の FIFO を押し出すのを遅らせる。配役ツールの画面が配布状況を 5 秒ごとに取るので、全体の枠は同じ Wi-Fi の 20 画面ぶん。防止はできない）。`/line/callback` は署名があるので制限しない。**本文上限は 2MiB**（2×1024×1024 バイト）で、aiohttp 側の `client_max_size` と同じ値（特殊村の最大 100 通×5,000 文字が約 1.5MB）。超過は Caddy が下流の読み取りの時点で打ち切るので 413 とは限らず 502 にもなる。
+- **Caddy**（`deploy/Caddyfile`）が TLS を終端し、すべてのパスを `127.0.0.1:8080` の aiohttp へ流す。`/api/village/*` は IP ごとに 2 段で制限する: 村を作る操作（`create`、`special`、`werewords`、`text`）は **30 回／分**、全体は **300 回／分**（無認証の作成を繰り返して村の FIFO を押し出すのを遅らせる。配役ツールの画面が配布状況を 5 秒ごとに取るので、全体の枠は同じ Wi-Fi の 20 画面ぶんで、実際のブラウザでは 429 は出ない。防止はできない）。`/line/callback` は署名があるので制限しない。**本文上限は 2MiB**（2×1024×1024 バイト）で、aiohttp 側の `client_max_size` と同じ値（特殊村の最大 100 通×5,000 文字が約 1.5MB）。超過は Caddy が下流の読み取りの時点で打ち切るので、クライアントへの応答は 413 とは限らず 502 にもなる。要求は aiohttp に届いていて、本文の途中で切れた要求を aiohttp は 400 で終える。
 - **プロセスは 2 つ**（`deploy/insider-web.service`、`deploy/insider-bot.service`）。片方の不具合がもう片方に及ばないようにするため。専用の非 root ユーザー `insider`、`/etc/insider.env`（root:root 0600）、`Restart=always`、`NoNewPrivileges`、`PrivateTmp`、`ProtectSystem=full`、`ProtectHome`。Web は `127.0.0.1:8080` だけで待つ。
-- **停止**: aiohttp は停止の合図の後に届いた本文を捨て、受信中の要求を最大 60 秒待ってから取り消す。WebSocket はすべて同時に閉じる（1 本ずつ待つと応答しない端末の数だけ 10 秒が積み上がる）。そのあと送りかけの LINE の返信（タイムアウト 10 秒）を待つ。`TimeoutStopSec=90` は 60＋10＋10 に余裕を足した値。Discord ボットは `KillSignal=SIGINT` で、asyncio が主タスクを取り消してゲートウェイを閉じてから終わる。
+- **停止**: 停止の合図の後、WebSocket をすべて同時に閉じ（1 本ずつ待つと応答しない端末の数だけ close の 10 秒が積み上がる）、送りかけの LINE の返信（タイムアウト 10 秒）を待つ。続いて aiohttp が、合図の後に届いた本文を捨て、受信中の要求を最大 60 秒待ってから取り消す。その間に始まった返信をもう一度待ってから閉じる。`TimeoutStopSec=90` は最悪の 10＋10＋60＋10。Discord ボットは `KillSignal=SIGINT` で、asyncio が主タスクを取り消してゲートウェイを閉じてから終わる。
 - **ランタイム**: uv が `.python-version` の Python を取得・固定する。apt の Python に依存しない。依存は `uv sync --locked --no-dev --no-editable` で入れる（編集可能インストールは世代のディレクトリを動かすと import できなくなるため）。
 - **外向き通信**: api.line.me、api.typesafe.ai（Jev）、Discord のゲートウェイだけ。Gemini TTS は手元で音声を作るときだけで、本番からは呼ばない（`GEMINI_API_KEY` は本番に置かない）。
 - **Tailscale Funnel は本番で使わない。** Mac のローカル遊びにだけ使う。
@@ -45,7 +45,7 @@
 Always Free のアカウントの A1 は、7 日間 CPU・ネットワーク・メモリの 3 つすべてが 20% 未満だと回収の通知が来る。このシステムの CPU とネットワークは届かないので、外せるのはメモリ条件だけ。アカウントは Pay As You Go なので本来は回収の対象外だが、判定の変更や誤判定に備えて床は保つ。`deploy/insider-memfloor.service` が起動時に 3GB（12GB の 25%）の tmpfs を確保して埋める。コードに依存せず、アプリの大きさと無関係に床を保てる。
 
 - OCI の `MemoryUtilization` が tmpfs を「使用中」に数えなければ、`deploy/insider-memfloor-process.service`（`deploy/memfloor.py` が 3GB を確保してページを触り、眠り続ける）に差し替える。両方を同時に有効にしない。**本番は tmpfs 方式**。OCI の `MemoryUtilization` は tmpfs を使用中に数え、memfloor なしの約 5% が起動後は約 30% になる。
-- これは設計上の成立であって保証ではない。回収の通知が届いたら、猶予の 1 週間のうちに PAYG へ上げ、OCI Budget で $1 超過のメール通知を設定する。
+- これは設計上の成立であって保証ではない。回収の通知が届いたら（猶予は 1 週間）、memfloor が指標に出ているかを見直す。
 
 ### 監視
 
@@ -63,7 +63,7 @@ Always Free のアカウントの A1 は、7 日間 CPU・ネットワーク・�
 
 1. **build**: `uv sync --locked` → pytest → node のテスト → 更新スクリプトのテスト → リポジトリをその SHA で tar に固め、sha256 を添えて成果物にする
 2. **deploy**（main への push のみ）: Secrets が 3 つとも未登録のあいだ、deploy job は配備を飛ばして成功で終わる（`::notice::` を出す）。一部だけなら失敗する。`concurrency` で直列化（`cancel-in-progress: false`）。排他を取った後に `git ls-remote` で main の最新 SHA を確認し、違えば何もせず成功終了。ホスト鍵を固定した SSH で `/opt/insider/incoming/<sha>/` へ転送し、`sudo /usr/local/bin/insider-release.sh <sha>` を呼ぶ。job は 20 分で打ち切り、SSH は `ConnectTimeout` と `ServerAlive` で繋がらない・止まった接続を見切る（止まった job が group を塞ぎ続けないため。runner 側が切れても、VM 上の更新スクリプトは完走する）
-3. **VM 上の更新スクリプト**（`deploy/insider-release.sh`。root で呼ばれるが、ファイルの操作はすべて `insider` として行い、root がするのは systemctl だけ。排他は root 所有のスクリプト自身への `flock` で取る。SIGHUP と SIGPIPE を無視するので、SSH が途中で切れても戻しまで完走する）: sha256 検証 → 稼働中の世代と同じ SHA なら健康を 1 回確かめ、健康なら何もせず成功、そうでなければその世代のまま再起動して同じ契約で確かめる（通らなければ、自分の確認が通らないユニットだけを止めて job を落とす）→ `releases/.staging-<sha>/` に展開して `uv sync --locked --no-dev --no-editable`（失敗なら `current` を変えずに終わる）→ `releases/<sha>/` へ移し、2 つの入口（`insider_bot.__main__` と `insider_bot.web.__main__`）を import できることを確かめる（失敗なら `current` を変えずに終わる）→ `current` のシンボリックリンクを原子的に差し替え（それまでの `current` のリンク先が実在するときだけ `previous` をそこへ向け直す。壊れた世代を戻し先にしないため）→ 2 ユニットを再起動（それぞれ直前に `reset-failed` する。落ちて自動再起動を待っているユニットへの restart では `NRestarts` が 0 に戻らないため）→ `/healthz` が 200 で本文 `ok`、かつ `insider-bot` が active で `NRestarts` が 0 になるまで 2 秒間隔で最長 60 秒、通ったら 10 秒置いてもう一度 → 失敗なら `previous` に戻して再起動し同じ契約で再確認する。戻せても job は落とす（exit 1。push した commit は動いていない）。戻し先がない、または戻しても通らなければ、自分の確認が通らないユニットだけを止めて job を落とす（`/healthz` が通る Web と、active で `NRestarts` が 0 の bot は動かしたままにする。Discord の障害で bot だけが落ちても Web と LINE を止めないため）。世代は 5 つ残す（`current`／`previous` が指す世代は残す）。revision は 40 桁の小文字 hex に限る（sudoers は引数を制限できないため）
+3. **VM 上の更新スクリプト**（`deploy/insider-release.sh`。root で呼ばれるが、ファイルの操作（検証・展開・`uv sync`・削除・リンク）はすべて `insider` として行い、root がするのは systemctl と排他とヘルスチェックの要求だけ。排他は root 所有のスクリプト自身への `flock` で取る。SIGHUP と SIGPIPE を無視するので、SSH が途中で切れても戻しまで完走する）: sha256 検証 → 稼働中の世代と同じ SHA なら健康を 1 回確かめ、健康なら何もせず成功、そうでなければその世代のまま再起動して同じ契約で確かめる（通らなければ、自分の確認が通らないユニットだけを止めて job を落とす）→ `releases/.staging-<sha>/` に展開して `uv sync --locked --no-dev --no-editable`（失敗なら `current` を変えずに終わる）→ `releases/<sha>/` へ移し、2 つの入口（`insider_bot.__main__` と `insider_bot.web.__main__`）を import できることを確かめる（失敗なら `current` を変えずに終わる）→ `current` のシンボリックリンクを原子的に差し替え（それまでの `current` のリンク先が実在するときだけ `previous` をそこへ向け直す。壊れた世代を戻し先にしないため）→ 2 ユニットを再起動（それぞれ直前に `reset-failed` する。落ちて自動再起動を待っているユニットへの restart では `NRestarts` が 0 に戻らないため）→ `/healthz` が 200 で本文 `ok`、かつ `insider-bot` が active で `NRestarts` が 0 になるまで 2 秒間隔で最長 60 秒、通ったら 10 秒置いてもう一度 → 失敗なら `previous` に戻して再起動し同じ契約で再確認する。戻せても job は落とす（exit 1。push した commit は動いていない）。戻し先がない、または戻しても通らなければ、自分の確認が通らないユニットだけを止めて job を落とす（`/healthz` が通る Web と、active で `NRestarts` が 0 の bot は動かしたままにする。Discord の障害で bot だけが落ちても Web と LINE を止めないため）。世代は 5 つ残す（`current`／`previous` が指す世代は残す）。revision は 40 桁の小文字 hex に限る（sudoers は引数を制限できないため）
 4. 再起動で進行中のルームと村は消える。利用者が少ないので受け入れる
 
 振る舞いは `deploy/test/release_test.sh` が systemctl・curl・uv を偽物に差し替えて確かめる（CI の build で走る）。

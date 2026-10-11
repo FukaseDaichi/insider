@@ -16,7 +16,7 @@ if [ ! -x "$OCI" ]; then
   exit 1
 fi
 if [ ! -f "$HOME/.oci/config" ]; then
-  echo "~/.oci/config がありません。deploy/human-steps.md の 2-1 を見て API キーを設定してください" >&2
+  echo "~/.oci/config がありません。deploy/human-steps.md の 2-1b を見て API キーを設定してください" >&2
   exit 1
 fi
 
@@ -120,4 +120,4 @@ fi
 IP="$("$OCI" compute instance list-vnics --instance-id "$INSTANCE" --query 'data[0]."public-ip"' --raw-output)"
 log "起動しました。公開 IP: $IP"
 echo
-echo "次: deploy/human-steps.md の記録表に公開 IP を書き、2-2（80/443 を開ける）と Phase 3（A レコード）へ"
+echo "次: deploy/human-steps.md の「現在の値」に公開 IP を書き、2-2（80/443 を開ける）と Phase 3（A レコード）へ"

@@ -1,46 +1,44 @@
 # 画面操作の手順書（人間がやること）
 
-ブラウザでの画面操作、アカウント登録、値の記録をまとめる。ターミナルで打つ分は [setup.md](setup.md)、切替前の検証と切替の判断は [cutover.md](cutover.md)。
+ブラウザでの画面操作、アカウント登録、現在の値をまとめる。VM を作り直すときに、[setup.md](setup.md) と行き来しながら上から進める。
 
 | 文書 | 何が書いてあるか | 誰が読むか |
 | --- | --- | --- |
-| **この文書** | ブラウザでの画面操作、アカウント登録、値の記録 | 画面の前にいるとき |
-| [setup.md](setup.md) | VM に SSH して打つコマンド（§0〜§15） | ターミナルの前にいるとき |
-| [cutover.md](cutover.md) | 切替前検証（準備 1 件＋13 項目）とその期待値、LINE のつなぎ込み、様子見 | LINE をつなぐ判断をするとき |
+| **この文書** | ブラウザでの画面操作、アカウント登録、現在の値 | 画面の前にいるとき |
+| [setup.md](setup.md) | VM に SSH して打つコマンド（§0〜§15）、作り直した後の確認（§16）、様子見と定期点検（§17） | ターミナルの前にいるとき |
 
 ## 触るサービスの一覧
 
 | サービス | アカウント | ここでやること | 費用 |
 | --- | --- | --- | --- |
-| Oracle Cloud | 新規作成が必要 | VM を作る、通信を開ける、監視とメール通知を設定する | $0（Always Free） |
-| ドメイン登録事業者 | 既にある（なければ新規） | ホスト名の A レコードを VM の IP へ向ける | 年 $10 前後 |
+| Oracle Cloud | 既にある（PAYG） | VM を作る、通信を開ける、監視とメール通知を設定する | $0（無料枠の範囲） |
+| Cloudflare Registrar | 既にある | ホスト名の A レコードを VM の IP へ向ける、ドメインを更新する | 年 $5.20 |
 | GitHub | 既にある | Secrets を 3 つ登録する | $0 |
-| LINE Developers | 既にある | Webhook URL を差し替える | $0 |
+| LINE Developers | 既にある | ホスト名が変わったときだけ Webhook URL を差し替える | $0 |
 | Discord Developer Portal | 既にある | ボットトークンを控える（Mac で使っているものと同じでよい） | $0 |
 | TypeSafe | 既にある | API キーを控える | 利用料は別 |
-| 外形監視サービス | 新規作成が必要 | `/healthz` を 5 分ごとに見てメールで知らせる | $0 |
+| 外形監視サービス | 未登録なら新規作成 | `/healthz` を 5 分ごとに見てメールで知らせる | $0 |
 
-## 記録しておく値
+## 現在の値
 
-| 項目 | 値 | いつ決まるか |
-| --- | --- | --- |
-| VM の公開 IP | `150.230.219.180`（2026-10-06 20:24 作成。インスタンス `insider`、A1.Flex 2 OCPU・12 GB、VCN `insider` / サブネット `insider-public`。scripts/oci-launch-a1.sh の 375 回目で取れた） | Phase 2 |
-| ホスト名 `<host>` | `insidergame.fyi`（Cloudflare Registrar、2026-10-05 取得、年 $5.20、2027-10-05 まで。サブドメインは使わずルートをそのまま使う） | Phase 1 |
-| 切替日 | 2026-10-06 22:33（LINE Developers の Webhook URL を `https://insidergame.fyi/line/callback` に更新。検証の要求が VM に届いて 200） | Phase 6 |
-| memfloor の方式（tmpfs / プロセス） | **tmpfs**（既定の insider-memfloor のまま）。2026-10-06 の 5-1 で、OCI の MemoryUtilization が memfloor 起動前 4.5% → 起動後 30.4% と出て、tmpfs が使用中に数えられていると確認 | Phase 5 |
-| PAYG へ上げた日と理由 | 2026-10-06。A1 が Out of host capacity で 1 晩（173 回）取れなかったため、確保が通りやすい有料アカウントにした。予算 `insider-budget`（月 $1、100% でメール）も同日作成 | 別枠 |
+| 項目 | 値 |
+| --- | --- |
+| VM | インスタンス `insider`（A1.Flex 2 OCPU・12 GB）、VCN `insider` / サブネット `insider-public`、公開 IP `150.230.219.180` |
+| ホスト名 `<host>` | `insidergame.fyi`（Cloudflare Registrar、2027-10-05 まで。サブドメインは使わずルートをそのまま使う） |
+| memfloor の方式 | **tmpfs**（既定の insider-memfloor）。OCI の MemoryUtilization は memfloor なしで約 5%、起動後は約 30% |
+| アカウント | Pay As You Go。予算 `insider-budget`（月 $1、100% でメール） |
+
+作り直して値が変わったら、ここを書き換える。
 
 ## 全体の流れ
 
 ```
-Phase 1  準備          ホスト名を決める / Oracle アカウントを作る / 鍵と資格情報   ← VM が取れなくても進められる
+Phase 1  準備          ホスト名 / Oracle アカウント / 鍵と資格情報
 Phase 2  VM を作る      A1 インスタンス + 通信の開放                              ← ここが取れるまで LINE・Web・Discord は止まったまま
 Phase 3  DNS を向ける    A レコード
 Phase 4  配備           VM の設定 → GitHub Secrets → 初回配備                    （setup.md §1〜§11）
 Phase 5  監視の下地      Monitoring 確認 + メール通知 + 外形監視
-Phase 6  LINE をつなぐ   LINE の Webhook URL だけ                                 （cutover.md B）
-
-別枠  PAYG へ上げる（アイドル通知が来たとき）
+確認                    setup.md §16（LINE の Webhook URL はホスト名が変わったときだけ）
 ```
 
 ---
@@ -49,11 +47,11 @@ Phase 6  LINE をつなぐ   LINE の Webhook URL だけ                        
 
 ## 1-1. ホスト名を決める
 
-ドメインを 1 つ取り、ルートをそのままホスト名にする（取得済み: `insidergame.fyi`。既にあるドメインに `insider.<domain>` のような短い名前を足してもよい）。Web 版の URL も LINE の webhook も同じホスト名を使う。記録表に書く。
+ドメインを 1 つ取り、ルートをそのままホスト名にする（いまは `insidergame.fyi`。既にあるドメインに `insider.<domain>` のような短い名前を足してもよい）。Web 版の URL も LINE の webhook も同じホスト名を使う。作り直しで同じドメインを使うなら、ここは飛ばす。
 
 ## 1-2. Oracle Cloud のアカウントを作る
 
-https://www.oracle.com/cloud/free/ から。ホームリージョンは **Japan East (Tokyo)**（`ap-tokyo-1`）。後から変えられない。クレジットカードの登録が要り、審査で断られることがある。無料枠は「契約」ではなく「予告なく変わる好意」として扱う。
+既存のアカウントを使うなら飛ばす。新しく作るときは https://www.oracle.com/cloud/free/ から。ホームリージョンは **Japan East (Tokyo)**（`ap-tokyo-1`）。後から変えられない。クレジットカードの登録が要り、審査で断られることがある。無料枠は「契約」ではなく「予告なく変わる好意」として扱う。
 
 ## 1-3. デプロイ用の SSH 鍵を作る
 
@@ -97,11 +95,11 @@ OCI コンソール → **Compute** → **Instances** → **Create instance**
 
 `Out of host capacity` が出たら時間を置いて何度でも試す。手で押し直すより、下の 2-1b で機械に繰り返させる方が早い。
 
-作れたら **公開 IP** を記録表に書く。
+作れたら **公開 IP** を「現在の値」に書く。
 
 ## 2-1b. 空きが出るまで自動で繰り返す（コンソールで取れないとき）
 
-`scripts/oci-launch-a1.sh` が、2-1 と同じ値で数分おきに作成を試し、作れたら公開 IP を表示して終わる。準備が 3 つ要る。
+`scripts/oci-launch-a1.sh` が、2-1 と同じ値で数分おきに作成を試し、作れたら公開 IP を表示して終わる。`jq` を使う（新しい macOS には入っている）。ほかに準備が 3 つ要る。
 
 **(1) OCI CLI を入れる**（Mac）
 
@@ -139,7 +137,7 @@ oci iam region list --query 'data[0].name' --raw-output
 bash scripts/oci-launch-a1.sh
 ```
 
-既定は 120 秒おき。`INTERVAL=60` のように環境変数で変えられる。Ctrl+C で止まる。回している間は Mac をスリープさせない。記録は `~/.oci/launch-a1.log`。作れたら公開 IP が出るので記録表に書き、2-2 へ進む。公開 IP の割り当て（`--assign-public-ip`）はスクリプトが済ませる。
+既定は 120 秒おき。`INTERVAL=60` のように環境変数で変えられる。Ctrl+C で止まる。回している間はスクリプトが Mac のスリープを防ぐ（ノートの蓋は閉じない）。記録は `~/.oci/launch-a1.log`。作れたら公開 IP が出るので「現在の値」に書き、2-2 へ進む。公開 IP の割り当て（`--assign-public-ip`）はスクリプトが済ませる。
 
 ## 2-2. 通信を開ける（security list）
 
@@ -204,9 +202,9 @@ OCI コンソール → **Compute** → **Instances** → 対象インスタン�
 
 1. **Oracle Cloud Agent** タブ → **Compute Instance Monitoring** が **Enabled** であること
 2. **Metrics** タブ → **Memory Utilization** のグラフに**値が出ていること**（起動後 5〜10 分で現れる）
-3. 値が **20% を上回っている**こと（3GB / 12GB = 25% が期待値）
+3. 値が **20% を上回っている**こと（tmpfs の memfloor で約 30%）
 
-20% を下回っていれば cutover.md A-9 の手順でプロセス方式に差し替え、どちらにしたかを記録表に書く。**グラフに値が出ていなければ**、メモリ対策は存在しないものとして扱い、切替前に「PAYG へ上げるか」を決める（別枠）。
+20% を下回っていれば setup.md §16 の 3 の手順でプロセス方式に差し替え、「現在の値」を直す。**グラフに値が出ていなければ**、メモリ対策は存在しないものとして扱う（アカウントが PAYG でなければ、別枠の手順で上げる）。
 
 ## 5-2. メール通知を設定する
 
@@ -263,35 +261,9 @@ OCI の監視は「VM が動いているか」しか見ない。**アプリが�
 | 成功の条件 | 応答本文に **`ok`** を含む（キーワード監視） |
 | 通知 | メール |
 
-UptimeRobot や Better Stack などが候補。**無料枠でキーワード監視ができるかは事前に確認する。** 登録したら、一度 VM 上で `sudo systemctl stop insider-web` してから通知が来ることを確かめると確実。確認後は `sudo systemctl start insider-web` で戻す。
+ホスト名が変わらない作り直しなら、登録済みの監視をそのまま使う。新しく登録するなら UptimeRobot や Better Stack などが候補。**無料枠でキーワード監視ができるかは事前に確認する。** 登録したら、一度 VM 上で `sudo systemctl stop insider-web` してから通知が来ることを確かめると確実。確認後は `sudo systemctl start insider-web` で戻す。
 
-`/healthz` は Web プロセスが HTTP を受け付けていることだけを示す。Discord ボットの生死は journald で見る（cutover.md C）。
-
----
-
-# Phase 6: LINE をつなぐ
-
-切り替えるのは **LINE Developers の Webhook URL の 1 か所だけ**。ホスト名が変わらない作り直しなら URL はそのままで、6-1 は「検証」だけ押す。
-
-## 事前の確認
-
-1. cutover.md の **A の準備 1 件と 13 項目がすべて通っている**
-2. スタブが外れている: `[VM] sudo grep -c LINE_API_BASE_URL /etc/insider.env` が **`0`**
-3. **プレイヤーがいない時間帯を選ぶ**（進行中の村は切替の瞬間に消える）
-
-## 6-1. LINE の Webhook URL
-
-LINE Developers コンソール → 対象のチャネル → **Messaging API 設定** タブ:
-
-1. **Webhook URL** の「編集」→ `https://<host>/line/callback` → 「更新」
-2. **「検証」ボタンを押す** → 期待: **成功**
-3. **「Webhook の利用」が ON** になっていることを確認する（OFF だとイベントが届かない）
-4. **「Webhook の再送」は OFF のまま**（重複排除はしていない。Java も同じ）
-5. 「応答メッセージ」は OFF のまま
-
-## 6-2. 実機で確かめる
-
-cutover.md B-4 の 4 項目。**Web で特殊村を作る → LINE からその番号で参加 → `@配布`** は飛ばさない。そのあと cutover.md C の様子見に入る。
+`/healthz` は Web プロセスが HTTP を受け付けていることだけを示す。Discord ボットの生死は journald で見る（setup.md §17）。
 
 ---
 
@@ -307,4 +279,4 @@ OCI コンソール → **Billing & Cost Management** → **Upgrade and Manage P
 | Amount | `1`（USD） |
 | Alert rule | Actual spend が 100% を超えたらメール |
 
-上げた日と理由を記録表に書く。
+上げたら「現在の値」を直す。

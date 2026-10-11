@@ -5,7 +5,7 @@ description: お題当てゲーム（insider）のゲームサーバーを開始
 
 # ゲームサーバーの開始・停止・状態
 
-`scripts/play.sh` が、Discord ボット・Web 版・Tailscale Funnel での公開・スリープ防止をまとめて動かす。Ctrl+C か SIGTERM を受けると全部を止め、公開も終える。このスキルはそれをチャットから操作する。
+普段は本番の VM（https://insidergame.fyi ）で遊べる。これは本番が止まっているときの予備で、`scripts/play.sh` が、Discord ボット・Web 版・Tailscale Funnel での公開・スリープ防止をまとめて動かす。Ctrl+C か SIGTERM を受けると全部を止め、公開も終える。このスキルはそれをチャットから操作する。
 
 引数か発言から操作を選ぶ。
 

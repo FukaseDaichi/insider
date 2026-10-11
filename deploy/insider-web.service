@@ -13,9 +13,9 @@ Environment=PYTHONUNBUFFERED=1
 # 待ち受けは 127.0.0.1:8080 (WEB_HOST / WEB_PORT の既定)。外からは Caddy を経由する
 WorkingDirectory=/opt/insider/current
 ExecStart=/opt/insider/current/.venv/bin/python -m insider_bot.web
-# aiohttp は停止の合図の後に届いた本文を捨て、受信中の要求を最大 60 秒待ってから取り消す。
-# WebSocket はすべて同時に閉じる (close のタイムアウト 10 秒が 1 回分)。そのあと送りかけの LINE の返信
-# (タイムアウト 10 秒) を待つ。60 + 10 + 10 に余裕を足した値
+# 停止の合図の後、WebSocket をすべて同時に閉じ (close のタイムアウト 10 秒が 1 回分)、送りかけの LINE の
+# 返信 (タイムアウト 10 秒) を待つ。続いて aiohttp が受信中の要求を最大 60 秒待ってから取り消し、その間に
+# 始まった返信 (10 秒) をもう一度待つ。10 + 10 + 60 + 10 の最悪値
 TimeoutStopSec=90
 Restart=always
 RestartSec=5

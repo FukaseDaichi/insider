@@ -30,5 +30,5 @@ dev = [
 asyncio_mode = "auto"
 pythonpath = ["."]
 testpaths = ["tests"]
-markers = ["integration: 実際の TypeSafe API を呼ぶテスト（TYPESAFE_API_KEY が必要）"]
+markers = ["integration: 実際の TypeSafe API と Gemini TTS を呼ぶテスト（TYPESAFE_API_KEY・GEMINI_API_KEY が必要）"]
 addopts = "-m 'not integration'"

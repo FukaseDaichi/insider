@@ -1,6 +1,6 @@
 # VM セットアップ手順書
 
-Oracle Cloud Always Free の A1 VM 1 台に insider（Web 版・配役ツール・LINE の webhook・Discord ボット）を載せる手順。VM が停止・削除されたときの再作成にもこのまま使う。構成と理由は [docs/infra.md](../docs/infra.md) にあり、ここでは繰り返さない。
+Oracle Cloud の A1 VM 1 台に insider（Web 版・配役ツール・LINE の webhook・Discord ボット）を載せる手順と、載せた後の確認・定期点検。VM が停止・削除されたときの再作成にもこのまま使う。構成と理由は [docs/infra.md](../docs/infra.md) にあり、ここでは繰り返さない。
 
 記法: `[Mac]` は手元の Mac で、`[VM]` は VM に SSH した上で実行する。`<...>` は実行時に決まる値。
 
@@ -53,7 +53,7 @@ OCI の Ubuntu イメージは security list とは別に OS 側の iptables が
 [VM] sudo iptables -L INPUT -n --line-numbers | head -12
 ```
 
-期待: 80 と 443 の ACCEPT が `REJECT` 行より **上**にある。挿入位置は `REJECT` の行番号から取る（イメージによって既定のルール数が違い、2026-10 の Ubuntu 24.04 では REJECT が 5 行目で、固定の 6 だと下に入ってしまった）。§11 の後に `sudo reboot` して、再起動後も `sudo iptables -L INPUT -n` に 2 行が残っていることを一度確かめる。
+期待: 80 と 443 の ACCEPT が `REJECT` 行より **上**にある。挿入位置は `REJECT` の行番号から取る（イメージによって既定のルール数が違い、固定の行番号だと `REJECT` より下に入ることがある）。§11 の後に `sudo reboot` して、再起動後も `sudo iptables -L INPUT -n` に 2 行が残っていることを一度確かめる。
 
 ## 4. insider ユーザーと配置先
 
@@ -115,7 +115,7 @@ uv は insider ユーザーの `~/.local/bin` に入る。`.python-version`（3.
 [VM] df -h /run/insider-memfloor && free -m
 ```
 
-期待: `df` の Used が `3.0G`、`free` の `shared` が 3,000 前後（tmpfs は `shared` と `buff/cache` に数えられ、`used` には入らない。OCI の指標がどちらを見るかは [cutover.md](cutover.md) A-9 で実測する）。
+期待: `df` の Used が `3.0G`、`free` の `shared` が 3,000 前後（tmpfs は `shared` と `buff/cache` に数えられ、`used` には入らない。OCI の `MemoryUtilization` は tmpfs を使用中に数える。§16 の 3 で確かめる）。
 
 ## 8. /etc/insider.env
 
@@ -141,9 +141,9 @@ PUBLIC_BASE_URL=https://<host>
 [VM] sudo bash -c 'set -a; . /etc/insider.env; set +a; echo "token ${#LINE_CHANNEL_TOKEN} 文字, secret ${#LINE_CHANNEL_SECRET} 文字"; curl -s -o /dev/null -w "bot/info %{http_code}\n" -H "Authorization: Bearer $LINE_CHANNEL_TOKEN" https://api.line.me/v2/bot/info'
 ```
 
-期待: `-rw------- 1 root root` と `5`（5 行とも値がある）、`token 172 文字, secret 32 文字`、`bot/info 200`。**401 なら貼り付けで文字が欠けている**（2026-10-06 の切替で 171 文字のまま進め、切替直後の返信が全部 401 になった。webhook 自体は署名が合えば 200 を返すので、返信の失敗は journal の WARNING でしか分からない）。切替前の検証中だけ、これに `LINE_API_BASE_URL=http://127.0.0.1:18080` を足す（[cutover.md](cutover.md)）。
+期待: `-rw------- 1 root root` と `5`（5 行とも値がある）、`token 172 文字, secret 32 文字`、`bot/info 200`。**401 なら貼り付けで文字が欠けている**（webhook 自体は署名が合えば 200 を返すので、返信の失敗は journal の WARNING でしか分からない）。`LINE_API_BASE_URL` は書かない（返信をスタブへ向けて確かめるときだけ足し、終わったら消す）。
 
-**Discord ボットはここで動き出すと本物の Discord に接続する。** VM が動いている間は Mac で `scripts/play.sh` を使わない（2 か所で動くと質問に 2 回返信する）。Mac の `.env` に `PRODUCTION_URL=https://<host>` を書いておくと、play.sh は本番の `/healthz` が `ok` の間は起動を断る。
+**Discord ボットはここで動き出すと本物の Discord に接続する。** VM が動いている間は Mac で `scripts/play.sh` を使わない（[docs/infra.md](../docs/infra.md) のローカルの節）。
 
 ## 9. Caddy とレート制限モジュール
 
@@ -221,7 +221,7 @@ deploy job が失敗したら、job のログの `not healthy` の行で Web と
 
 OCI コンソール → Compute → Instances → 対象インスタンス → **Oracle Cloud Agent** タブで **Compute Instance Monitoring** が Enabled であることを確認する。次に **Metrics** タブで `Memory Utilization` のグラフに値が出ていることを見る（起動後 5〜10 分で現れる）。
 
-**値が出ていなければ、アイドル回収のメモリ対策は存在しないものとして扱う**（[cutover.md](cutover.md) の PAYG の節）。
+**値が出ていなければ、アイドル回収のメモリ対策は存在しないものとして扱う。** アカウントは PAYG なので回収の対象外だが、§13 の Alarm も働かなくなるので、Oracle Cloud Agent を直す。
 
 ## 13. OCI Alarm（メール通知）
 
@@ -231,7 +231,7 @@ OCI コンソール → Compute → Instances → 対象インスタンス → *
 
 | 対象 | 手順 |
 | --- | --- |
-| OS | unattended-upgrades が自動で当てる。カーネル更新後は `sudo reboot`（再起動後に insider-web・insider-bot・caddy が自動で上がることを §11 の `/healthz` で確認） |
+| OS | unattended-upgrades が自動で当てる。カーネル更新後は `sudo reboot`（再起動後に自動で上がることを §16 の 5 で確認） |
 | Python と依存 | `uv.lock` と `.python-version` を手元で更新して push すれば、配備の `uv sync` が反映する。VM で手で入れ替えるものはない |
 | uv 本体 | `sudo -u insider -H /opt/insider/.local/bin/uv self update` |
 | Caddy | 下のコマンド。組み込みモジュールを維持したまま最新へ上げ、レート制限のモジュールが残っていることを見てから再起動する |
@@ -248,4 +248,115 @@ Caddy の更新:
 
 ## 15. VM が失われたときの再作成
 
-§0 でインスタンスを作り直し（公開 IP が変わる）、§1〜§13 を上から実行する。`/etc/insider.env` の値はパスワードマネージャから復元する。IP が変わるので §0 の A レコード、§10 の `DEPLOY_HOST` と `DEPLOY_HOST_KEY` を更新する。完了後に [cutover.md](cutover.md) の A（切替前の検証）をやり直す。
+§0 でインスタンスを作り直し（公開 IP が変わる）、§1〜§13 を上から実行する。`/etc/insider.env` の値はパスワードマネージャから復元する。IP が変わるので §0 の A レコード、§10 の `DEPLOY_HOST` と `DEPLOY_HOST_KEY` を更新する。完了後に §16 の確認を上から行い、§17 の様子見に入る。
+
+## 16. 作り直した後の確認
+
+§1〜§13 が済み、`main` の最新が VM で動いている状態から行う。`<host>` は Caddy が受けるホスト名。
+
+### 1. `/healthz` と画面
+
+```bash
+[Mac] export B=https://<host>
+[Mac] curl -si "$B/healthz" | sed -n '1p;$p'
+[Mac] for p in / /village/new /village/special /static/app.js /nothing; do printf '%s ' "$p"; curl -s -o /dev/null -w '%{http_code}\n' "$B$p"; done
+```
+
+期待: `/healthz` が `HTTP/2 200` と本文 `ok`。`/`、`/village/new`、`/village/special`、`/static/app.js` が `200`、`/nothing` が `404`。ブラウザでお題当て（`/`）のルームを作り、別の端末で入って WebSocket が Caddy 越しに張れること（押して話すで質問が届くこと）。
+
+### 2. 停止にかかる時間
+
+```bash
+[VM] time sudo systemctl restart insider-web
+```
+
+期待: 誰も使っていなければ数秒で終わる。90 秒（`TimeoutStopSec`）近くかかるなら、WebSocket か LINE の返信の待ちで止まっているので journal を見る。
+
+### 3. メモリ床が OCI の指標に出ている
+
+OCI コンソール → インスタンス → Metrics → `Memory Utilization`。期待: 直近 1 時間が **20% を上回って**安定（tmpfs の memfloor で約 30%）。20% はアイドル回収のメモリ条件を外す水準で、§13 の Alarm と同じ。
+
+```bash
+[VM] df -h /run/insider-memfloor && free -m
+```
+
+期待: `df` の Used が `3.0G`。**指標が tmpfs を数えていない（20% 未満）ときは、プロセスで確保する方式に差し替えて 30 分後にもう一度見る:**
+
+```bash
+[VM]  sudo systemctl disable --now insider-memfloor
+[Mac] scp deploy/insider-memfloor-process.service ubuntu@<IP>:/tmp/
+[VM]  sudo install -o root -g root -m 0644 /tmp/insider-memfloor-process.service /etc/systemd/system/
+[VM]  sudo systemctl daemon-reload && sudo systemctl enable --now insider-memfloor-process
+[VM]  ps -o rss= -C python3 | awk '{s+=$1} END {printf "%.1f GB\n", s/1024/1024}'
+```
+
+期待: `3.0 GB` 以上。差し替えたら [docs/infra.md](../docs/infra.md) の memfloor の節を直す。
+
+### 4. `systemctl restart` 後の自動復帰
+
+```bash
+[VM] sudo systemctl restart insider-web insider-bot
+[VM] deadline=$((SECONDS + 60)); while [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/healthz)" != 200 ] && [ "$SECONDS" -lt "$deadline" ]; do sleep 2; done
+[VM] curl -s http://127.0.0.1:8080/healthz; echo; systemctl is-active insider-bot
+```
+
+期待: `ok` と `active`。更新スクリプトと同じ「2 秒間隔で最長 60 秒」で待つ。
+
+### 5. VM 再起動後の自動起動
+
+```bash
+[VM]  sudo reboot
+[Mac] sleep 90; curl -s "$B/healthz"; echo
+[VM]  systemctl is-active insider-web insider-bot caddy insider-memfloor     # 3 でプロセス方式に替えたなら insider-memfloor-process
+[VM]  sudo iptables -L INPUT -n | grep -E 'dpt:(80|443)'
+```
+
+期待: `ok`、4 つとも `active`（tmpfs の memfloor は oneshot なので `systemctl status` では `active (exited)`）、80 と 443 の ACCEPT が残っている。
+
+### 6. LINE
+
+ホスト名が変わらない作り直しなら、LINE Developers の Webhook URL はそのままでよい。ホスト名が変わったときだけ、LINE Developers コンソール → 対象のチャネル → **Messaging API 設定** タブで次を行う。
+
+1. **Webhook URL** を `https://<host>/line/callback` に更新し、「検証」で成功を確かめる
+2. 「Webhook の利用」が ON、「Webhook の再送」と「応答メッセージ」は OFF のまま（重複排除はしていない）
+
+どちらの場合も、実機で確かめる。
+
+1. 自分の LINE から `お題` → お題を設定 → 人数を設定
+2. **別アカウント**でその村番号を送り、役職が届く
+3. `@わーわーず` で Werewords も一通り
+4. **Web（`https://<host>/village/new`）で特殊村を作る → LINE からその番号で参加 → `@配布`**。Web と LINE が同じ村の中核を共有していることを本物の LINE で確かめる唯一の経路なので飛ばさない
+
+返信が届かないときは journal の WARNING を見る（401 なら §8 のトークンの貼り付けを疑う）。
+
+### 7. レート制限（`deploy/Caddyfile` の値を変えたときだけ）
+
+レート制限の窓は 1 分で、鍵は接続元 IP。直前の操作で使った枠が残るので、計測の前に 60 秒空ける。
+
+```bash
+[Mac] sleep 60
+[Mac] bash deploy/verify/ratelimit_check.sh "$B" /api/village/special 40     # 作成系の枠 30 回/分
+[Mac] sleep 60
+[Mac] bash deploy/verify/ratelimit_check.sh "$B" /api/village/mine 310       # 全体の枠 300 回/分
+```
+
+期待: 作成系が概ね 30 件の `400` と 10 件の `429`、全体が概ね 300 件の `400` と 10 件の `429`（スライディングウィンドウなので前の計測の残りで数件ずれる）。どちらも `elapsed` が 60 秒未満であること。続けて実際のブラウザで配役ツールの配布状況の 5 秒ごとの更新を 2 分ほど眺め、DevTools の Network で `429` が出ないことを確かめる。
+
+## 17. 様子見と定期点検
+
+作り直した後は最初の 1 週間は毎日、以降は週 1 回。
+
+| 見るもの | どこで | 期待 |
+| --- | --- | --- |
+| メモリ指標 | OCI → Instances → 対象 → Metrics → Memory Utilization | **20% を上回っている** |
+| アイドル判定のメール | 自分のメール | **届いていない** |
+| 外形監視の失敗通知 | 自分のメール | **届いていない** |
+| アプリのログ | 下のコマンド 1 | 想定外のものがない（LINE の返信の失敗、Jev のタイムアウトの頻発がない） |
+| Discord の接続 | 下のコマンド 2 | 長期の切断がない（`/healthz` は Discord を含まない） |
+
+```bash
+[VM] sudo journalctl -u insider-web -u insider-bot --since '-7 days' --no-pager | grep -E 'WARNING|ERROR|CRITICAL'    # 1. アプリのログ
+[VM] sudo journalctl -u insider-bot --since '-7 days' --no-pager | grep -iE 'disconnect|resum'                     # 2. Discord の接続
+```
+
+**Oracle からアイドル判定のメールが届いたとき**: 即削除ではなく、1 週間後に停止という猶予付きの通知。アカウントは PAYG なので本来は対象外のはずで、届いたら memfloor が効いているか（§16 の 3）を見直す。

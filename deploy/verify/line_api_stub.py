@@ -2,7 +2,7 @@
 """LINE の返信 API（POST /v2/bot/message/reply）のスタブ。外へは何も送らない。
 
 Web 版を LINE_API_BASE_URL=http://127.0.0.1:18080 で起動すると、LINE への返信がここへ届く。
-本文を整形して標準出力へ出し、200 {} を返す。切替前の検証で、返信の中身を読むのに使う。
+本文を整形して標準出力へ出し、200 {} を返す。LINE へ送らずに返信の中身を読むのに使う。
 
 使い方: uv run python deploy/verify/line_api_stub.py [port]   （既定 18080）
 """

@@ -40,7 +40,7 @@ class WebConfig:
 class LineConfig:
     channel_secret: str
     channel_token: str
-    # 返信 API の送り先。切替前の検証でスタブ（deploy/verify/line_api_stub.py）へ向けるときだけ変える
+    # 返信 API の送り先。検証でスタブ（deploy/verify/line_api_stub.py）へ向けるときだけ変える
     api_base_url: str = DEFAULT_API_BASE_URL
 
 

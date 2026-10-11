@@ -14,7 +14,8 @@ tests/test_line_golden.py が、同じ STEPS を Python の中核と LINE のレ
 配役（誰がインサイダーか）は抽選なので、同じ group の手順の応答は順不同の集まりとして比べる。
 GM の「k/n人」のように席で文が変わる応答と、お題も役職も抽選のランダム村の人数設定は、check=False で比べない。
 
-採り方（手順を変えたら採り直す）: Java の LineBot を手元で動かし（README の「LINE Bot」）、
+採り方（手順を変えたら採り直す）: Java の LineBot 2.7.0 を Java 8 で手元に起動し（<LineBot> は LineBot のリポジトリ）、
+  LINE_BOT_CHANNEL_TOKEN=golden LINE_BOT_CHANNEL_SECRET=golden java -jar <LineBot>/insider-game-bot/build/libs/insider-game-bot-2.7.0-SNAPSHOT.jar --server.port=18080
   uv run python -m tests.line_golden http://127.0.0.1:18080/callapi
 """
 
