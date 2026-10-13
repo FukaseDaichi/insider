@@ -3999,6 +3999,60 @@ body:has(.room:not([hidden])) .site-header {
   font-size: 13px;
 }
 
+/* 投票パネル。帯（summary）をタップすると畳めて、フッターが 1 行になり会話ログが広がる */
+.vote-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.vote-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  overflow-wrap: anywhere;
+}
+
+.vote-summary::-webkit-details-marker {
+  display: none;
+}
+
+/* 開閉の向きを示す山形。開いているときは上向き */
+.vote-summary::after {
+  content: "";
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-bottom: 4px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform 0.2s;
+}
+
+.vote-panel[open] .vote-summary::after {
+  margin-bottom: -4px;
+  transform: rotate(-135deg);
+}
+
+.vote-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
+.vote-body .link {
+  justify-self: center;
+}
+
 /* 名前のボタンは 3 列の同じ大きさに揃える。行の高さも一番高い行に合わせ、長い名前や「（自分）」で段がずれないようにする */
 .pick-grid {
   display: grid;
