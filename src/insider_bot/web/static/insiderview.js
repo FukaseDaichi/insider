@@ -13,8 +13,9 @@ import {
   selectable,
   setupProblem,
   startMessage,
-  voteProgress,
+  voteSummary,
   voteTargets,
+  voteWaiting,
 } from "./insider.js";
 import { hostImage } from "./host.js";
 
@@ -93,6 +94,7 @@ export class InsiderView {
       $("insider-setup").close();
     });
     $("role-open").addEventListener("click", () => $("role-dialog").showModal());
+    $("vote-role").addEventListener("click", () => $("role-dialog").showModal());
     $("role-close").addEventListener("click", () => $("role-dialog").close());
     $("insider-topic-form").addEventListener("submit", (event) => {
       event.preventDefault();
@@ -145,6 +147,8 @@ export class InsiderView {
     for (const id of dialogsToClose(this.room?.insider ?? null, room.insider ?? null)) {
       if ($(id).open) $(id).close();
     }
+    // 投票が始まったら、畳んだままにならないよう投票パネルを開いておく。その後の開閉は本人に任せ、再描画で変えない
+    if (room.insider?.phase === "voting" && this.room?.insider?.phase !== "voting") $("vote-panel").open = true;
     this.room = room;
     const { insider, you, players, game } = room;
     // 設定のシートを開いている間に入ってきた人も、候補に出す
@@ -158,7 +162,8 @@ export class InsiderView {
     if (!insider) return true;
     const role = insider.you.role;
     // 役職のカード
-    $("role-open").hidden = role === null;
+    // 投票中は役職を見るボタンも投票パネルの中に畳む
+    $("role-open").hidden = role === null || insider.phase === "voting";
     if (role !== null) {
       $("role-title").textContent = `あなたは${ROLE_LABELS[role]}`;
       $("role-image").src = insider.you.image ?? "";
@@ -179,7 +184,8 @@ export class InsiderView {
     } else if (insider.phase === "asking") {
       status.textContent = role === null ? "見学中（質問・投票はできません）" : "";
     } else if (insider.phase === "voting") {
-      status.textContent = voteProgress(insider, players);
+      // 参加者の進み具合は投票パネルの帯に出す。見学の人にはパネルがないので状態の行に出す
+      status.textContent = role === null ? `見学中（投票はできません）・${voteWaiting(insider, players)}` : "";
       if (role !== null) this.renderVotes(insider, players, you.id);
     } else {
       status.textContent = "";
@@ -188,6 +194,8 @@ export class InsiderView {
   }
 
   renderVotes(insider, players, myId) {
+    $("vote-summary").textContent = voteSummary(insider, players);
+    $("vote-waiting").textContent = voteWaiting(insider, players);
     $("vote-targets").replaceChildren(
       ...voteTargets(insider, players, myId).map((target) =>
         pickButton(target.name, insider.you.vote === target.id, () => this.send({ type: "vote", target: target.id })),

@@ -406,11 +406,18 @@
                 required
               /><button type="submit" class="primary">決める</button>
             </form>
-            <div id="vote-panel" class="stack" hidden>
-              <p class="insider-lead">インサイダーだと思う人に投票（開票まで入れ直せます）</p>
-              <div id="vote-targets" class="pick-grid"></div>
-              <button id="vote-close" type="button" class="secondary wide">開票する</button>
-            </div>
+            <!-- 投票中は帯 1 行に畳めて、会話ログを見返せる。帯には進み具合と自分の票を出す -->
+            <details id="vote-panel" class="vote-panel" hidden>
+              <summary id="vote-summary" class="vote-summary"></summary>
+              <div class="vote-body">
+                <p class="insider-lead">
+                  インサイダーだと思う人に投票（開票まで入れ直せます）<br /><span id="vote-waiting"></span>
+                </p>
+                <div id="vote-targets" class="pick-grid"></div>
+                <button id="vote-close" type="button" class="secondary wide">開票する</button>
+                <button id="vote-role" type="button" class="link muted-link">自分の役職を見る</button>
+              </div>
+            </details>
             <button id="insider-cancel" type="button" class="link muted-link" hidden>
               中止する（全員の負け）
             </button>

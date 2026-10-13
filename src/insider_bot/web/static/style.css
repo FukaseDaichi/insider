@@ -3999,31 +3999,66 @@ body:has(.room:not([hidden])) .site-header {
   font-size: 13px;
 }
 
+/* 名前のボタンは 3 列の同じ大きさに揃える。行の高さも一番高い行に合わせ、長い名前や「（自分）」で段がずれないようにする */
 .pick-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
   gap: 8px;
 }
 
 .pick {
-  min-height: 52px;
-  padding: 8px 12px;
+  justify-content: flex-start;
+  gap: 6px;
+  min-height: 48px;
+  padding: 6px 8px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: transparent;
   color: var(--text);
   font-weight: 700;
-  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+/* 左の丸。選ぶと黄色の地に濃い丸と黄色のチェックになる */
+.pick::before {
+  content: "";
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--muted);
+  border-radius: 50%;
+  box-sizing: border-box;
 }
 
 .pick[aria-pressed="true"] {
   border-color: var(--accent);
-  background: #dfef7826;
+  background: var(--accent);
+  color: #20221a;
 }
 
 .pick[aria-pressed="true"]::before {
-  content: "✓ ";
-  color: var(--accent);
+  border: 0;
+  background: #20221a
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.5l3 3 6-6.5' fill='none' stroke='%23dfef78' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / 100% no-repeat;
+}
+
+.pick-label {
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+/* 「（自分）」は分けずに、入らなければ次の行へ送る */
+.pick-note {
+  display: inline-block;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .field-group {
@@ -4034,16 +4069,46 @@ body:has(.room:not([hidden])) .site-header {
   border: 0;
 }
 
+/* 項目の間に区切りの線を引く */
+.field-group + .field-group {
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+/* legend を浮かせて枠の線から外し、ふつうの行として並べる（線が題を横切らないように） */
 .field-group legend {
-  margin-bottom: 8px;
+  float: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
   padding: 0;
+  font-size: 16px;
   font-weight: 700;
 }
 
+/* 題の後ろの添え書きは、題と同じ線の上に並べる */
+.field-group legend .field-note {
+  margin-left: 4px;
+  font-size: 12px;
+}
+
+.legend-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* お題の選び方は縦に並べ、どれも名前のボタンと同じ高さにする */
 .segmented {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  gap: 8px;
 }
 
 .segment {
@@ -4055,21 +4120,39 @@ body:has(.room:not([hidden])) .site-header {
   opacity: 0;
 }
 
-.segment span {
-  display: grid;
-  place-items: center;
+.segment span,
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   min-height: 48px;
-  padding: 6px;
+  padding: 6px 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
-  text-align: center;
+  cursor: pointer;
+}
+
+/* ラジオの丸。選ぶと内側に黄色の点が入る */
+.segment span::before {
+  content: "";
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--muted);
+  border-radius: 50%;
+  box-sizing: border-box;
 }
 
 .segment input:checked + span {
   border-color: var(--accent);
-  background: #dfef7826;
+  background: #dfef7814;
+}
+
+.segment input:checked + span::before {
+  border-color: var(--accent);
+  background: radial-gradient(circle, var(--accent) 0 4px, transparent 4.5px);
 }
 
 .segment input:focus-visible + span {
@@ -4077,16 +4160,36 @@ body:has(.room:not([hidden])) .site-header {
   outline-offset: 2px;
 }
 
-.check-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
+.check-row:has(input:checked) {
+  border-color: var(--accent);
+  background: #dfef7814;
 }
 
+/* 端末ごとの見た目（iPhone の黒い四角など）をやめ、名前のボタンの丸と同じ大きさの四角にする */
 .check-row input {
-  width: 22px;
-  height: 22px;
+  appearance: none;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 2px solid var(--muted);
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.check-row input:checked {
+  border-color: var(--accent);
+  background: var(--accent)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M4.5 10.5l3.5 3.5 7.5-8' fill='none' stroke='%2320221a' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / 100% no-repeat;
+}
+
+.check-row input:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .stepper {
@@ -4110,6 +4213,30 @@ body:has(.room:not([hidden])) .site-header {
   font-size: 28px;
   font-weight: 800;
   text-align: center;
+}
+
+/* 電話では左右の余白を詰め、名前のボタンを 3 列に並べても 4 文字が 1 行に入るようにする */
+@media (max-width: 480px) {
+  dialog.insider-sheet {
+    width: calc(100vw - 24px);
+    max-width: none;
+    padding: 24px 18px;
+  }
+}
+
+/* 題は電話の幅でも 1 行に収める */
+.insider-sheet h2 {
+  font-size: min(25px, 5.8vw);
+  white-space: nowrap;
+}
+
+/* 始める・やめるは同じ高さにし、始めるを広く取る */
+.insider-sheet .row > button {
+  min-height: 52px;
+}
+
+.insider-sheet .row > .secondary {
+  flex: 0 0 30%;
 }
 
 .role-image {

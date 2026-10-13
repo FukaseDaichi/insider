@@ -11,8 +11,9 @@ import {
   selectable,
   setupProblem,
   startMessage,
-  voteProgress,
+  voteSummary,
   voteTargets,
+  voteWaiting,
 } from "../../src/insider_bot/web/static/insider.js";
 
 const PLAYERS = [
@@ -103,10 +104,18 @@ test("ゲームのない間の上のバー。お題待ちと投票中はそれ�
   assert.equal(idleStatus({ phase: "voting" }), "投票中 — インサイダーは誰？");
 });
 
-test("投票の進み具合。まだ入れていない人の名前を出す", () => {
-  const insider = { participants: [1, 2, 3], voted: [2] };
-  assert.equal(voteProgress(insider, PLAYERS), "投票 1 / 3 人（まだ：たろう・じろう）");
-  assert.equal(voteProgress({ participants: [1, 2, 3], voted: [1, 2, 3] }, PLAYERS), "投票 3 / 3 人");
+test("畳んだ帯には、進み具合と自分の票を 1 行で出す", () => {
+  const insider = { participants: [1, 2, 3], voted: [2], you: { vote: null } };
+  assert.equal(voteSummary(insider, PLAYERS), "投票中 1 / 3 人 ・ あなたの票：まだ");
+  assert.equal(
+    voteSummary({ participants: [1, 2, 3], voted: [1, 2], you: { vote: 1 } }, PLAYERS),
+    "投票中 2 / 3 人 ・ あなたの票：たろう",
+  );
+});
+
+test("開いた中には、まだ入れていない人の名前を出す", () => {
+  assert.equal(voteWaiting({ participants: [1, 2, 3], voted: [2] }, PLAYERS), "まだ：たろう・じろう");
+  assert.equal(voteWaiting({ participants: [1, 2, 3], voted: [1, 2, 3] }, PLAYERS), "全員が投票しました。開票できます");
 });
 
 const TWINS = [
@@ -125,7 +134,11 @@ test("同じ名前の人には、入った順に番号を添えて見分ける",
     voteTargets({ participants: [1, 2, 5] }, TWINS, 2).map((t) => t.name),
     ["たろう（1）", "たろう（2）"],
   );
-  assert.equal(voteProgress({ participants: [1, 2, 5], voted: [2] }, TWINS), "投票 1 / 3 人（まだ：たろう（1）・たろう（2））");
+  assert.equal(voteWaiting({ participants: [1, 2, 5], voted: [2] }, TWINS), "まだ：たろう（1）・たろう（2）");
+  assert.equal(
+    voteSummary({ participants: [1, 2, 5], voted: [2], you: { vote: 5 } }, TWINS),
+    "投票中 1 / 3 人 ・ あなたの票：たろう（2）",
+  );
   const view = resultView(
     {
       ending: "voted",

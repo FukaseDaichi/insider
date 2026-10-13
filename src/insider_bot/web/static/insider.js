@@ -114,13 +114,20 @@ export function idleStatus(insider) {
   return IDLE_STATUS[insider?.phase] ?? null;
 }
 
-/** 投票の進み具合。開票を締め切るか決められるよう、まだ入れていない人の名前を添える。 */
-export function voteProgress(insider, players) {
+/** 投票パネルを畳んだときの帯。進み具合と自分の票を 1 行に収め、畳んだままでも入れ直しが要るか分かるようにする。 */
+export function voteSummary(insider, players) {
+  const names = nameLabels(players);
+  const count = `投票中 ${new Set(insider.voted).size} / ${insider.participants.length} 人`;
+  const mine = insider.you.vote == null ? "まだ" : (names.get(insider.you.vote) ?? "?");
+  return `${count} ・ あなたの票：${mine}`;
+}
+
+/** 投票パネルを開いたときの行。開票を締め切るか決められるよう、まだ入れていない人の名前を出す。 */
+export function voteWaiting(insider, players) {
   const names = nameLabels(players);
   const voted = new Set(insider.voted);
   const waiting = insider.participants.filter((id) => !voted.has(id)).map((id) => names.get(id) ?? "?");
-  const count = `投票 ${voted.size} / ${insider.participants.length} 人`;
-  return waiting.length ? `${count}（まだ：${waiting.join("・")}）` : count;
+  return waiting.length ? `まだ：${waiting.join("・")}` : "全員が投票しました。開票できます";
 }
 
 /**
