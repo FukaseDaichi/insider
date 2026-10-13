@@ -28,9 +28,12 @@ function element(tag, className, text) {
   return node;
 }
 
-// 名前ごとの大きなボタン。押すと選ぶ・外す（aria-pressed）
-function pickButton(label, pressed, onClick) {
-  const button = element("button", "pick", label);
+// 名前ごとの大きなボタン。押すと選ぶ・外す（aria-pressed）。note は名前の後ろに小さく添える（「自分」など）
+function pickButton(label, pressed, onClick, note) {
+  const button = element("button", "pick");
+  const text = element("span", "pick-label", label);
+  if (note) text.append(element("small", "pick-note", note));
+  button.append(text);
   button.type = "button";
   button.setAttribute("aria-pressed", String(pressed));
   button.addEventListener("click", onClick);
@@ -131,11 +134,16 @@ export class InsiderView {
     const names = nameLabels(players);
     $("insider-players").replaceChildren(
       ...choices.map((player) =>
-        pickButton(player.id === you.id ? `${names.get(player.id)}（自分）` : names.get(player.id), this.selected.has(player.id), () => {
-          if (this.selected.has(player.id)) this.selected.delete(player.id);
-          else this.selected.add(player.id);
-          this.renderPicker();
-        }),
+        pickButton(
+          names.get(player.id),
+          this.selected.has(player.id),
+          () => {
+            if (this.selected.has(player.id)) this.selected.delete(player.id);
+            else this.selected.add(player.id);
+            this.renderPicker();
+          },
+          player.id === you.id ? "（自分）" : undefined,
+        ),
       ),
     );
     $("insider-count").textContent = `${this.selected.size} 人選択中（3 人以上）`;

@@ -586,11 +586,22 @@
       <h2 id="insider-setup-title">インサイダーゲームを始める</h2>
       <form id="insider-form" class="stack">
         <fieldset class="field-group">
-          <legend>参加者 <span id="insider-count" class="field-note"></span></legend>
+          <legend
+            ><svg class="legend-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="9" cy="8" r="4" />
+              <path d="M2 21v-.5A6.5 6.5 0 0 1 8.5 14h1a6.5 6.5 0 0 1 6.5 6.5v.5" />
+              <path d="M16 4.1a4 4 0 0 1 0 7.8M18.5 14.4A6.5 6.5 0 0 1 22 20.5v.5" /></svg
+            >参加者 <span id="insider-count" class="field-note"></span
+          ></legend>
           <div id="insider-players" class="pick-grid"></div>
         </fieldset>
         <fieldset class="field-group">
-          <legend>お題</legend>
+          <legend
+            ><svg class="legend-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 18h6M10 21h4" />
+              <path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z" /></svg
+            >お題</legend
+          >
           <div class="segmented">
             <label class="segment"><input type="radio" name="topic-mode" value="random" checked /><span>ランダム</span></label>
             <label class="segment"><input type="radio" name="topic-mode" value="self" /><span>自分で決める</span></label>
@@ -602,7 +613,12 @@
           /></label>
         </fieldset>
         <fieldset class="field-group">
-          <legend>制限時間</legend>
+          <legend
+            ><svg class="legend-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" /></svg
+            >制限時間</legend
+          >
           <label class="check-row"><input id="insider-timer" type="checkbox" /> 制限時間をつける</label>
           <div id="insider-minutes-row" class="stepper" hidden>
             <button id="minutes-down" type="button" aria-label="1分減らす">−</button
