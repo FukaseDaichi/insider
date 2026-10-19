@@ -295,7 +295,7 @@
           </div>
           <div id="players-slot">
             <div id="players-row" class="players-row">
-              <span class="eyebrow">PLAYERS</span>
+              <span class="eyebrow">参加者</span>
               <p id="players" class="players"></p>
             </div>
           </div>
@@ -341,14 +341,16 @@
               type="button"
               class="primary wide arrow-button"
             >
-              お題当てゲーム <span aria-hidden="true">＋</span>
+              <span class="mode-copy"><span>お題当てゲーム</span><small>みんなで質問して、秘密のお題を当てる</small></span>
+              <span aria-hidden="true">＋</span>
             </button>
             <button
               id="insider-open"
               type="button"
               class="primary wide arrow-button insider-open"
             >
-              インサイダーゲーム <span aria-hidden="true">＋</span>
+              <span class="mode-copy"><span>インサイダーゲーム</span><small>お題を当てたあと、答えを知っていた人を探す</small></span>
+              <span aria-hidden="true">＋</span>
             </button>
             <form id="start-form" class="stack" hidden>
               <div class="form-heading">
@@ -575,7 +577,7 @@
         <button id="giveup-cancel" type="button" class="secondary" autofocus>
           推理を続ける
         </button>
-        <button id="giveup-confirm" type="button" class="primary">
+        <button id="giveup-confirm" type="button" class="danger-action">
           お題を公開
         </button>
       </div>
@@ -647,7 +649,7 @@
       <p class="dialog-lead">全員の負けになり、インサイダーが明かされます。</p>
       <div class="row">
         <button id="insider-cancel-back" type="button" class="secondary" autofocus>やめる</button
-        ><button id="insider-cancel-confirm" type="button" class="primary">中止する</button>
+        ><button id="insider-cancel-confirm" type="button" class="danger-action">中止する</button>
       </div>
     </dialog>
 
