@@ -17,6 +17,9 @@ CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 CODE_LENGTH = 6
 MAX_ROOMS = 50
 MAX_PLAYERS = 20
+# 1 ルームの接続の上限。同じ合言葉で接続を大量に張られると、1 回の更新がその数だけ積まれる。
+# 再接続の直後は古い接続がハートビートで切れるまで残るので、参加者 1 人あたり 3 本ぶんの余裕を見る
+MAX_CONNECTIONS = MAX_PLAYERS * 3
 NAME_MAX = 20
 LOG_LIMIT = 300
 UNJOINED_TTL_SECONDS = 10 * 60
@@ -28,7 +31,7 @@ class RoomNotFound(Exception):
 
 
 class RoomFull(Exception):
-    """参加者が上限に達していて、新しい参加者を作れない。"""
+    """参加者か接続が上限に達していて、入れない。"""
 
 
 class RoomLimitReached(Exception):
@@ -106,11 +109,13 @@ class RoomRegistry:
         on_remove: Callable[[Room], None] = lambda room: None,
         max_rooms: int = MAX_ROOMS,
         max_players: int = MAX_PLAYERS,
+        max_connections: int = MAX_CONNECTIONS,
     ) -> None:
         self._clock = clock
         self._on_remove = on_remove
         self._max_rooms = max_rooms
         self._max_players = max_players
+        self._max_connections = max_connections
         self._rooms: dict[str, Room] = {}
         self._room_ids = itertools.count(1)
         self._player_ids = itertools.count(1)
@@ -120,11 +125,12 @@ class RoomRegistry:
 
     def create(self) -> Room:
         if len(self._rooms) >= self._max_rooms:
-            # 作成に認証がないので、空のルームを大量に作られても遊んでいる人のルームは消さない
+            # 作成に認証がないので、空のルームを大量に作られても遊んでいる人のルームは消さない。
+            # 誰も入っていないルームから先に消す。作るだけの連打では、接続が一時的に切れているだけのルームまで届かない
             idle = [room for room in self._rooms.values() if not room.connections]
             if not idle:
                 raise RoomLimitReached()
-            self._remove(min(idle, key=lambda room: room.last_active))
+            self._remove(min(idle, key=lambda room: (room.joined, room.last_active)))
         code = self._new_code()
         room = Room(room_id=next(self._room_ids), code=code, last_active=self._clock())
         self._rooms[code] = room
@@ -132,6 +138,8 @@ class RoomRegistry:
 
     def join(self, room: Room, token: str | None, name: str) -> Player:
         """合言葉が一致すれば既存の参加者を返す（名前は変えない）。それ以外は新しい参加者を作る。"""
+        if len(room.connections) >= self._max_connections:
+            raise RoomFull(room.code)
         if token is not None and token in room.players:
             return room.players[token]
         name = name.strip()

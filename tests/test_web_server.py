@@ -98,6 +98,22 @@ async def test_vendor_files_are_cached_but_app_files_are_revalidated(static_dir)
         assert app.headers["Cache-Control"] == "no-cache"
 
 
+async def test_every_response_carries_security_headers(static_dir):
+    async with serve(static_dir) as client:
+        responses = [
+            await client.get("/"),
+            await client.get("/static/app.js"),
+            await client.get("/healthz"),
+            await client.get("/no-such-page"),
+            await client.post("/api/rooms"),
+        ]
+        for response in responses:
+            assert response.headers["X-Content-Type-Options"] == "nosniff", response.url
+            assert response.headers["X-Frame-Options"] == "DENY", response.url
+            assert response.headers["Content-Security-Policy"] == "frame-ancestors 'none'", response.url
+            assert response.headers["Referrer-Policy"] == "same-origin", response.url
+
+
 @pytest.mark.parametrize("game", ["odai", "insider"])
 async def test_howto_videos_on_the_rules_sheet_are_served_with_range_requests(game):
     # iPhone の Safari は Range を返さない動画を再生しないので、206 で返ることまで確かめる

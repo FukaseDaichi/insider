@@ -35,6 +35,8 @@ log = logging.getLogger(__name__)
 TOPIC_MAX = 50
 HINT_MAX = 300
 QUESTION_MAX = 200
+# 1 人が同時に判定待ちにできる質問の数。判定は有料の外部 API を呼ぶので、連打で待ち行列を際限なく積ませない
+PENDING_QUESTIONS_MAX = 3
 # 音声認識が付けがちな句点や、手で打った「？」をいったん外してから「？」を付け直す
 _TRAILING_MARKS = "。．.、？?"
 
@@ -126,6 +128,8 @@ class RoomHub:
         self._tasks: set[asyncio.Task[None]] = set()
         # ルーム → インサイダーゲームの時間切れの予約
         self._timers: dict[int, list[asyncio.TimerHandle]] = {}
+        # 参加者 → 判定待ちの質問の数。0 になったら消す
+        self._pending: dict[Player, int] = {}
 
     def create_room(self) -> Room:
         return self._registry.create()
@@ -354,6 +358,11 @@ class RoomHub:
             # 押している間に次のゲームが始まっていた。前のゲームへの質問を新しいお題で判定しない
             self._notify(room, player, "ゲームが変わったため、その質問は送りませんでした")
             return
+        pending = self._pending.get(player, 0)
+        if pending >= PENDING_QUESTIONS_MAX:
+            self._notify(room, player, "判定中の質問が終わってから、次の質問をどうぞ")
+            return
+        self._pending[player] = pending + 1
         entry = room.add_entry(player.name, f"❓ {question}\n… 判定中", pending=True)
         self._broadcast_entry(room, entry)
         try:
@@ -363,6 +372,8 @@ class RoomHub:
         except Exception:
             log.exception("質問の処理に失敗しました（room=%s）", room.code)
             outcome = Outcome(public=fmt.format_error())
+        finally:
+            self._release_pending(player)
         entry.pending = False
         # インサイダーゲームのお題が当たったら、投票に進む。判定中に別の回へ替わっていたら触らない
         opens_voting = (
@@ -389,6 +400,11 @@ class RoomHub:
             insider.start_voting(player.name)
             self._broadcast_entry(room, self._host_entry(room, INSIDER_VOTING, "detective", INSIDER_VOTING_LINES))
         self._broadcast_room(room)
+
+    def _release_pending(self, player: Player) -> None:
+        remaining = self._pending.pop(player) - 1
+        if remaining:
+            self._pending[player] = remaining
 
     def vote(self, room: Room, player: Player, target: int) -> None:
         insider = room.insider
