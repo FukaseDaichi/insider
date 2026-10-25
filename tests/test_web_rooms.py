@@ -89,6 +89,21 @@ def test_player_limit_applies_only_to_new_players():
     assert registry.join(room, first.token, "たろう") is first
 
 
+def test_connection_limit_refuses_new_and_returning_players():
+    registry, _, _ = make(max_connections=2)
+    room = registry.create()
+    player = registry.join(room, None, "たろう")
+    registry.attach(room, "tab-1", player)
+    registry.attach(room, "tab-2", player)
+    with pytest.raises(RoomFull):
+        registry.join(room, player.token, "たろう")
+    with pytest.raises(RoomFull):
+        registry.join(room, None, "はなこ")
+    assert list(room.players.values()) == [player]
+    registry.detach(room, "tab-1")
+    assert registry.join(room, player.token, "たろう") is player
+
+
 # --- 接続 ---
 
 
@@ -129,6 +144,17 @@ def test_room_limit_never_evicts_rooms_with_connections():
     registry.create()
     assert removed == [empty]
     assert registry.get(playing.code) is playing
+
+
+def test_room_limit_evicts_never_joined_rooms_before_rooms_whose_players_left():
+    registry, clock, removed = make(max_rooms=2)
+    left = registry.create()
+    registry.join(left, None, "たろう")
+    clock.advance(1)
+    unjoined = registry.create()
+    registry.create()
+    assert removed == [unjoined]
+    assert registry.get(left.code) is left
 
 
 def test_room_limit_raises_when_every_room_has_connections():

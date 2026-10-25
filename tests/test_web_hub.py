@@ -20,6 +20,7 @@ from insider_bot.web.hub import (
     INSIDER_VOTING,
     INSIDER_VOTING_LINES,
     INSIDER_WIN_SOUND,
+    PENDING_QUESTIONS_MAX,
     RANDOM_STARTED,
     VILLAGERS_WIN_SOUND,
     START_SOUNDS,
@@ -410,6 +411,25 @@ async def test_question_rejected_before_judging(text, notice):
     await world.hub.ask(world.room, asker, text, world.game_id())
     assert asker_conn.notices() == [notice]
     assert world.judge.calls == []
+
+
+async def test_questions_waiting_for_judgement_are_limited_per_player():
+    gate = asyncio.Event()
+    world, (setter_conn, setter), (asker_conn, asker) = await playing(FakeJudge(gate=gate))
+    tasks = [world.hub.ask(world.room, asker, f"質問{n}", world.game_id()) for n in range(PENDING_QUESTIONS_MAX)]
+    await wait_until(lambda: world.judge.calls)
+    await world.hub.ask(world.room, asker, "多すぎる質問", world.game_id())
+    assert asker_conn.notices() == ["判定中の質問が終わってから、次の質問をどうぞ"]
+    assert sum(entry["pending"] for entry in setter_conn.entries()) == PENDING_QUESTIONS_MAX
+    # ほかの人の質問は断らない
+    others = world.hub.ask(world.room, setter, "果物ですか", world.game_id())
+    gate.set()
+    await asyncio.gather(*tasks, others)
+    assert len(world.judge.calls) == PENDING_QUESTIONS_MAX + 1
+    # 判定が終われば、また送れる
+    await world.hub.ask(world.room, asker, "果物ですか", world.game_id())
+    assert asker_conn.entries()[-1]["text"] == ANSWER
+    assert world.hub._pending == {}
 
 
 async def test_question_without_game_is_rejected():

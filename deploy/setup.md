@@ -338,9 +338,11 @@ OCI コンソール → インスタンス → Metrics → `Memory Utilization`�
 [Mac] bash deploy/verify/ratelimit_check.sh "$B" /api/village/special 40     # 作成系の枠 30 回/分
 [Mac] sleep 60
 [Mac] bash deploy/verify/ratelimit_check.sh "$B" /api/village/mine 310       # 全体の枠 300 回/分
+[Mac] sleep 60
+[Mac] bash deploy/verify/ratelimit_check.sh "$B" /api/rooms 20                # ルームの作成の枠 10 回/分
 ```
 
-期待: 作成系が概ね 30 件の `400` と 10 件の `429`、全体が概ね 300 件の `400` と 10 件の `429`（スライディングウィンドウなので前の計測の残りで数件ずれる）。どちらも `elapsed` が 60 秒未満であること。続けて実際のブラウザで配役ツールの配布状況の 5 秒ごとの更新を 2 分ほど眺め、DevTools の Network で `429` が出ないことを確かめる。
+期待: 作成系が概ね 30 件の `400` と 10 件の `429`、全体が概ね 300 件の `400` と 10 件の `429`、ルームの作成が概ね 10 件の `201` と 10 件の `429`（スライディングウィンドウなので前の計測の残りで数件ずれる）。どちらも `elapsed` が 60 秒未満であること。続けて実際のブラウザで配役ツールの配布状況の 5 秒ごとの更新を 2 分ほど眺め、DevTools の Network で `429` が出ないことを確かめる。
 
 ## 17. 様子見と定期点検
 

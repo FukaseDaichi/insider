@@ -12,8 +12,28 @@ insider.example.com {
 	#   village_create: 村を作る操作 (create / special / werewords / text。text は「お題」で村を作れる) を 30 回/分
 	#   village_all:    /api/village/* 全体を 300 回/分。配役ツールの画面は配布状況を 5 秒ごとに join / postback で取る
 	#                   (12 回/分/画面) ので、同じ Wi-Fi の 20 画面ぶんを通す
-	# /line/callback は LINE の署名検証があるので制限しない。画面・静的ファイル・お題当ての WebSocket も制限しない
+	# お題当てのルームも認証がない。ルーム番号の総当たりと、作成の連打による空きルームの追い出しを遅らせる:
+	#   room_create: ルームを作る操作を 10 回/分
+	#   room_join:   WebSocket の接続 (/r/<番号>/ws) を 120 回/分。番号 (31 文字の 6 桁) を当てるのに 1 IP で数か月かかる。
+	#                画面は切れると 1〜10 秒の間隔で張り直すので、再起動の直後に同じ Wi-Fi の 20 人が張り直しても通す
+	# /line/callback は LINE の署名検証があるので制限しない。画面と静的ファイルも制限しない
 	rate_limit {
+		zone room_create {
+			match {
+				path /api/rooms
+			}
+			key {http.request.remote.host}
+			events 10
+			window 1m
+		}
+		zone room_join {
+			match {
+				path /r/*/ws
+			}
+			key {http.request.remote.host}
+			events 120
+			window 1m
+		}
 		zone village_create {
 			match {
 				path /api/village/create /api/village/special /api/village/werewords /api/village/text
@@ -41,6 +61,10 @@ insider.example.com {
 	request_body {
 		max_size 2MiB
 	}
+
+	# ブラウザに以後は https だけで繋がせる (http への格下げで通信を盗み見られないように)。
+	# ほかのセキュリティヘッダーは aiohttp が付ける (server.py の SECURITY_HEADERS。Tailscale Funnel で出すときにも効く)
+	header Strict-Transport-Security "max-age=31536000"
 
 	# WebSocket (/r/<番号>/ws) も reverse_proxy がそのまま通す
 	reverse_proxy 127.0.0.1:8080

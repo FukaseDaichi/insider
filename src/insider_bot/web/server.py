@@ -29,6 +29,15 @@ VENDOR_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
 # 特殊村は 100 通×5,000 文字まで受け取る（日本語の UTF-8 で約 1.5MB）。本番の Caddy の本文上限（deploy/Caddyfile の request_body の 2MiB）と同じ値
 MAX_REQUEST_BYTES = 2 * 1024 * 1024
 
+# すべての応答に付ける。ほかのサイトの枠に入れて押させる（クリックジャッキング）のと、型の推測で
+# 静的ファイルをスクリプトとして解釈させるのを防ぐ。ルーム番号は URL に入るので、ほかのサイトへの Referer に載せない
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Content-Security-Policy": "frame-ancestors 'none'",
+    "Referrer-Policy": "same-origin",
+}
+
 CLOSE_BAD_REQUEST = 4400
 CLOSE_NOT_FOUND = 4404
 CLOSE_FULL = 4409
@@ -204,6 +213,10 @@ async def healthz(request: web.Request) -> web.Response:
     return web.Response(text="ok")
 
 
+async def _security_headers(request: web.Request, response: web.StreamResponse) -> None:
+    response.headers.update(SECURITY_HEADERS)
+
+
 async def _cache_headers(request: web.Request, response: web.StreamResponse) -> None:
     path = request.path
     if path.startswith("/static/vendor/"):
@@ -252,6 +265,7 @@ def create_app(
     app.router.add_get("/healthz", healthz)
     if village is not None:
         add_village_routes(app, village, static_dir / "village.html")
+    app.on_response_prepare.append(_security_headers)
     app.on_response_prepare.append(_cache_headers)
 
     async def run_cleanup(app: web.Application) -> AsyncIterator[None]:
